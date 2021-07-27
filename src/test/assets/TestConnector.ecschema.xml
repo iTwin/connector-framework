@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ECSchema schemaName="TestConnector" alias="TestConnector" version="01.00" xmlns="http://www.bentley.com/schemas/Bentley.ECXML.3.1">
+
+    <ECSchemaReference name="BisCore" version="01.00" alias="bis"/>
+
+    <ECEntityClass typeName="TestConnectorPhysicalElement" modifier="Abstract">
+        <BaseClass>bis:PhysicalElement</BaseClass>
+        <ECProperty propertyName="Condition" typeName="string">
+        </ECProperty>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="SmallSquareTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="LargeSquareTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="RectangleTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="EquilateralTriangleTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="RightTriangleTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="IsoscelesTriangleTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="TestConnectorGroupModel">
+        <BaseClass>bis:GroupInformationModel</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="TestConnectorGroup">
+        <BaseClass>bis:GroupInformationElement</BaseClass>
+        <ECProperty propertyName="GroupType" typeName="string">
+        </ECProperty>
+        <ECProperty propertyName="ManufactureLocation" typeName="string">
+        </ECProperty>
+        <ECProperty propertyName="ManufactureDate" typeName="dateTime">
+        </ECProperty>
+      </ECEntityClass>
+
+</ECSchema>
