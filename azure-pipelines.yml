@@ -1,0 +1,138 @@
+trigger:
+  branches:
+    include:
+      - main
+      - releases/*
+  paths:
+    exclude:
+      - README.md
+      - LICENSE
+
+pr:
+  drafts: false
+  branches:
+    include:
+      - main
+      - release/*
+  paths:
+    exclude:
+      - README.md
+      - LICENSE
+
+resources:
+  repositories:
+    - repository: build-pipeline-scripts
+      type: git
+      ref: create-unique-name # temp
+      name: iModelTechnologies/imodeljs-build-pipeline-scripts
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+    - job: Build
+
+      pool:
+        vmImage: 'ubuntu-latest'
+
+      steps:
+
+      - checkout: self
+        persistCredentials: true
+        clean: true
+
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '12.17.0'
+        displayName: 'Install Node.js'
+
+      - script: |
+          npm ci
+        displayName: 'npm ci'
+
+      - script: |
+           npm run build
+        displayName: 'npm run build'
+
+      - script: |
+          npm run test:unit
+        displayName: 'npm run test:unit'
+
+      # - script: |
+      #     npm run test:integration
+      #   displayName: 'npm run test:integration'
+      #   env:
+      #     imjs_test_project_id: $(test_project_id)
+      #     imjs_test_client_id: $(test_client_id)
+      #     imjs_test_regular_user_name: $(test_user_name)
+      #     imjs_test_regular_user_password: $(test_user_password)
+
+      - bash: |
+          checkVersion() {
+            localVer=$1
+            name=$2
+
+            remoteVer=$(npm view $name version)
+            if [ -z "$remoteVer" ]; then
+              remoteVer=0.0.0
+            fi
+
+            olderVer=$(printf '%s\n' "$localVer" "$remoteVer" | sort -V | head -n1)
+            if [ "$localVer" != "$remoteVer" ] && [ "$remoteVer" = "$olderVer" ]; then
+              echo true
+            else
+              echo false
+            fi
+          }
+
+          version=$(node -p "require('./package.json').version")
+          name=$(node -p "require('./package.json').name")
+          update=$(checkVersion $version $name)
+
+          if [ "$update" = "true" ] ; then
+            echo "package publishing conditions are met."
+            shouldPublish=true
+          else
+            echo "package publishing conditions not met."
+            shouldPublish=false
+          fi
+
+          echo "##vso[task.setvariable variable=shouldPublish;isOutput=true]$shouldPublish"
+          echo "##vso[task.setvariable variable=version;isOutput=true]$version"
+          echo "##vso[task.setvariable variable=name;isOutput=true]$name"
+
+        displayName: 'Store Build Info'
+        name: info
+        condition: and(succeeded(), eq(variables.attempt_publish, true), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Agent.OS'], 'Linux'))
+
+      - script: |
+          npm pack
+        displayName: 'npm pack @itwin/connector-framework'
+        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+
+      - task: CopyFiles@2
+        inputs:
+          sourceFolder: connector-framework
+          contents: '*.tgz'
+          targetFolder: $(Build.ArtifactStagingDirectory)/connector-framework
+        displayName: 'Copy @itwin/connector-framework'
+        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)/connector-framework'
+          artifactName: connector-framework
+        displayName: 'Publish Connector Framework Artifact'
+        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+
+- stage: Publish
+  displayName: Publish
+  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.info.shouldPublish'], 'true'))
+  dependsOn: Build
+
+  # jobs:
+  #   - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
+  #     parameters:
+  #       path: '*.tgz'
+  #       artifactName: connector-framework
+
