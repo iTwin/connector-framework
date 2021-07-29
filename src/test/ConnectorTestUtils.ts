@@ -15,7 +15,7 @@ import {
 import { IModel } from "@bentley/imodeljs-common";
 import { AuthorizedClientRequestContext, ITwinClientLoggerCategory } from "@bentley/itwin-client";
 import { ConnectorLoggerCategory } from "../ConnectorLoggerCategory";
-import { ConnectorJobDefArgs } from "../itwin-connector-framework";
+import { ConnectorJobDefArgs } from "../connector-framework";
 import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils";
 import { IModelHubUtils } from "../IModelHubUtils";
 import { HubUtility } from "./integration/HubUtility";
