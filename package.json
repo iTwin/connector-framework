@@ -22,6 +22,7 @@
     "extract-api": "betools extract-api --entry=itwin-connector-framework",
     "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
     "pretest": "cpx ./src/test/logging.config.json ./lib/test",
+    "test": "npm run test:standalone",
     "test:standalone": "npm run pretest && betools test --testDir=\"./lib/test/standalone\"",
     "test:integration": "npm run pretest && betools test --testDir=\"./lib/test/integration\""
   },
@@ -50,6 +51,7 @@
     "@bentley/build-tools": "^2.19.0",
     "@bentley/config-loader": "^2.19.0",
     "@bentley/context-registry-client": "^2.19.0",
+    "@bentley/ecschema-metadata": "^2.19.0",
     "@bentley/eslint-plugin": "^2.19.0",
     "@bentley/geometry-core": "^2.19.0",
     "@bentley/imodelhub-client": "^2.19.0",
