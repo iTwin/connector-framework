@@ -30,13 +30,13 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     try {
       const clientCred = {
-        clientId: process.env.imjs_oidc_browser_test_client_id!,
-        redirectUri: process.env.imjs_oidc_browser_test_redirect_uri!,
-        scope: process.env.imjs_oidc_browser_test_scopes!,
+        clientId: process.env.test_client_id!,
+        redirectUri: process.env.test_redirect_uri!,
+        scope: process.env.test_scopes!,
       };
       const userCred = {
-        email: process.env.imjs_test_regular_user_name!,
-        password: process.env.imjs_test_regular_user_password!,
+        email: process.env.test_user_name!,
+        password: process.env.test_user_password!,
       };
       const token = await getTestAccessToken(clientCred, userCred, 102);
       requestContext = new AuthorizedBackendRequestContext(token);
@@ -45,7 +45,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     Config.App.set("imjs_buddi_resolve_url_using_region", "102");
-    testProjectId = "cef2040d-651e-4307-8b2a-dac0b44fbf7f";
+    testProjectId = process.env.test_project_id!;
     const imodelName = "tset";
     const targetIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
 
