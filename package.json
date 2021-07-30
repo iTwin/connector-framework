@@ -58,6 +58,7 @@
     "@bentley/itwin-client": "^2.19.0",
     "@bentley/oidc-signin-tool": "^2.19.0",
     "@bentley/rbac-client": "^2.19.0",
+    "@bentley/telemetry-client": "^2.19.0",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^8.2.2",
     "@types/node": "10.14.1",
