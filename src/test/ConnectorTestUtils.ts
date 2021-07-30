@@ -6,22 +6,19 @@
 import { assert } from "chai";
 import * as path from "path";
 import { BentleyLoggerCategory, DbResult, Id64, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
-import { loadEnv } from "@bentley/config-loader";
 import { ChangeSet, IModelHubClientLoggerCategory } from "@bentley/imodelhub-client";
-import {
-  BackendLoggerCategory, ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelHubBackend, IModelJsFs, NativeLoggerCategory,
-  PhysicalPartition, Subject,
-} from "@bentley/imodeljs-backend";
+import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@bentley/imodeljs-common";
 import { AuthorizedClientRequestContext, ITwinClientLoggerCategory } from "@bentley/itwin-client";
+import { BackendLoggerCategory, ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, NativeLoggerCategory, PhysicalPartition, Subject } from "@bentley/imodeljs-backend";
 import { ConnectorLoggerCategory } from "../ConnectorLoggerCategory";
 import { ConnectorJobDefArgs } from "../connector-framework";
 import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils";
-import { IModelHubUtils } from "../IModelHubUtils";
 import { HubUtility } from "./integration/HubUtility";
 import { CodeSpecs, RectangleTile, SmallSquareTile } from "./integration/TestConnectorElements";
 import { ModelNames } from "./integration/TestITwinConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
+import { IModelHubUtils } from "../IModelHubUtils";
 
 export class TestIModelInfo {
   private _name: string;
@@ -106,7 +103,7 @@ export class ConnectorTestUtils {
     const iModelInfo = new TestIModelInfo(iModelName);
     iModelInfo.id = await HubUtility.queryIModelIdByName(requestContext, testProjectId, iModelInfo.name);
 
-    iModelInfo.changeSets = await IModelHubBackend.iModelClient.changeSets.get(requestContext, iModelInfo.id);
+    iModelInfo.changeSets = await IModelHost.iModelClient.changeSets.get(requestContext, iModelInfo.id);
     return iModelInfo;
   }
 

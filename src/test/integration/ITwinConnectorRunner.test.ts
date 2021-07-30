@@ -2,55 +2,63 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { BentleyStatus, ClientRequestContext, Guid, Logger } from "@bentley/bentleyjs-core";
-import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@bentley/imodeljs-backend";
-import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { TestUsers, TestUtility } from "@bentley/oidc-signin-tool";
+import { Id64String, Config, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
+import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
+import { AccessToken } from "@bentley/itwin-client";
+import { getTestAccessToken } from "@bentley/oidc-signin-tool";
 import { expect } from "chai";
-import * as path from "path";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
 import { ServerArgs } from "../../IModelHubUtils";
 import { ConnectorTestUtils, TestIModelInfo } from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { HubUtility } from "./HubUtility";
+import * as fs from "fs";
+import * as path from "path";
 
 describe("iTwin Connector Fwk (#integration)", () => {
-  let testProjectId: string;
+  let testProjectId: Id64String;
   let readWriteTestIModel: TestIModelInfo;
-  let requestContext: AuthorizedClientRequestContext;
-  let managerRequestContext: AuthorizedClientRequestContext;
+  let requestContext: AuthorizedBackendRequestContext;
 
   before(async () => {
     ConnectorTestUtils.setupLogging();
     ConnectorTestUtils.setupDebugLogLevels();
     await ConnectorTestUtils.startBackend();
+
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
 
     try {
-      requestContext = await TestUtility.getAuthorizedClientRequestContext(TestUsers.regular);
+      const clientCred = {
+        clientId: process.env.imjs_oidc_browser_test_client_id!,
+        redirectUri: process.env.imjs_oidc_browser_test_redirect_uri!,
+        scope: process.env.imjs_oidc_browser_test_scopes!,
+      };
+      const userCred = {
+        email: process.env.imjs_test_regular_user_name!,
+        password: process.env.imjs_test_regular_user_password!,
+      };
+      const token = await getTestAccessToken(clientCred, userCred, 102);
+      requestContext = new AuthorizedBackendRequestContext(token);
     } catch (error) {
-      // eslint-disable-next-line no-console
       Logger.logError("Error", `Failed with error: ${error}`);
     }
 
-    testProjectId = await HubUtility.queryProjectIdByName(requestContext, "iModelJsIntegrationTest");
-    const imodelName = `TestConnector_ReadWrite_${Guid.createValue()}`;
+    Config.App.set("imjs_buddi_resolve_url_using_region", "102");
+    testProjectId = "cef2040d-651e-4307-8b2a-dac0b44fbf7f";
+    const imodelName = "tset";
     const targetIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
+
     expect(undefined !== targetIModelId);
     readWriteTestIModel = await ConnectorTestUtils.getTestModelInfo(requestContext, testProjectId, imodelName);
 
-    // Purge briefcases that are close to reaching the acquire limit
-    managerRequestContext = await TestUtility.getAuthorizedClientRequestContext(TestUsers.manager);
-    await HubUtility.purgeAcquiredBriefcases(managerRequestContext, "iModelJsIntegrationTest", imodelName);
+    await HubUtility.purgeAcquiredBriefcases(requestContext, testProjectId, imodelName);
   });
 
   after(async () => {
-    // Clean up the iModel
     try {
-      await IModelHost.hubAccess.deleteIModel({ requestContext, contextId: testProjectId, iModelId: readWriteTestIModel.id });
-    } catch (err) {
-    }
+      await HubUtility.purgeAcquiredBriefcasesById(requestContext, readWriteTestIModel.id, () => {});
+    } catch (err) {}
 
     await ConnectorTestUtils.shutdownBackend();
   });
@@ -69,6 +77,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   }
 
   it("should download and perform updates", async () => {
+
     const connectorJobDef = new ConnectorJobDefArgs();
     const sourcePath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const targetPath = path.join(KnownTestLocations.assetsDir, "TestConnector_.json");
@@ -84,12 +93,18 @@ describe("iTwin Connector Fwk (#integration)", () => {
     };
 
     await runConnector(connectorJobDef, serverArgs);
-
-    // verify that an unchanged source results in an unchanged imodel
     await runConnector(connectorJobDef, serverArgs, false);
 
     // verify that a changed source changes the imodel
     IModelJsFs.copySync(path.join(KnownTestLocations.assetsDir, "TestConnector_v2.json"), targetPath, { overwrite: true });
+
+    try { // must cause the updated source file to have a different modified time than the original, or the test bridge will this it's unchanged and ignore it.
+      const time = new Date();
+      fs.utimesSync(targetPath, time, time);
+    } catch (err) {
+      fs.closeSync(fs.openSync(targetPath, "w"));
+    }
+
     await runConnector(connectorJobDef, serverArgs, true);
 
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);

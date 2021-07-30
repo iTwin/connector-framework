@@ -19,7 +19,7 @@ import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
 import {
   Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile,
-  TestConnectorGroup, TestConnectorGroupProps,
+  TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement,
 } from "./TestConnectorElements";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
 
@@ -373,6 +373,8 @@ class TestConnector extends ITwinConnector {
         element: this.synchronizer.imodel.elements.createElement(props),
         itemState: results.state,
       };
+      if (results.id !== undefined) // in case this is an update
+        sync.element.id = results.id;
       this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group");
     }
   }
@@ -438,6 +440,11 @@ class TestConnector extends ITwinConnector {
     if (!tile.hasOwnProperty("Group")) {
       return;
     }
+
+    // for testing purposes only: double check that what I calculated is what was saved in the briefcase
+    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.element.id);
+    assert(persistentTile.placement.origin.isExactEqual((sync.element as TestConnectorPhysicalElement).placement.origin));
+
     const groupCode = TestConnectorGroup.createCode(this.synchronizer.imodel, groupModelId, tile.Group);
     const groupElement = this.synchronizer.imodel.elements.queryElementIdByCode(groupCode);
     assert(groupElement !== undefined);
