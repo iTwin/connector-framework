@@ -10,24 +10,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/imodeljs/imodeljs/tree/master/core/itwin-connector-framework"
+    "url": "https://github.com/iTwin/connector-framework"
   },
   "scripts": {
-    "compile": "npm run build",
     "build": "tsc 1>&2 && npm run copy:assets && npm run copy:test-assets",
     "clean": "rimraf lib .rush/temp/package-deps*.json",
     "docs": "betools docs --tsIndexFile=./itwin-connector-framework.ts --json=../../generated-docs/core/itwin-connector-framework/file.json --onlyJson",
     "copy:assets": "cpx \"./src/assets/**/*\" ./lib/assets",
     "copy:config": "internal-tools copy-config",
     "copy:test-assets": "cpx \"./src/test/assets/**/*\" ./lib/test/assets",
-    "cover": "nyc npm test",
-    "cover:integration": "nyc npm run test:integration",
     "extract-api": "betools extract-api --entry=itwin-connector-framework",
     "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
     "pretest": "cpx ./src/test/logging.config.json ./lib/test",
-    "test": "betools test --offline=\"mock\" --grep=\"#integration|#WebGLPerformance\" --invert",
-    "test:all": "npm run pretest && betools test --grep=\"ITwinConnectorFwk\"",
-    "test:standalone": "npm run pretest && betools test --offline=\"mock\" --grep=\"ITwinConnectorFwkStandAlone\"",
+    "test:standalone": "npm run pretest && betools test --testDir=\"./lib/test/standalone\"",
     "test:integration": "npm run pretest && betools test --testDir=\"./lib/test/integration\""
   },
   "keywords": [
@@ -49,10 +44,6 @@
     "@bentley/imodeljs-common": "^2.19.0",
     "@bentley/rbac-client": "^2.19.0"
   },
-  "//devDependencies": [
-    "NOTE: All peerDependencies should also be listed as devDependencies since peerDependencies are not considered by npm install",
-    "NOTE: All tools used by scripts in this package must be listed as devDependencies"
-  ],
   "devDependencies": {
     "@bentley/backend-itwin-client": "^2.19.0",
     "@bentley/bentleyjs-core": "^2.19.0",

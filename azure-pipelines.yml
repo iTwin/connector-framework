@@ -33,7 +33,7 @@ stages:
     - job: Build
 
       pool:
-        vmImage: 'ubuntu-latest'
+        vmImage: 'windows-latest'
 
       steps:
 
@@ -58,16 +58,17 @@ stages:
           npm run test:unit
         displayName: 'npm run test:unit'
 
-      # - script: |
-      #     npm run test:integration
-      #   displayName: 'npm run test:integration'
-      #   env:
-      #     imjs_buddi_resolve_url_using_region: $(env)
-      #     imjs_test_regular_user_name: $(test_user_name)
-      #     imjs_test_regular_user_password: $(test_user_password)
-      #     imjs_oidc_browser_test_client_id: $(test_client_id)
-      #     imjs_oidc_browser_test_redirect_uri: $(test_redirect_uri)
-      #     imjs_oidc_browser_test_scopes: $(test_scopes)
+      - script: |
+          npm run test:integration
+        displayName: 'npm run test:integration'
+        env:
+          imjs_buddi_resolve_url_using_region: $(env)
+          test_project_id: $(test_project_id)
+          test_regular_user_name: $(test_user_name)
+          test_regular_user_password: $(test_user_password)
+          test_client_id: $(test_client_id)
+          test_redirect_uri: $(test_redirect_uri)
+          test_scopes: $(test_scopes)
 
       - bash: |
           checkVersion() {
@@ -127,11 +128,10 @@ stages:
         displayName: 'Publish Connector Framework Artifact'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
-- stage: Publish
-  displayName: Publish
-  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.info.shouldPublish'], 'true'))
-  dependsOn: Build
-
+#- stage: Publish
+#  displayName: Publish
+#  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.info.shouldPublish'], 'true'))
+#  dependsOn: Build
   # jobs:
   #   - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
   #     parameters:
