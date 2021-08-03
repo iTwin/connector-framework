@@ -6,24 +6,22 @@
 import { expect } from "chai";
 import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
 import { BentleyStatus } from "@bentley/bentleyjs-core";
-import { ConnectorTestUtils } from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
-
+import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 
 describe("iTwin Connector Fwk StandAlone", () => {
 
   before(async () => {
-    ConnectorTestUtils.setupLogging();
-    ConnectorTestUtils.setupDebugLogLevels();
+    utils.setupLogging();
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
-    await ConnectorTestUtils.startBackend();
+    await utils.startBackend();
   });
 
   after(async () => {
-    await ConnectorTestUtils.shutdownBackend();
+    await utils.shutdownBackend();
   });
 
   it("Parse response file", async () => {
@@ -47,7 +45,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     const status = await runner.synchronize();
     expect(status === BentleyStatus.SUCCESS);
     const imodel = SnapshotDb.openFile(filePath);
-    ConnectorTestUtils.verifyIModel(imodel, connectorJobDef);
+    utils.verifyIModel(imodel, connectorJobDef);
     imodel.close();
   });
 });
