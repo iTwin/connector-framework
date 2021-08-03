@@ -5,7 +5,7 @@
 
 import { expect } from "chai";
 import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
-import { BentleyStatus } from "@bentley/bentleyjs-core";
+import { Logger, BentleyStatus } from "@bentley/bentleyjs-core";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
 import * as utils from "../ConnectorTestUtils";
@@ -14,21 +14,15 @@ import * as path from "path";
 describe("iTwin Connector Fwk StandAlone", () => {
 
   before(async () => {
-    utils.setupLogging();
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
+
     await utils.startBackend();
+    utils.setupLogging();
   });
 
   after(async () => {
     await utils.shutdownBackend();
-  });
-
-  it("Parse response file", async () => {
-    // const fileName = "@lib/test/assets/connectorCommandLineParams.txt";
-    /* This test can't work because the staging directory is hard-coded to M:\ and iModelBridgeFwk's constructor calls BriefcaseManager.Initialize with that path */
-    // const fwk = IModelBridgeFwk.fromArgs([fileName]);
-    // expect(undefined !== fwk);
   });
 
   it("Should create empty snapshot and synchronize source data", async () => {
@@ -46,6 +40,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     expect(status === BentleyStatus.SUCCESS);
     const imodel = SnapshotDb.openFile(filePath);
     utils.verifyIModel(imodel, connectorJobDef);
+
     imodel.close();
   });
 });

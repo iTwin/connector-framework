@@ -5,13 +5,11 @@
 
 import { assert } from "chai";
 import * as path from "path";
-import { BentleyLoggerCategory, DbResult, Id64, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
-import { IModelHubClientLoggerCategory } from "@bentley/imodelhub-client";
+import { DbResult, Id64, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
 import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@bentley/imodeljs-common";
+import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject } from "@bentley/imodeljs-backend";
 import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
-import { BackendLoggerCategory, ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, NativeLoggerCategory, PhysicalPartition, Subject } from "@bentley/imodeljs-backend";
-import { ConnectorLoggerCategory } from "../ConnectorLoggerCategory";
 import { ConnectorJobDefArgs } from "../connector-framework"; 
 import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils"; 
 import { CodeSpecs, RectangleTile, SmallSquareTile } from "./integration/TestConnectorElements"; 
@@ -19,29 +17,24 @@ import { ModelNames } from "./integration/TestITwinConnector";
 import { KnownTestLocations } from "./KnownTestLocations"; 
 import { IModelHubUtils } from "../IModelHubUtils"; 
 
-function getCount(imodel: IModelDb, className: string) { 
-  let count = 0; 
-  imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => { assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
-  const row = stmt.getRow(); count = row.count; });
-  return count;
+export function setupLogging() {
+  Logger.initializeToConsole();
+  configLogging();
 }
 
-export function setupLogging() {
-
+export function setupLoggingWithTracking() {
   const formatMetaData = (getMetaData?: () => any) => {
     return getMetaData ? ` ${JSON.stringify(Logger.makeMetaData(getMetaData))}` : "";
   };
 
   let hubReqs = 0;
-  const intervalId = setInterval(() => hubReqs = 0, 60 * 1000);
+  const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
 
   const logInfoWithTracking = (category: string, message: string, getMetaData?: () => any) => {
     if (category === ITwinClientLoggerCategory.Request && message.includes("api.bentley.com/imodelhub"))
       hubReqs += 1;
-
     if (hubReqs > 100)
       throw new Error("Reached 100 requests per minute rate limit.");
-
     console.log(`Info    |${category}| ${hubReqs}| ${message}${formatMetaData(getMetaData)}`);
   }
 
@@ -52,30 +45,9 @@ export function setupLogging() {
     (category: string, message: string, getMetaData?: () => any): void => console.log(`Trace   |${category}| ${message}${formatMetaData(getMetaData)}`),
   );
 
-  Logger.setLevelDefault(LogLevel.Error);
-  Logger.setLevel(BentleyLoggerCategory.Performance, LogLevel.Info);
-  Logger.setLevel(BackendLoggerCategory.IModelDb, LogLevel.Trace);
-  Logger.setLevel(ConnectorLoggerCategory.Framework, LogLevel.Trace);
-  Logger.setLevel(ITwinClientLoggerCategory.Clients, LogLevel.Warning);
-  Logger.setLevel(IModelHubClientLoggerCategory.IModelHub, LogLevel.Warning);
-  Logger.setLevel(ITwinClientLoggerCategory.Request, LogLevel.Info);
-  Logger.setLevel(NativeLoggerCategory.DgnCore, LogLevel.Warning);
-  Logger.setLevel(NativeLoggerCategory.BeSQLite, LogLevel.Warning);
-  Logger.setLevel(NativeLoggerCategory.Licensing, LogLevel.Warning);
+  configLogging();
 
-  const loggingConfigFile: string = process.env.imjs_test_logging_config || path.join(__dirname, "logging.config.json");
-
-  if (IModelJsFs.existsSync(loggingConfigFile)) {
-    // eslint-disable-next-line no-console
-    console.log(`Setting up logging levels from ${loggingConfigFile}`);
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Logger.configureLevels(require(loggingConfigFile));
-  } else {
-    // eslint-disable-next-line no-console
-    console.log(`You can set the environment variable imjs_test_logging_config to point to a logging configuration json file.`);
-  }
-
-  return intervalId;
+  return () => clearInterval(resetIntervalId);
 }
 
 export async function startBackend(clientArgs?: IModelBankArgs): Promise<void> {
@@ -87,9 +59,33 @@ export async function startBackend(clientArgs?: IModelBankArgs): Promise<void> {
   await IModelHost.startup(config);
 }
 
-export async function shutdownBackend(): Promise<void> {
+export async function shutdownBackend() {
   await IModelHost.shutdown();
 }
+
+function configLogging() {
+  const loggingConfigFile: string = process.env.imjs_test_logging_config || path.join(__dirname, "logging.config.json");
+
+  if (IModelJsFs.existsSync(loggingConfigFile)) {
+    // eslint-disable-next-line no-console
+    console.log(`Setting up logging levels from ${loggingConfigFile}`);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const config = require(loggingConfigFile);
+    Logger.configureLevels(config);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`You can set the environment variable imjs_test_logging_config to point to a logging configuration json file.`);
+    Logger.setLevelDefault(LogLevel.Error);
+  }
+}
+
+function getCount(imodel: IModelDb, className: string) { 
+  let count = 0; 
+  imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => { assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
+  const row = stmt.getRow(); count = row.count; });
+  return count;
+}
+
 
 export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefArgs, isUpdate: boolean = false) {
   // Confirm the schema was imported simply by trying to get the meta data for one of the classes.

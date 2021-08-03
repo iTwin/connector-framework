@@ -23,6 +23,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   before(async () => {
     await utils.startBackend();
+    utils.setupLogging();
 
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
@@ -59,9 +60,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
   });
 
   async function runConnector(connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, isUpdate: boolean = false) {
-
     let doThrow = false;
-    const intervalId = utils.setupLogging();
+    const endTrackingCallback = utils.setupLoggingWithTracking();
 
     try {
       const runner = new ConnectorRunner(connectorJobDef, serverArgs);
@@ -71,7 +71,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     } catch (err) {
       doThrow = true;
     } finally {
-      clearInterval(intervalId);
+      endTrackingCallback();
     }
 
     if (doThrow)
