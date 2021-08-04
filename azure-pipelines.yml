@@ -7,6 +7,7 @@ trigger:
     exclude:
       - README.md
       - LICENSE
+      - .vscode/*
 
 pr:
   drafts: false
