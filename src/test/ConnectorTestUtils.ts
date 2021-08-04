@@ -31,7 +31,7 @@ export function setupLoggingWithTracking() {
   const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
 
   const logInfoWithTracking = (category: string, message: string, getMetaData?: () => any) => {
-    if (category === ITwinClientLoggerCategory.Request && message.includes("api.bentley.com/imodelhub"))
+    if (category === ITwinClientLoggerCategory.Request && message.includes("api.bentley.com"))
       hubReqs += 1;
     if (hubReqs > 100)
       throw new Error("Reached 100 requests per minute rate limit.");
