@@ -92,6 +92,8 @@ class TestConnector extends ITwinConnector {
       throw new IModelError(IModelStatus.BadArg, error, Logger.logError, loggerCategory);
     }
 
+    this.issueReporter?.reportIssue(physicalModelId, "source", "Warning", "Test", "Test Message", "Type");
+
     if (this._sourceDataState === ItemState.Unchanged) {
       return;
     }
