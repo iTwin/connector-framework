@@ -15,8 +15,8 @@ import { assert, BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logg
  */
 import { ChangesType } from "@bentley/imodelhub-client";
 import {
-  BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs, IModelJsNative,
-  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects, UsageLoggingUtilities,
+  BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs,
+  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects,
 } from "@bentley/imodeljs-backend";
 import { IModel, IModelError, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
@@ -473,10 +473,6 @@ class BriefcaseDbBuilder extends IModelDbBuilder {
       throw new IModelError(IModelStatus.BadRequest, "Failed to instantiate AuthorizedClientRequestContext", Logger.logError, ConnectorLoggerCategory.Framework);
     }
     assert(this._serverArgs.contextId !== undefined);
-    UsageLoggingUtilities.postUserUsage(this._requestContext, this._serverArgs.contextId, IModelJsNative.AuthType.OIDC, os.hostname(), IModelJsNative.UsageType.Trial)
-      .catch((err) => {
-        Logger.logError(ConnectorLoggerCategory.Framework, `Could not log user usage for connector`, () => ({ errorStatus: err.status, errorMessage: err.message }));
-      });
   }
 
   private tryFindExistingBriefcase(): LocalBriefcaseProps | undefined {
