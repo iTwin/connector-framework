@@ -9,21 +9,21 @@ import { getTestAccessToken } from "@bentley/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
 import { ServerArgs } from "../../IModelHubUtils";
-import { ConnectorTestUtils, TestIModelInfo } from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { HubUtility } from "./HubUtility";
-import * as fs from "fs";
+import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
+import * as fs from "fs";
 
 describe("iTwin Connector Fwk (#integration)", () => {
+
   let testProjectId: Id64String;
-  let readWriteTestIModel: TestIModelInfo;
+  let testIModelId: Id64String;
   let requestContext: AuthorizedBackendRequestContext;
 
   before(async () => {
-    ConnectorTestUtils.setupLogging();
-    ConnectorTestUtils.setupDebugLogLevels();
-    await ConnectorTestUtils.startBackend();
+    await utils.startBackend();
+    utils.setupLogging();
 
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
@@ -46,33 +46,42 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     Config.App.set("imjs_buddi_resolve_url_using_region", "102");
     testProjectId = process.env.test_project_id!;
-    const imodelName = "tset";
-    const targetIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
-
-    expect(undefined !== targetIModelId);
-    readWriteTestIModel = await ConnectorTestUtils.getTestModelInfo(requestContext, testProjectId, imodelName);
-
+    const imodelName = process.env.test_imodel_name!;
+    testIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
     await HubUtility.purgeAcquiredBriefcases(requestContext, testProjectId, imodelName);
   });
 
   after(async () => {
     try {
-      await HubUtility.purgeAcquiredBriefcasesById(requestContext, readWriteTestIModel.id, () => {});
+      await HubUtility.purgeAcquiredBriefcasesById(requestContext, testIModelId, () => {});
     } catch (err) {}
 
-    await ConnectorTestUtils.shutdownBackend();
+    await utils.shutdownBackend();
   });
 
   async function runConnector(connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, isUpdate: boolean = false) {
-    const runner = new ConnectorRunner(connectorJobDef, serverArgs);
-    const status = await runner.synchronize();
-    expect(status === BentleyStatus.SUCCESS);
+    let doThrow = false;
+    const endTrackingCallback = utils.setupLoggingWithAPIMRateTrap();
+
+    try {
+      const runner = new ConnectorRunner(connectorJobDef, serverArgs);
+      const status = await runner.synchronize();
+      if (status !== BentleyStatus.SUCCESS)
+        throw new Error;
+    } catch (err) {
+      doThrow = true;
+    } finally {
+      endTrackingCallback();
+    }
+
+    if (doThrow)
+      throw new Error("runner.synchronize() failed.");
+
     const briefcases = BriefcaseManager.getCachedBriefcases(serverArgs.iModelId);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
-
     const imodel = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
-    ConnectorTestUtils.verifyIModel(imodel, connectorJobDef, isUpdate);
+    utils.verifyIModel(imodel, connectorJobDef, isUpdate);
     imodel.close();
   }
 
@@ -87,7 +96,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     const serverArgs = new ServerArgs();  // TODO have an iModelBank version of this test
     serverArgs.contextId = testProjectId;
-    serverArgs.iModelId = readWriteTestIModel.id;
+    serverArgs.iModelId = testIModelId;
     serverArgs.getToken = async (): Promise<AccessToken> => {
       return requestContext.accessToken;
     };

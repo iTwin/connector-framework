@@ -189,6 +189,9 @@ export class ConnectorRunner {
       await this._connector.openSourceData(this._connectorArgs.sourcePath);
       await this._connector.onOpenIModel();
       await iModelDbBuilder.updateExistingIModel();
+    } catch (err) {
+      Logger.logError(ConnectorLoggerCategory.Framework, err.message);
+      return BentleyStatus.ERROR;
     } finally {
       if (iModelDbBuilder.imodel.isBriefcaseDb() || iModelDbBuilder.imodel.isSnapshotDb()) {
         iModelDbBuilder.imodel.close();
