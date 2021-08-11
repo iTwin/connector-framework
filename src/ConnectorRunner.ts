@@ -157,16 +157,16 @@ export class ConnectorRunner {
     if (this._connectorArgs.connectorModule === undefined) {
       throw new IModelError(IModelStatus.BadArg, "Connector module undefined", Logger.logError, ConnectorLoggerCategory.Framework);
     }
-
-    if (this._connectorArgs.sourcePath === undefined) {
-      throw new Error("Source path is not defined");
-    }
-
     await this.loadConnector(this._connectorArgs.connectorModule);
     if (this._connector === undefined) {
       throw new IModelError(IModelStatus.BadArg, "Failed to load connector", Logger.logError, ConnectorLoggerCategory.Framework);
     }
     await this._connector.initialize(this._connectorArgs);
+
+    if (this._connectorArgs.sourcePath === undefined) {
+      this._connector?.reportError(this._connectorArgs?.outputDir as string, "Source path undefined",  "ConnectorRunner:Synchronize", "Initialization", ConnectorLoggerCategory.Framework, false, "BadArg", "");
+      throw new Error("Source path is not defined");
+    }
 
     let iModelDbBuilder: IModelDbBuilder;
     if (this._connectorArgs.isSnapshot) {
@@ -182,6 +182,7 @@ export class ConnectorRunner {
 
     await iModelDbBuilder.acquire();
     if (undefined === iModelDbBuilder.imodel || !iModelDbBuilder.imodel.isOpen) {
+      this._connector.reportError(this._connectorArgs?.outputDir as string, "Failed to open iModel", "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "BadiModel", "");
       throw new IModelError(IModelStatus.BadModel, "Failed to open iModel", Logger.logError, ConnectorLoggerCategory.Framework);
     }
 

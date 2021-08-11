@@ -4,6 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 
 import { expect } from "chai";
+import * as fs from "fs";
 import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
 import { BentleyStatus } from "@bentley/bentleyjs-core";
 import { ConnectorTestUtils } from "../ConnectorTestUtils";
@@ -49,5 +50,22 @@ describe("iTwin Connector Fwk StandAlone", () => {
     const imodel = SnapshotDb.openFile(filePath);
     ConnectorTestUtils.verifyIModel(imodel, connectorJobDef);
     imodel.close();
+  });
+
+  it("Should fail and create a error file", async () => {
+    const connectorJobDef = new ConnectorJobDefArgs();
+    connectorJobDef.sourcePath = undefined;
+    connectorJobDef.connectorModule = "./test/integration/TestiTwinConnector.js";
+    connectorJobDef.outputDir = KnownTestLocations.outputDir;
+    connectorJobDef.isSnapshot = true;
+
+    const runner = new ConnectorRunner(connectorJobDef);
+    const fileName = `SyncError.json`;
+    try{
+      await runner.synchronize();
+    } catch (error) {
+      expect(error.message).to.eql("Source path is not defined");
+    }
+    expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
   });
 });
