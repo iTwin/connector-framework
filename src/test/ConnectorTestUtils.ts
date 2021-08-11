@@ -22,7 +22,7 @@ export function setupLogging() {
   configLogging();
 }
 
-export function setupLoggingWithTracking() {
+export function setupLoggingWithAPIMRateTrap() {
   const formatMetaData = (getMetaData?: () => any) => {
     return getMetaData ? ` ${JSON.stringify(Logger.makeMetaData(getMetaData))}` : "";
   };
@@ -30,7 +30,7 @@ export function setupLoggingWithTracking() {
   let hubReqs = 0;
   const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
 
-  const logInfoWithTracking = (category: string, message: string, getMetaData?: () => any) => {
+  const logInfo = (category: string, message: string, getMetaData?: () => any) => {
     if (category === ITwinClientLoggerCategory.Request && message.includes("api.bentley.com"))
       hubReqs += 1;
     if (hubReqs > 100)
@@ -41,7 +41,7 @@ export function setupLoggingWithTracking() {
   Logger.initialize(
     (category: string, message: string, getMetaData?: () => any): void => console.log(`Error   |${category}| ${message}${formatMetaData(getMetaData)}`),
     (category: string, message: string, getMetaData?: () => any): void => console.log(`Warning |${category}| ${message}${formatMetaData(getMetaData)}`),
-    logInfoWithTracking,
+    logInfo,
     (category: string, message: string, getMetaData?: () => any): void => console.log(`Trace   |${category}| ${message}${formatMetaData(getMetaData)}`),
   );
 

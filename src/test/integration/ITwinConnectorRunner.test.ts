@@ -61,7 +61,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function runConnector(connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, isUpdate: boolean = false) {
     let doThrow = false;
-    const endTrackingCallback = utils.setupLoggingWithTracking();
+    const endTrackingCallback = utils.setupLoggingWithAPIMRateTrap();
 
     try {
       const runner = new ConnectorRunner(connectorJobDef, serverArgs);
