@@ -106,22 +106,6 @@ class TestConnector extends ITwinConnector {
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
   }
-  // Can uncomment function below to test the override of the report error funtion, if left commented it will the use the default in "iTwinConenctor"
-
-  // public override reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void
-  // {
-  //   let object = {
-  //     system: systemName,
-  //     phase: systemPhase,
-  //     category: category,
-  //     descriptionKey: descriptionKey,
-  //     description: description,
-  //     kbLink: (kbArticleLink?.length !== 0 ? kbArticleLink : ""),
-  //     canUserFix: canUserFix
-  //   }
-  //   fs.writeFileSync(`${dir}\\SyncErrorOverride.json`, JSON.stringify(object), {flag: "w"});
-  // }
-
   public getApplicationId(): string {
     return "2661";
   }

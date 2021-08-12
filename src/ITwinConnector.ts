@@ -56,8 +56,6 @@ export abstract class ITwinConnector {
    * the defined output directory called "SyncError.json" will be used if you do not provide one for some errors in the Synchronize function.
    * Overriding with your own reportError function is done the same way, but you must include the "Override" keyword in the function signature
    * Should be called in other implemented functions if you wish for those to output error reports */
-  public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void;
-
   public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
     const object = {
       system: systemName,
