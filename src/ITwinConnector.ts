@@ -5,12 +5,13 @@
 /** @packageDocumentation
  * @module Framework
  */
-
-import { assert, BentleyStatus, ClientRequestContext } from "@bentley/bentleyjs-core";
+import * as fs from "fs";
+import { assert, BentleyStatus, ClientRequestContext, IModelStatus, Logger } from "@bentley/bentleyjs-core";
 import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { ConnectorJobDefArgs } from "./ConnectorRunner";
 import { Synchronizer } from "./Synchronizer";
+import { IModelError } from "@bentley/imodeljs-common";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -51,6 +52,23 @@ export abstract class ITwinConnector {
   /** Convert the source data to BIS and insert into the iModel.  Use the Synchronizer to determine whether an item is new, changed, or unchanged. Called in the [connector's private channel]($docs/learning/backend/Channel). */
   public abstract updateExistingData(): Promise<any>;
 
+  /** Create error file with the supplied information for debugging reasons. A default implementation that creates a file at
+   * the defined output directory called "SyncError.json" will be used if you do not provide one for some errors in the Synchronize function.
+   * Overriding with your own reportError function is done the same way, but you must include the "Override" keyword in the function signature
+   * Should be called in other implemented functions if you wish for those to output error reports */
+  public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
+    const object = {
+      system: systemName,
+      phase: systemPhase,
+      category,
+      descriptionKey,
+      description,
+      kbLink: (kbArticleLink?.length !== 0 ? kbArticleLink : ""),
+      canUserFix,
+    };
+    Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
+    fs.writeFileSync(`${dir}\\SyncError.json`, JSON.stringify(object), {flag: "w"});
+  }
   /**
    * A connector can operate in one of two ways with regards to source files and channels:
    * I.	1:1 - Each source file gets its own distinct channel (this is more common)
