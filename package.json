@@ -14,12 +14,10 @@
   },
   "scripts": {
     "build": "tsc 1>&2 && npm run copy:assets && npm run copy:test-assets",
-    "clean": "rimraf lib .rush/temp/package-deps*.json",
-    "docs": "betools docs --tsIndexFile=./itwin-connector-framework.ts --json=../../generated-docs/core/itwin-connector-framework/file.json --onlyJson",
+    "clean": "rimraf lib",
     "copy:assets": "cpx \"./src/assets/**/*\" ./lib/assets",
     "copy:config": "internal-tools copy-config",
     "copy:test-assets": "cpx \"./src/test/assets/**/*\" ./lib/test/assets",
-    "extract-api": "betools extract-api --entry=itwin-connector-framework",
     "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
     "pretest": "cpx ./src/test/logging.config.json ./lib/test",
     "test": "npm run test:standalone",
