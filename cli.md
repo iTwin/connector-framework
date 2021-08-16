@@ -22,20 +22,20 @@
 
 Args in JSON:
 
-```json
+```txt
 {
-  "connectorFile": "",
-  "source": "", // filepath or connection string
-  "subjectName": "",
-  "revisionHeader": "",
+  "connectorFile": "",         # "../connectors/XYZConnector.js"
+  "sourceUrn": "",             # filepath or connection string  
+  "subjectName": "",           # "SubjectA"
+  "revisionHeader": "",        # "jsfwk"
+ 
+  "useSnapshot": true | false, 
 
-  "useSnapshot": "",
+  "briefcaseFile": "",         # "../briefcases/1.bim"
+  "briefcaseId": "",           # "5"
 
-  "briefcaseFile": "",
-  "briefcaseId": "",
-
-  "badgersFile": "",
-  "loggerConfigFile": "",
+  "badgersDbFile": "",           # "../report.db"
+  "loggerJSONConfigFile": "",    # "../loggerConfig.json"
 
   "outputDir": "",
   "assetDir": "",
