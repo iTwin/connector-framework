@@ -23,14 +23,16 @@
 Args in JSON (annotated definitions in .ts):
 
 ```typescript
-abstract class Args {
+abstract class CliArgs {
+
+  // JobArgs
 
   connectorFile: string,                                      // absolute path
   sourceFile: string,                                         // absolute path
   subjectName: string,
   revisionHeader: string = "jsfwk",
-
   useSnapshot: boolean = false,
+  env: "0" | "102" | "103",                                   // prod | qa | dev
 
   briefcaseFile?: string,                                     // absolute path to an existing briefcase file
   briefcaseId?: number,                                       // downloads a new Briefcase if undefined
@@ -65,10 +67,15 @@ abstract class Args {
   dmsInputFileUrn?: string,
   dmsAccessToken?": string,
 
+  moreArgs?: { [otherArg: string]: any }
+
+  // HubArgs
+
   hubIModelGuid?: string,
   hubContextGuid?: string,
-  hubOidcCallBackUrl: string = "http://localhost:3000/call-back",
   hubAccessToken?: string,
+
+  // BankArgs
 
   bankAccessToken?: string,
   bankAccessTokenScheme?: string,
@@ -81,8 +88,23 @@ abstract class Args {
   bankStorageType?: string,
   bankUrl?: string,
 
-  moreArgs?: { [otherArg: string]: any }
+  // PCFArgs
+
+  pcfSubjectKey?: string,
+  pcfLoaderKey?: string,
+  pcfLoaderLazyMode?: boolean,
+
+  // NativeAppAuthorizationConfiguration (https://www.itwinjs.org/reference/imodeljs-common/nativeapp/nativeappauthorizationconfiguration)
+  // we need to enable this to enforce third-parties to use their own registered client app
+
+  appClientId: string,
+  appClientScope: string,
+  appClientRedirectUri: string = "http://localhost:3000/call-back",
+  appExpiryBuffer?: number,
+  appIssuerUrl?: string,
 }
+
+
 ```
 
 
