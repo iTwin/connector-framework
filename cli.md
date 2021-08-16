@@ -30,7 +30,7 @@ abstract class CliArgs {
   connectorFile: string,                                      // absolute path
   sourceFile: string,                                         // absolute path
   subjectName: string,
-  revisionHeader: string = "jsfwk",
+  revisionHeader: string = "jsfwk",                           // effect: change set comment becomes "jsfwk - <actual comment>"
   useSnapshot: boolean = false,
   env: "0" | "102" | "103",                                   // prod | qa | dev
 
