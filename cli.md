@@ -90,8 +90,8 @@ abstract class CliArgs {
 
   // PCFArgs
 
-  pcfSubjectKey?: string,
-  pcfLoaderKey?: string,
+  pcfSubjectNode?: string,
+  pcfLoaderNode?: string,
   pcfLoaderLazyMode?: boolean,
 
   // NativeAppAuthorizationConfiguration (https://www.itwinjs.org/reference/imodeljs-common/nativeapp/nativeappauthorizationconfiguration)
