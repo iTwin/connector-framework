@@ -32,15 +32,14 @@ abstract class Args {
 
   useSnapshot: boolean = false,
 
-  briefcaseFile: string,                                      // absolute path
-  briefcaseId?: number,                                       // downloads a new Briefcase if not defined
+  briefcaseFile?: string,                                     // absolute path to an existing briefcase file
+  briefcaseId?: number,                                       // downloads a new Briefcase if undefined
 
   badgersDbFile: string = path.join(__dirname, "badgers.db")  // absolute path
-  loggerJSONConfigFile?: string, // absolute path
+  loggerConfigJSONFile?: string,                              // absolute path
 
   outputDir: string = path.join(__dirname, "output"),         // absolute path
-  assetDir: string = path.join(__dirname, "asset"),           // absolute path
-  stagingDir: string = path.join(__dirname, "staging"),       // absolute path
+  assetsDir: string = path.join(__dirname, "assets"),         // absolute path
 
   unmapInputFile?: string,                                    // absolute path
   unmapMissingInputFile?: string,                             // absolute path
@@ -53,6 +52,10 @@ abstract class Args {
 
   syncComplete: boolean = false,
   syncConfigFile?: string,                                    // absolute path
+
+  updateDomainSchemas: boolean = true,
+  updateDbProfile: boolean = true,
+  doDetectDeletedElements: boolean = true,
 
   enableCrashReporting: boolean = false,
   changeFileIdPolicy: boolean = false,
