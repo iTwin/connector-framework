@@ -6,7 +6,7 @@
 import { expect } from "chai";
 import * as fs from "fs";
 import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
-import { Logger, BentleyStatus } from "@bentley/bentleyjs-core";
+import { BentleyStatus } from "@bentley/bentleyjs-core";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
 import { SqliteIssueReporter } from "../../SqliteIssueReporter";
