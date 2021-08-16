@@ -1,17 +1,37 @@
 {
-  "defaultLevel": "None",
+  "defaultLevel": "Error",
   "categoryLevels": [
     {
-      "category": "BeSQLite",
-      "logLevel": "None"
-    },
-    {
-      "category": "imodeljs-backend.BriefcaseManager",
-      "logLevel": "Error"
+      "category": "imodeljs-backend.IModelDb",
+      "logLevel": "Trace"
     },
     {
       "category": "itwin-connector.Framework",
-      "logLevel": "Error"
+      "logLevel": "Trace"
+    },
+    {
+      "category": "imodelhub-client.IModelHub",
+      "logLevel": "Warning"
+    },
+    {
+      "category": "itwin-client.Clients",
+      "logLevel": "Warning"
+    },
+    {
+      "category": "itwin-client.Request",
+      "logLevel": "Info"
+    },
+    {
+      "category": "imodeljs-native.DgnCore",
+      "logLevel": "Warning"
+    },
+    {
+      "category": "imodeljs-native.BeSQLite",
+      "logLevel": "Warning"
+    },
+    {
+      "category": "imodeljs-native.Licensing",
+      "logLevel": "Warning"
     }
   ]
 }

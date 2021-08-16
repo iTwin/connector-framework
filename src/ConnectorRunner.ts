@@ -15,8 +15,8 @@ import { assert, BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logg
  */
 import { ChangesType } from "@bentley/imodelhub-client";
 import {
-  BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs, IModelJsNative,
-  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects, UsageLoggingUtilities,
+  BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs,
+  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects,
 } from "@bentley/imodeljs-backend";
 import { IModel, IModelError, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
@@ -159,11 +159,6 @@ export class ConnectorRunner {
     if (this._connectorArgs.connectorModule === undefined) {
       throw new IModelError(IModelStatus.BadArg, "Connector module undefined", Logger.logError, ConnectorLoggerCategory.Framework);
     }
-
-    if (this._connectorArgs.sourcePath === undefined) {
-      throw new Error("Source path is not defined");
-    }
-
     await this.loadConnector(this._connectorArgs.connectorModule);
     if (this._connector === undefined) {
       throw new IModelError(IModelStatus.BadArg, "Failed to load connector", Logger.logError, ConnectorLoggerCategory.Framework);
@@ -171,6 +166,11 @@ export class ConnectorRunner {
     await this._connector.initialize(this._connectorArgs);
 
     this._connector.issueReporter = this._issueReporter;
+
+    if (this._connectorArgs.sourcePath === undefined) {
+      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Source path undefined",  "ConnectorRunner:Synchronize", "Initialization", ConnectorLoggerCategory.Framework, false, "BadArg", "");
+      throw new IModelError(IModelStatus.BadArg, "Source path is not defined", Logger.logError, ConnectorLoggerCategory.Framework);
+    }
 
     let iModelDbBuilder: IModelDbBuilder;
     if (this._connectorArgs.isSnapshot) {
@@ -186,6 +186,7 @@ export class ConnectorRunner {
 
     await iModelDbBuilder.acquire();
     if (undefined === iModelDbBuilder.imodel || !iModelDbBuilder.imodel.isOpen) {
+      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Failed to open iModel", "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "BadiModel", "");
       throw new IModelError(IModelStatus.BadModel, "Failed to open iModel", Logger.logError, ConnectorLoggerCategory.Framework);
     }
 
@@ -193,6 +194,9 @@ export class ConnectorRunner {
       await this._connector.openSourceData(this._connectorArgs.sourcePath);
       await this._connector.onOpenIModel();
       await iModelDbBuilder.updateExistingIModel();
+    } catch (err) {
+      Logger.logError(ConnectorLoggerCategory.Framework, err.message);
+      return BentleyStatus.ERROR;
     } finally {
       await this._connector.issueReporter?.publishReport();
       if (iModelDbBuilder.imodel.isBriefcaseDb() || iModelDbBuilder.imodel.isSnapshotDb()) {
@@ -479,10 +483,6 @@ class BriefcaseDbBuilder extends IModelDbBuilder {
       throw new IModelError(IModelStatus.BadRequest, "Failed to instantiate AuthorizedClientRequestContext", Logger.logError, ConnectorLoggerCategory.Framework);
     }
     assert(this._serverArgs.contextId !== undefined);
-    UsageLoggingUtilities.postUserUsage(this._requestContext, this._serverArgs.contextId, IModelJsNative.AuthType.OIDC, os.hostname(), IModelJsNative.UsageType.Trial)
-      .catch((err) => {
-        Logger.logError(ConnectorLoggerCategory.Framework, `Could not log user usage for connector`, () => ({ errorStatus: err.status, errorMessage: err.message }));
-      });
   }
 
   private tryFindExistingBriefcase(): LocalBriefcaseProps | undefined {

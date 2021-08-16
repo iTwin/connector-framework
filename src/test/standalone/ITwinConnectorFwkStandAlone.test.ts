@@ -4,34 +4,28 @@
 *--------------------------------------------------------------------------------------------*/
 
 import { expect } from "chai";
+import * as fs from "fs";
 import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
-import { BentleyStatus } from "@bentley/bentleyjs-core";
-import { ConnectorTestUtils } from "../ConnectorTestUtils";
+import { Logger, BentleyStatus } from "@bentley/bentleyjs-core";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
 import { SqliteIssueReporter } from "../../SqliteIssueReporter";
 
+import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 
 describe("iTwin Connector Fwk StandAlone", () => {
 
   before(async () => {
-    ConnectorTestUtils.setupLogging();
-    ConnectorTestUtils.setupDebugLogLevels();
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
-    await ConnectorTestUtils.startBackend();
+
+    await utils.startBackend();
+    utils.setupLogging();
   });
 
   after(async () => {
-    await ConnectorTestUtils.shutdownBackend();
-  });
-
-  it("Parse response file", async () => {
-    // const fileName = "@lib/test/assets/connectorCommandLineParams.txt";
-    /* This test can't work because the staging directory is hard-coded to M:\ and iModelBridgeFwk's constructor calls BriefcaseManager.Initialize with that path */
-    // const fwk = IModelBridgeFwk.fromArgs([fileName]);
-    // expect(undefined !== fwk);
+    await utils.shutdownBackend();
   });
 
   it("Should create empty snapshot and synchronize source data", async () => {
@@ -51,7 +45,25 @@ describe("iTwin Connector Fwk StandAlone", () => {
     const status = await runner.synchronize();
     expect(status === BentleyStatus.SUCCESS);
     const imodel = SnapshotDb.openFile(filePath);
-    ConnectorTestUtils.verifyIModel(imodel, connectorJobDef);
+    utils.verifyIModel(imodel, connectorJobDef);
+
     imodel.close();
+  });
+
+  it("Should fail and create a error file", async () => {
+    const connectorJobDef = new ConnectorJobDefArgs();
+    connectorJobDef.sourcePath = undefined;
+    connectorJobDef.connectorModule = "./test/integration/TestiTwinConnector.js";
+    connectorJobDef.outputDir = KnownTestLocations.outputDir;
+    connectorJobDef.isSnapshot = true;
+
+    const runner = new ConnectorRunner(connectorJobDef);
+    const fileName = `SyncError.json`;
+    try{
+      await runner.synchronize();
+    } catch (error) {
+      expect(error.message).to.eql("Source path is not defined");
+    }
+    expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
   });
 });

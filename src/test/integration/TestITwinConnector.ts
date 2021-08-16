@@ -108,7 +108,6 @@ class TestConnector extends ITwinConnector {
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
   }
-
   public getApplicationId(): string {
     return "2661";
   }
