@@ -18,7 +18,68 @@
 - stale file handling
 - DMS input handling (will instant on handle this for us in time?)
 
-# JS args candidates
+# Potential js args
+
+Args in JSON:
+
+```json
+{
+  "connectorFile": "",
+  "source": "", // filepath or connection string
+  "subjectName": "",
+  "revisionHeader": "",
+
+  "useSnapshot": "",
+
+  "briefcaseFile": "",
+  "briefcaseId": "",
+
+  "badgersFile": "",
+  "loggerConfigFile": "",
+
+  "outputDir": "",
+  "assetDir": "",
+  "stagingDir": "",
+
+  "unmapInputFile": "",
+  "unmapMissingInputFile": "",
+
+  "remapStart": "",
+  "remapKeep": "",
+  "remapComplete": "",
+
+  "allDocsProcessed": "",
+
+  "syncComplete": "",
+  "syncConfigFile": "",
+
+  "enableCrashReporting": "",
+  "changeFileIdPolicy": "",
+
+  "dmsUsername": "",
+  "dmsPassword": "",
+  "dmsInputFileUrn": "",
+  "dmsAccessToken": "",
+
+  "hubIModelGuid": "",
+  "hubContextGuid": "",
+  "hubOidcCallBackUrl": "",
+  "hubAccessToken": "",
+
+  "bankAccessToken": "",
+  "bankAccessTokenScheme": "",
+  "bankContextGuid": "",
+  "bankDmsCredentialsIsEncrypted": "",
+  "bankIModelGuid": "",
+  "bankIModelName": "",
+  "bankMaxRetryWait": "",
+  "bankRetries": "",
+  "bankStorageType": "",
+  "bankUrl": "",
+
+  "moreArgs": {}
+}
+```
 
 
 # All native args (reference)
