@@ -20,64 +20,65 @@
 
 # Potential js args
 
-Args in JSON:
+Args in JSON (annotated definitions in .ts):
 
-```txt
-{
-  "connectorFile": "",         # "../connectors/XYZConnector.js"
-  "sourceUrn": "",             # filepath or connection string  
-  "subjectName": "",           # "SubjectA"
-  "revisionHeader": "",        # "jsfwk"
- 
-  "useSnapshot": true | false, 
+```typescript
+abstract class Args {
 
-  "briefcaseFile": "",         # "../briefcases/1.bim"
-  "briefcaseId": "",           # "5"
+  connectorFile: string,                                      // absolute path
+  sourceFile: string,                                         // absolute path
+  subjectName: string,
+  revisionHeader: string = "jsfwk",
 
-  "badgersDbFile": "",           # "../report.db"
-  "loggerJSONConfigFile": "",    # "../loggerConfig.json"
+  useSnapshot: boolean = false,
 
-  "outputDir": "",
-  "assetDir": "",
-  "stagingDir": "",
+  briefcaseFile: string,                                      // absolute path
+  briefcaseId?: number,                                       // downloads a new Briefcase if not defined
 
-  "unmapInputFile": "",
-  "unmapMissingInputFile": "",
+  badgersDbFile: string = path.join(__dirname, "badgers.db")  // absolute path
+  loggerJSONConfigFile?: string, // absolute path
 
-  "remapStart": "",
-  "remapKeep": "",
-  "remapComplete": "",
+  outputDir: string = path.join(__dirname, "output"),         // absolute path
+  assetDir: string = path.join(__dirname, "asset"),           // absolute path
+  stagingDir: string = path.join(__dirname, "staging"),       // absolute path
 
-  "allDocsProcessed": "",
+  unmapInputFile?: string,                                    // absolute path
+  unmapMissingInputFile?: string,                             // absolute path
 
-  "syncComplete": "",
-  "syncConfigFile": "",
+  remapStart: boolean = false,
+  remapKeep: boolean = false,
+  remapComplete: boolean = false,
 
-  "enableCrashReporting": "",
-  "changeFileIdPolicy": "",
+  allDocsProcessed: boolean = false,
 
-  "dmsUsername": "",
-  "dmsPassword": "",
-  "dmsInputFileUrn": "",
-  "dmsAccessToken": "",
+  syncComplete: boolean = false,
+  syncConfigFile?: string,                                    // absolute path
 
-  "hubIModelGuid": "",
-  "hubContextGuid": "",
-  "hubOidcCallBackUrl": "",
-  "hubAccessToken": "",
+  enableCrashReporting: boolean = false,
+  changeFileIdPolicy: boolean = false,
 
-  "bankAccessToken": "",
-  "bankAccessTokenScheme": "",
-  "bankContextGuid": "",
-  "bankDmsCredentialsIsEncrypted": "",
-  "bankIModelGuid": "",
-  "bankIModelName": "",
-  "bankMaxRetryWait": "",
-  "bankRetries": "",
-  "bankStorageType": "",
-  "bankUrl": "",
+  dmsUsername?: string,
+  dmsPassword?: string,
+  dmsInputFileUrn?: string,
+  dmsAccessToken?": string,
 
-  "moreArgs": {}
+  hubIModelGuid?: string,
+  hubContextGuid?: string,
+  hubOidcCallBackUrl: string = "http://localhost:3000/call-back",
+  hubAccessToken?: string,
+
+  bankAccessToken?: string,
+  bankAccessTokenScheme?: string,
+  bankContextGuid?: string,
+  bankDmsCredentialsIsEncrypted?: string,
+  bankIModelGuid?: string,
+  bankIModelName?: string,
+  bankMaxRetryWait?: number,
+  bankRetries?: number,
+  bankStorageType?: string,
+  bankUrl?: string,
+
+  moreArgs?: { [otherArg: string]: any }
 }
 ```
 
