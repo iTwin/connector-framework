@@ -23,51 +23,55 @@
 Args in JSON (annotated definitions in .ts):
 
 ```typescript
+/*
+
+"///" = not planned to be supported in the immediate future, but would be added just not used.
+
+Classes - JobArgs, Flags, DMSArgs, HubArgs, BankArgs, PCFArgs, NativeAppAuthorizationConfiguration will be instantiated from CliArgs in raw JSON format.
+
+*/
+
 abstract class CliArgs {
 
   // JobArgs
 
-  connectorFile: string,                                      // absolute path
-  sourceFile: string,                                         // absolute path
+  connectorFile: string,                                              // absolute path
+  sourceFile: string,                                                 // absolute path
   subjectName: string,
-  revisionHeader: string = "jsfwk",                           // effect: change set comment becomes "jsfwk - <actual comment>"
-  useSnapshot: boolean = false,
-  env: "0" | "102" | "103",                                   // prod | qa | dev
+  revisionHeader: string = "jsfwk",                                   // effect: change set comment becomes "jsfwk - <actual comment>"
+  env: "0" | "102" | "103",                                           // prod | qa | dev
+  iModelType: "snapshot" | "briefcase" | "standalone" = "briefcase",  // e.g., snapshot => SnapshotDb class
+  briefcaseFile?: string,                                             // absolute path to an existing briefcase file
+  briefcaseId?: number,                                               // downloads a new Briefcase if undefined
+  badgersDbFile: string = path.join(__dirname, "badgers.db")          // absolute path
+  loggerConfigJSONFile?: string,                                      // absolute path
+  outputDir: string = path.join(__dirname, "output"),                 // absolute path
+  assetsDir: string = path.join(__dirname, "assets"),                 // absolute path
+  /// unmapInputFile?: string,                                            // absolute path
+  /// unmapMissingInputFile?: string,                                     // absolute path
+  /// syncConfigFile?: string,                                            // absolute path
 
-  briefcaseFile?: string,                                     // absolute path to an existing briefcase file
-  briefcaseId?: number,                                       // downloads a new Briefcase if undefined
+  moreArgs?: { [otherArg: string]: any }                              // whatever
 
-  badgersDbFile: string = path.join(__dirname, "badgers.db")  // absolute path
-  loggerConfigJSONFile?: string,                              // absolute path
+  // Flags
 
-  outputDir: string = path.join(__dirname, "output"),         // absolute path
-  assetsDir: string = path.join(__dirname, "assets"),         // absolute path
-
-  unmapInputFile?: string,                                    // absolute path
-  unmapMissingInputFile?: string,                             // absolute path
-
-  remapStart: boolean = false,
-  remapKeep: boolean = false,
-  remapComplete: boolean = false,
-
-  allDocsProcessed: boolean = false,
-
-  syncComplete: boolean = false,
-  syncConfigFile?: string,                                    // absolute path
-
+  /// remapStart: boolean = false,
+  /// remapKeep: boolean = false,
+  /// remapComplete: boolean = false,
+  /// allDocsProcessed: boolean = false,
+  /// syncComplete: boolean = false,
   updateDomainSchemas: boolean = true,
   updateDbProfile: boolean = true,
   doDetectDeletedElements: boolean = true,
+  /// enableCrashReporting: boolean = false,
+  /// changeFileIdPolicy: boolean = false,
 
-  enableCrashReporting: boolean = false,
-  changeFileIdPolicy: boolean = false,
+  // DMSArgs (could be used for any DMS like an API endpoint)
 
   dmsUsername?: string,
   dmsPassword?: string,
   dmsInputFileUrn?: string,
   dmsAccessToken?": string,
-
-  moreArgs?: { [otherArg: string]: any }
 
   // HubArgs
 
@@ -77,16 +81,16 @@ abstract class CliArgs {
 
   // BankArgs
 
-  bankAccessToken?: string,
-  bankAccessTokenScheme?: string,
-  bankContextGuid?: string,
-  bankDmsCredentialsIsEncrypted?: string,
-  bankIModelGuid?: string,
-  bankIModelName?: string,
-  bankMaxRetryWait?: number,
-  bankRetries?: number,
-  bankStorageType?: string,
-  bankUrl?: string,
+  /// bankAccessToken?: string,
+  /// bankAccessTokenScheme?: string,
+  /// bankContextGuid?: string,
+  /// bankDmsCredentialsIsEncrypted?: string,
+  /// bankIModelGuid?: string,
+  /// bankIModelName?: string,
+  /// bankMaxRetryWait?: number,
+  /// bankRetries?: number,
+  /// bankStorageType?: string,
+  /// bankUrl?: string,
 
   // PCFArgs
 
