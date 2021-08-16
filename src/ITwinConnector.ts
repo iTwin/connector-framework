@@ -6,13 +6,12 @@
  * @module Framework
  */
 import * as fs from "fs";
-import { assert, BentleyStatus, ClientRequestContext, IModelStatus, Logger } from "@bentley/bentleyjs-core";
+import { assert, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
 import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { ConnectorJobDefArgs } from "./ConnectorRunner";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import { IModelError } from "@bentley/imodeljs-common";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
