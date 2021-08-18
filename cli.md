@@ -27,7 +27,7 @@ Args in JSON (annotated definitions in .ts):
 
 "///" = not planned to be supported in the immediate future, but would be added just not used.
 
-Classes - JobArgs, Flags, DMSArgs, HubArgs, BankArgs, PCFArgs, NativeAppAuthorizationConfiguration will be instantiated from CliArgs in raw JSON format.
+Classes - JobArgs, Flags, DMSArgs, HubArgs, BankArgs, will be instantiated from CliArgs in raw JSON format.
 
 */
 
@@ -40,18 +40,21 @@ abstract class CliArgs {
   subjectName: string,
   revisionHeader: string = "jsfwk",                                   // effect: change set comment becomes "jsfwk - <actual comment>"
   env: "0" | "102" | "103",                                           // prod | qa | dev
-  iModelType: "snapshot" | "briefcase" | "standalone" = "briefcase",  // e.g., snapshot => SnapshotDb class
+  dbType: "snapshot" | "briefcase" | "standalone" = "briefcase",      // e.g., snapshot => SnapshotDb class
   briefcaseFile?: string,                                             // absolute path to an existing briefcase file
   briefcaseId?: number,                                               // downloads a new Briefcase if undefined
   badgersDbFile: string = path.join(__dirname, "badgers.db")          // absolute path
   loggerConfigJSONFile?: string,                                      // absolute path
   outputDir: string = path.join(__dirname, "output"),                 // absolute path
-  assetsDir: string = path.join(__dirname, "assets"),                 // absolute path
   /// unmapInputFile?: string,                                            // absolute path
   /// unmapMissingInputFile?: string,                                     // absolute path
   /// syncConfigFile?: string,                                            // absolute path
 
-  moreArgs?: { [otherArg: string]: any }                              // whatever
+  moreArgs?: { [otherArg: string]: any }                              // whatever (include PCF args here)
+
+  /// pcfSubjectNode?: string,
+  /// pcfLoaderNode?: string,
+  /// pcfLoaderLazyMode?: boolean,
 
   // Flags
 
@@ -60,24 +63,26 @@ abstract class CliArgs {
   /// remapComplete: boolean = false,
   /// allDocsProcessed: boolean = false,
   /// syncComplete: boolean = false,
+
   updateDomainSchemas: boolean = true,
   updateDbProfile: boolean = true,
   doDetectDeletedElements: boolean = true,
+
   /// enableCrashReporting: boolean = false,
   /// changeFileIdPolicy: boolean = false,
 
   // DMSArgs (could be used for any DMS like an API endpoint)
 
-  dmsUsername?: string,
-  dmsPassword?: string,
-  dmsInputFileUrn?: string,
-  dmsAccessToken?": string,
+  /// dmsUsername?: string,
+  /// dmsPassword?: string,
+  /// dmsInputFileUrn?: string,
+  /// dmsAccessToken?": string,
 
   // HubArgs
 
   hubIModelGuid?: string,
   hubContextGuid?: string,
-  hubAccessToken?: string,
+  getHubAccessToken?: async () => Promise<AccessToken>,
 
   // BankArgs
 
@@ -91,21 +96,6 @@ abstract class CliArgs {
   /// bankRetries?: number,
   /// bankStorageType?: string,
   /// bankUrl?: string,
-
-  // PCFArgs
-
-  pcfSubjectNode?: string,
-  pcfLoaderNode?: string,
-  pcfLoaderLazyMode?: boolean,
-
-  // NativeAppAuthorizationConfiguration (https://www.itwinjs.org/reference/imodeljs-common/nativeapp/nativeappauthorizationconfiguration)
-  // we need to enable this to enforce third-parties to use their own registered client app
-
-  appClientId: string,
-  appClientScope: string,
-  appClientRedirectUri: string = "http://localhost:3000/call-back",
-  appExpiryBuffer?: number,
-  appIssuerUrl?: string,
 }
 
 
