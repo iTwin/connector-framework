@@ -84,8 +84,7 @@ abstract class CliArgs {
 
   hubIModelGuid?: string,
   hubContextGuid?: string,
-
-  // passing a callback through command line is not possible, maybe a path to a file that stores the access token? 
+  // passing a callback through .json is not possible, maybe a path to a file that stores the access token?
   accessToken?: string,
 
   // BankArgs
