@@ -25,7 +25,7 @@ Args in JSON (annotated definitions in .ts):
 ```typescript
 /*
 
-"///" = not planned to be supported in the immediate future, but would be added just not used.
+"///" = not supported and won't be added for now but most likely will be in the near future.
 
 Classes - JobArgs, Flags, DMSArgs, HubArgs, BankArgs, will be instantiated from CliArgs in raw JSON format.
 
@@ -36,21 +36,23 @@ abstract class CliArgs {
   // JobArgs
 
   connectorFile: string,                                              // absolute path
-  sourceFile: string,                                                 // absolute path
-  subjectName: string,
+  source: string,                                                     // absolute path OR connection string
+  subjectName?: string,
   revisionHeader: string = "jsfwk",                                   // effect: change set comment becomes "jsfwk - <actual comment>"
-  env: "0" | "102" | "103",                                           // prod | qa | dev
-  dbType: "snapshot" | "briefcase" | "standalone" = "briefcase",      // e.g., snapshot => SnapshotDb class
-  briefcaseFile?: string,                                             // absolute path to an existing briefcase file
-  briefcaseId?: number,                                               // downloads a new Briefcase if undefined
+  env: "0" | "102" | "103" = "0",                                     // prod (default) | qa | dev 
+
+  briefcaseFile: string,                                              // absolute path to a local Briefcase file downloaded by the orchestrator
+  briefcaseId?: number,                                               // start from 2
+
   badgersDbFile: string = path.join(__dirname, "badgers.db")          // absolute path
   loggerConfigJSONFile?: string,                                      // absolute path
-  outputDir: string = path.join(__dirname, "output"),                 // absolute path
+
+  /// outputDir: string = path.join(__dirname, "output"),                 // absolute path
   /// unmapInputFile?: string,                                            // absolute path
   /// unmapMissingInputFile?: string,                                     // absolute path
   /// syncConfigFile?: string,                                            // absolute path
 
-  moreArgs?: { [otherArg: string]: any }                              // whatever (include PCF args here)
+  moreArgs?: { [otherArg: string]: any }                              // whatever (include PCF args here). How could the orchestrator pass this in?
 
   /// pcfSubjectNode?: string,
   /// pcfLoaderNode?: string,
@@ -64,9 +66,9 @@ abstract class CliArgs {
   /// allDocsProcessed: boolean = false,
   /// syncComplete: boolean = false,
 
-  updateDomainSchemas: boolean = true,
-  updateDbProfile: boolean = true,
-  doDetectDeletedElements: boolean = true,
+  /// updateDomainSchemas: boolean = true,
+  /// updateDbProfile: boolean = true,
+  /// doDetectDeletedElements: boolean = true,
 
   /// enableCrashReporting: boolean = false,
   /// changeFileIdPolicy: boolean = false,
@@ -82,7 +84,9 @@ abstract class CliArgs {
 
   hubIModelGuid?: string,
   hubContextGuid?: string,
-  getHubAccessToken?: async () => Promise<AccessToken>,
+
+  // passing a callback through command line is not possible, maybe a path to a file that stores the access token? 
+  accessToken?: string,
 
   // BankArgs
 
