@@ -1,31 +1,36 @@
-import { IModel } from "@bentley/imodeljs-common";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
-import { BentleyStatus } from "@bentley/bentleyjs-core";
-import { IModelDb } from "@bentley/imodeljs-backend";
+import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
+import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects } from "@bentley/imodeljs-backend";
+import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { ITwinConnector } from "./ITwinConnector";
-import { ConnectorLoggerCategory as LoggerCategories } from "./LoggerCategories";
+import { LoggerCategories } from "./LoggerCategory";
 import { JobArgs, HubArgs, PCFArgs } from "./Args";
+import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
+import { Synchronizer } from "./Synchronizer";
+import * as fs from "fs";
+import * as path from "path";
 
 export class ConnectorRunner {
 
-  public readonly jobArgs: JobArgs;
-  public readonly hubArgs?: HubArgs;
-  public readonly pcfArgs?: PCFArgs;
+  private _jobArgs: JobArgs;
+  private _hubArgs?: HubArgs;
+  private _pcfArgs?: PCFArgs;
 
   private _db?: IModelDb;
   private _connector?: ITwinConnector;
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs, pcfArgs?: PCFArgs) {
-    this.jobArgs = jobArgs;
-    this.hubArgs = hubArgs;
-    this.pcfArgs = pcfArgs;
+    this._jobArgs = jobArgs;
+    this._hubArgs = hubArgs;
+    this._pcfArgs = pcfArgs;
   }
 
   public static fromFile(file: string): ConnectorRunner {
     if (fs.existsSync(file))
       throw new Error(`${file} does not exist`);
-    const json = JSON.parse(fs.readFileSync(file));
+    const json = JSON.parse(fs.readFileSync(file, "utf8"));
     const runner = ConnectorRunner.fromJSON(json);
     return runner;
   }
@@ -33,20 +38,20 @@ export class ConnectorRunner {
   public static fromJSON(json: any): ConnectorRunner {
     if (!("jobArgs" in json))
       throw new Error("jobArgs is not defined");
-    const jobArgs = JobArgs.fromJSON(json.jobArgs);
-    if (!jobArgs.isValid());
+    const jobArgs = new JobArgs(json.jobArgs);
+    if (!jobArgs.isValid())
       throw new Error("Invalid jobArgs");
 
     let hubArgs: HubArgs | undefined = undefined;
     if ("hubArgs" in json) {
-      hubArgs = HubArgs.fromJSON(json.hubArgs);
+      hubArgs = new HubArgs(json.hubArgs);
       if (hubArgs.isValid())
         throw new Error("Invalid hubArgs");
     }
 
     let pcfArgs: PCFArgs | undefined = undefined;
     if ("pcfArgs" in json) {
-      pcfArgs = PCFArgs.fromJSON(json.pcfArgs);
+      pcfArgs = new PCFArgs(json.pcfArgs);
       if (pcfArgs.isValid())
         throw new Error("Invalid pcfArgs");
     }
@@ -58,15 +63,32 @@ export class ConnectorRunner {
     const reqContext = this._reqContext as AuthorizedClientRequestContext;
     if (!(reqContext instanceof AuthorizedClientRequestContext))
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (reqContext.accessToken.isExpired())
+    if (reqContext.accessToken.isExpired(5000))
       reqContext.accessToken = await this._getToken();
     return reqContext;
   }
 
   public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
-    if (this._db.isBriefcaseDb())
-      return await this.getAuthReqContext();
+    let reqContext;
+    if (this.db.isBriefcaseDb())
+      reqContext = await this.getAuthReqContext();
+    if (!this._reqContext)
+      throw new Error("ConnectorRunner.reqContext is not defined.");
     return this._reqContext;
+  }
+
+  public get jobArgs(): JobArgs {
+    return this._jobArgs;
+  }
+
+  public get hubArgs(): HubArgs {
+    if (!this._hubArgs)
+      throw new Error("ConnectorRunner.hubArgs is not defined.");
+    return this._hubArgs;
+  }
+
+  public get pcfArgs(): PCFArgs | undefined {
+    return this._pcfArgs;
   }
 
   public get db(): IModelDb {
@@ -86,7 +108,7 @@ export class ConnectorRunner {
     try {
       await this._synchronize();
     } catch (err) {
-      Logger.logError(LoggerCategories.Framework, err.message);
+      Logger.logError(LoggerCategories.Framework, (err as any).message);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
@@ -111,7 +133,6 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
 
     await this._loadDb();
-    this.db.startBulkMode();
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.db has been loaded.");
 
     await this._loadSynchronizer();
@@ -120,33 +141,33 @@ export class ConnectorRunner {
     this._initProgressMeter();
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await connector.openSourceData();
+    await this.connector.openSourceData();
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
 
     Logger.logInfo(LoggerCategories.Framework, "connector.onOpenIModel started.");
-    await connector.onOpenIModel();
+    await this.connector.onOpenIModel();
     Logger.logInfo(LoggerCategories.Framework, "connector.onOpenIModel ended.");
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
     await this._enterChannel(IModel.repositoryModelId);
-    await connector.importDomainSchema(reqContext);
+    await this.connector.importDomainSchema(await this.getReqContext());
     await this._persistChanges(`Domain Schema Update`, ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
     await this._enterChannel(IModel.repositoryModelId);
-    await connector.importDynamicSchema(reqContext);
+    await this.connector.importDynamicSchema(await this.getReqContext());
     await this._persistChanges("Dynamic Schema Update", ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner._updateJobSubject started");
     await this._enterChannel(IModel.repositoryModelId);
-    this._updateJobSubject();
+    const jobSubject = this._updateJobSubject();
     await this._persistChanges("Job Subject Update", ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner._updateJobSubject ended");
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateExistingData started");
-    await this._enterChannel(this.jobSubjectId);
+    await this._enterChannel(jobSubject.id);
     await this.connector.updateExistingData();
     this._updateDeletedElements();
     this._updateProjectExtent();
@@ -169,7 +190,7 @@ export class ConnectorRunner {
     this.db.updateProjectExtents(res.extents);
   }
 
-  private _updateJobSubject() {
+  private _updateJobSubject(): Subject {
     let subjectName = this.jobArgs.source;
     if (this.pcfArgs)
       subjectName = this.pcfArgs.subjectNode; 
@@ -180,7 +201,7 @@ export class ConnectorRunner {
     let subject: Subject;
 
     if (existingSubjectId) {
-      subject = this.db.elements.getElement<Subject>(existingSubject);
+      subject = this.db.elements.getElement<Subject>(existingSubjectId);
     } else {
       const jsonProperties: any = {
         Subject: {
@@ -188,7 +209,7 @@ export class ConnectorRunner {
             Properties: {
               ConnectorVersion: this.connector.getApplicationVersion(),
               ConnectorType: this.pcfArgs ? "PCFConnector" : "JSConnector",
-            }
+            },
             Connector: this.connector.getConnectorName(),
           }
         },
@@ -208,12 +229,13 @@ export class ConnectorRunner {
     }
 
     this.connector.jobSubject = subject;
+    return subject;
   }
 
   private _initProgressMeter() {}
 
-  private await _loadReqContext() {
-    if (db.isBriefcaseDb()) {
+  private async _loadReqContext() {
+    if (this.db.isBriefcaseDb()) {
       const token = await this._getToken();
       const activityId = Guid.createValue();
       const appId = this.connector.getApplicationId();
@@ -225,20 +247,24 @@ export class ConnectorRunner {
   }
 
   private async _getToken() {
-    if (this.hubArgs.interactiveSignIn)
-      await this._getTokenInteractive();
+    let token: AccessToken;
+    if (!this.hubArgs)
+      throw new Error("ConnectorRunner._getToken: undefined hubArgs.");
+    if (this.hubArgs.doInteractiveSignIn)
+      token = await this._getTokenInteractive();
     else
-      await this._getTokenSilent();
+      token = await this._getTokenSilent();
+    return token;
   }
 
   private async _getTokenSilent() {
     let token: AccessToken;
-    if (this.hubArgs && this.hubArgs.accessTokenCallbackUrl) {
-      const tokenStr = await fetch(this.hubArgs.accessTokenCallbackUrl);
+    if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
+      const response = await fetch(this.hubArgs.tokenCallbackUrl);
+      const tokenStr = await response.json();
       token = new AccessToken(tokenStr);
-    } else if (this.hubArgs && this.hubArgs.accessTokenCallback) {
-      const tokenStr = await this.hubArgs.accessTokenCallback();
-      token = new AccessToken(tokenStr);
+    } else if (this.hubArgs && this.hubArgs.tokenCallback) {
+      token = await this.hubArgs.tokenCallback();
     } else {
       throw new Error("Define either HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to retrieve accessToken");
     }
@@ -260,7 +286,7 @@ export class ConnectorRunner {
   }
 
   private async _loadDb() {
-    if (this.jobArgs.dbType === "briefcase")
+    if (this.jobArgs.dbType === "briefcase") {
       await this._loadBriefcaseDb();
     } else if (this.jobArgs.dbType === "standalone") {
       this._loadStandaloneDb();
@@ -272,7 +298,7 @@ export class ConnectorRunner {
   }
 
   private async _loadSnapshotDb() {
-    const cname = this._connector.getConnectorName();
+    const cname = this.connector.getConnectorName();
     const fname = `${cname}.bim`;
     const fpath = path.join(this.jobArgs.stagingDir, fname);
     if (fs.existsSync(fpath))
@@ -281,7 +307,7 @@ export class ConnectorRunner {
   }
 
   private async _loadStandaloneDb() {
-    const cname = this._connector.getConnectorName(); 
+    const cname = this.connector.getConnectorName(); 
     const fname = `${cname}.bim`;
     const fpath = path.join(this.jobArgs.stagingDir, fname);
     if (fs.existsSync(fpath))
@@ -291,18 +317,17 @@ export class ConnectorRunner {
   }
 
   private async _loadBriefcaseDb() {
-    if (this.db.isBriefcase() && this.db.isOpen)
+    if (this.db.isBriefcaseDb() && this.db.isOpen)
       return;
 
-    let db: BriefcaseDb;
-    let props: LocalBriefcaseProps;
+    let props: LocalBriefcaseProps | undefined = undefined;
     const reqContext = await this.getAuthReqContext();
 
-    const doLoadExisting = this.hubArgs.briefcaseFile || (this.hubArgs.briefcaseId && this.hubArgs.iModelId);
+    const doLoadExisting = this.hubArgs.briefcaseFile || (this.hubArgs.briefcaseId && this.hubArgs.iModelGuid);
     if (doLoadExisting) {
-      const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelId);
-      for (const bc as LocalBriefcaseProps of briefcases) {
-        assert(bc.iModelId === this.hubArgs.iModelId);
+      const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelGuid);
+      for (const bc of briefcases) {
+        assert(bc.iModelId === this.hubArgs.iModelGuid);
         if (bc.briefcaseId === this.hubArgs.briefcaseId)
           props = bc;
       }
@@ -313,6 +338,9 @@ export class ConnectorRunner {
       props = await BriefcaseManager.downloadBriefcase(reqContext, reqArg);
     }
 
+    if (!props)
+      throw new Error("");
+
     const openArgs: OpenBriefcaseProps = {
       fileName: props.fileName,
     };
@@ -321,6 +349,7 @@ export class ConnectorRunner {
       await BriefcaseDb.upgradeSchemas(reqContext, props);
 
     this._db = await BriefcaseDb.open(reqContext, openArgs);
+    (this._db as BriefcaseDb).concurrencyControl.startBulkMode();
   }
 
   private async _loadConnector() {
@@ -330,8 +359,8 @@ export class ConnectorRunner {
 
   private async _loadSynchronizer() {
     const reqContext = await this.getReqContext();
-    const synchronizer = new Synchronizer(this._db, false, reqContext);
-    this._connector.synchronizer = synchronizer;
+    const synchronizer = new Synchronizer(this.db, false, reqContext as AuthorizedClientRequestContext);
+    this.connector.synchronizer = synchronizer;
   }
 
   private async _persistChanges(changeDesc: string, ctype: ChangesType) {
@@ -339,7 +368,7 @@ export class ConnectorRunner {
     const comment = `${revisionHeader} - ${changeDesc}`;
     const reqContext = await this.getAuthReqContext();
     if (this.db.isBriefcaseDb()) {
-      this.db = this.db as bk.BriefcaseDb;
+      this._db = this.db as BriefcaseDb;
       await this.db.concurrencyControl.request(reqContext);
       await this.db.pullAndMergeChanges(reqContext);
       this.db.saveChanges("pullAndMergeChanges");
@@ -353,7 +382,7 @@ export class ConnectorRunner {
     if (!this.db.isBriefcaseDb())
       return;
 
-    this.db = this.db as bk.BriefcaseDb;
+    this._db = this.db as BriefcaseDb;
     if (!this.db.concurrencyControl.isBulkMode)
       this.db.concurrencyControl.startBulkMode();
     if (this.db.concurrencyControl.hasPendingRequests)

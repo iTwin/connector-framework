@@ -11,9 +11,6 @@
  * @see [Logger]($bentley)
  * @public
  */
-export enum ConnectorLoggerCategory {
-  /** The logger category used by the following classes:
-   * - [[ConnectorSynchronizer]]
-   */
+export enum LoggerCategories {
   Framework = "itwin-connector.Framework",
 }

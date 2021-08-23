@@ -2,12 +2,11 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { assert, BentleyStatus, ClientRequestContext, IModelStatus, Logger } from "@bentley/bentleyjs-core";
+import { assert, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
 import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { IModelError } from "@bentley/imodeljs-common";
-import { ConnectorJobDefArgs } from "./ConnectorRunner";
 import { Synchronizer } from "./Synchronizer";
+import { JobArgs } from "./Args";
 import * as fs from "fs";
 
 /** Abstract implementation of the iTwin Connector.
@@ -18,7 +17,7 @@ export abstract class ITwinConnector {
   private _jobSubject?: Subject;
 
   /** Any initialization steps that the connector must do in order to begin synchronization. */
-  public abstract initialize(params: ConnectorJobDefArgs): any;
+  public abstract initialize(args: JobArgs): any;
 
   /** If the connector needs to perform any steps once the iModel has been opened */
   public async onOpenIModel(): Promise<BentleyStatus> {
@@ -33,7 +32,7 @@ export abstract class ITwinConnector {
   /** The source data can be an actual source file on disk (json, csv, xml, etc), a data dump of a native source (IFC), a URL for a rest API, etc.
    * The connector creates a connection to this source data and performs any steps necessary before reading. Called in the [Repository channel]($docs/learning/backend/Channel).
    */
-  public abstract openSourceData(sourcePath: string): Promise<void>;
+  public abstract openSourceData(source: string): Promise<void>;
 
   /** Import any elements that belong in a DefinitionModel (Categories, LineStyles, Materials, etc).  This includes elements necessary for all
    * imodels created by this connector as well as any that are unique to this source data. Called in the [Repository channel]($docs/learning/backend/Channel).

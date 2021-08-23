@@ -1,64 +1,91 @@
-import { BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
+import { Logger } from "@bentley/bentleyjs-core";
+import { AccessToken } from "@bentley/itwin-client";
+import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
+import { LoggerCategories } from "./LoggerCategory"
 import * as fs from "fs";
+import * as path from "path";
 
 interface IArgs {
   isValid(): boolean;
-  fromJSON(json: any): any;
+}
+
+export interface JobArgsProps {
+  connectorFile: string;
+  source: string;
+  stagingDir?: string;
+  revisionHeader?: string;
+  env?: "0" | "102" | "103";
+  dbType?: "briefcase" | "snapshot" | "standalone";
+  badgersDbFile?: string
+  loggerConfigJSONFile?: string;
+  moreArgs?: { [otherArg: string]: any };
+  doDetectDeletedElements?: string;
+  updateDomainSchemas?: string;
+  updateDbProfile?: string;
 }
 
 export class JobArgs implements IArgs {
 
   public connectorFile: string;
   public source: string;
-  public stagingDir: string;
+  public stagingDir: string = path.join(__dirname, "staging");
   public revisionHeader: string = "jsfwk";
   public env: "0" | "102" | "103" = "0";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-  public badgersDbFile: string = path.join(this.stagingDir, "badgers.db");
+  public badgersDbFile?: string
   public loggerConfigJSONFile?: string;
   public moreArgs?: { [otherArg: string]: any };
   public doDetectDeletedElements: boolean = true;
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
 
-  public static fromJSON(json: any): JobArgs {
-    const args = new JobArgs();
-    args.connectorFile = json.connectorFile;
-    args.source = json.source;
-    args.stagingDir = json.stagingDir;
-    args.revisionHeader = json.revisionHeader ?? args.revisionHeader;
-    args.env = json.env ?? args.env;
-    args.dbType = json.dbType ?? args.dbType;
-    args.badgersDbFile = json.badgersDbFile ?? args.badgersDbFile;
-    args.loggerConfigJSONFile = json.loggerConfigJSONFile;
-    args.moreArgs = json.moreArgs;
-    if ("doDetectDeletedElements" in json)
-      args.doDetectDeletedElements = json.doDetectDeletedElements;
-    if ("updateDomainSchemas" in json)
-      args.updateDomainSchemas = json.updateDomainSchemas;
-    if ("updateDbProfile" in json)
-      args.updateDbProfile = json.updateDbProfile;
+  constructor(props: JobArgsProps) {
+    this.connectorFile = props.connectorFile;
+    this.source = props.source;
+    this.stagingDir = props.stagingDir ?? this.stagingDir;
+    this.revisionHeader = props.revisionHeader ?? this.revisionHeader;
+    this.env = props.env ?? this.env;
+    this.dbType = props.dbType ?? this.dbType;
+    this.badgersDbFile = props.badgersDbFile ?? path.join(this.stagingDir, "badgers.db");
+    this.loggerConfigJSONFile = props.loggerConfigJSONFile;
+    this.moreArgs = props.moreArgs;
+    if (props.doDetectDeletedElements !== undefined && props.doDetectDeletedElements.toLowerCase() === "false")
+      this.doDetectDeletedElements = false;
+    if (props.updateDomainSchemas !== undefined && props.updateDomainSchemas.toLowerCase() === "false")
+      this.updateDomainSchemas = false;
+    if (props.updateDbProfile !== undefined && props.updateDbProfile.toLowerCase() === "false")
+      this.updateDomainSchemas = false;
   }
 
   public isValid() {
     if (!this.connectorFile) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument 'connectorFile' is missing");
+      Logger.logError(LoggerCategories.Framework, "argument 'connectorFile' is missing");
       return false;
     }
-    if (!existsSync(this.connectorFile)) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "file pointed by argument 'connectorFile' does not exist");
+    if (!fs.existsSync(this.connectorFile)) {
+      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'connectorFile' does not exist");
       return false;
     }
     if (!this.source) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument 'source' is missing");
+      Logger.logError(LoggerCategories.Framework, "argument 'source' is missing");
       return false;
     }
-    if (this.loggerConfigJSONFile && !existsSync(this.loggerConfigJSONFile)) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "file pointed by argument 'loggerConfigJSONFile' does not exist");
+    if (this.loggerConfigJSONFile && !fs.existsSync(this.loggerConfigJSONFile)) {
+      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'loggerConfigJSONFile' does not exist");
       return false;
     }
     return true;
   }
+}
+
+export interface HubArgProps {
+  briefcaseFile?: string;
+  briefcaseId?: string;
+  projectGuid: string;
+  iModelGuid: string;
+  clientConfig: NativeAppAuthorizationConfiguration;
+  tokenCallbackUrl?: string;
+  doInteractiveSignIn: string;
 }
 
 export class HubArgs implements IArgs {
@@ -70,64 +97,65 @@ export class HubArgs implements IArgs {
   public clientConfig: NativeAppAuthorizationConfiguration;
 
   public tokenCallbackUrl?: string;
-  public tokenCallback?: async () => Promise<AccessToken>;
+  public tokenCallback?: () => Promise<AccessToken>;
   public doInteractiveSignIn: boolean = false;
 
-  public fromJSON(json: any): HubArgs {
-    const args = new HubArgs();
-    args.briefcaseFile = json.briefcaseFile;
-    args.briefcaseId = json.briefcaseId;
-    args.projectGuid = json.projectGuid;
-    args.iModelGuid = json.iModelGuid;
-    args.clientConfig = json.clientConfig;
-    args.tokenCallbackUrl = json.tokenCallbackUrl;
-    if ("doInteractiveSignIn" in json)
-      args.doInteractiveSignIn = json.doInteractiveSignIn;
-    return args;
+  constructor(json: HubArgProps) {
+    this.briefcaseFile = json.briefcaseFile;
+    this.briefcaseId = json.briefcaseId ? parseInt(json.briefcaseId) : undefined;
+    this.projectGuid = json.projectGuid;
+    this.iModelGuid = json.iModelGuid;
+    this.clientConfig = json.clientConfig;
+    this.tokenCallbackUrl = json.tokenCallbackUrl;
+    if (json.doInteractiveSignIn !== undefined && json.doInteractiveSignIn.toLowerCase() === "true")
+      this.doInteractiveSignIn = true;
   }
 
   public isValid() {
     if (!this.briefcaseFile) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument 'briefacseFile' is missing");
+      Logger.logError(LoggerCategories.Framework, "argument 'briefacseFile' is missing");
       return false;
     }
-    if (!existsSync(this.briefcaseFile)) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "file pointed by argument 'briefacseFile' does not exist");
+    if (!fs.existsSync(this.briefcaseFile)) {
+      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'briefacseFile' does not exist");
       return false;
     }
     if (!this.iModelGuid) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument 'hubIModelGuid' is missing");
+      Logger.logError(LoggerCategories.Framework, "argument 'hubIModelGuid' is missing");
       return false;
     }
     if (!this.projectGuid) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument 'hubProjectGuid' is missing");
+      Logger.logError(LoggerCategories.Framework, "argument 'hubProjectGuid' is missing");
       return false;
     }
-    if (!doInteractiveSignIn && !this.tokenCallbackUrl && !this.tokenCallback) {
-      Logger.logError(ConnectorLoggerCategory.Framework, "argument either 'tokenCallback' or 'tokenCallbackUrl' must be defined when 'doInteractiveSignIn' is false");
+    if (!this.doInteractiveSignIn && !this.tokenCallbackUrl && !this.tokenCallback) {
+      Logger.logError(LoggerCategories.Framework, "argument either 'tokenCallback' or 'tokenCallbackUrl' must be defined when 'doInteractiveSignIn' is false");
       return false;
     }
     return true;
   }
 }
 
+export interface PCFArgsProps {
+  subjectNode: string;
+  loaderNode: string;
+  loaderLazyMode: string;
+}
+
 export class PCFArgs implements IArgs {
+
   public subjectNode: string;
   public loaderNode: string;
   public loaderLazyMode: boolean = false;
 
-  public fromJSON(json: string): PCFArgs {
-    const args = new PCFArgs();
-    args.subjectNode = json.subjectNode;
-    args.loaderNode = json.loaderNode;
-    if ("loaderLazyMode" in json)
-      args.loaderLazyMode = json.loaderLazyMode;
-    return args;
+  constructor(json: PCFArgsProps) {
+    this.subjectNode = json.subjectNode;
+    this.loaderNode = json.loaderNode;
+    if (json.loaderLazyMode !== undefined && json.loaderLazyMode.toLowerCase() === "true")
+      this.loaderLazyMode = true;
   }
 
   public isValid() {
     return true;
   }
 }
-
-
