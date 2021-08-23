@@ -195,6 +195,7 @@ export class ConnectorRunner {
       await iModelDbBuilder.updateExistingIModel();
     } catch (err) {
       Logger.logError(ConnectorLoggerCategory.Framework, err.message);
+      iModelDbBuilder.imodel.abandonChanges();
       return BentleyStatus.ERROR;
     } finally {
       await this._connector.issueReporter?.publishReport();
