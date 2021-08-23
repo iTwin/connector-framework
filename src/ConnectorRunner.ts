@@ -3,7 +3,7 @@ import { ChangesType } from "@bentley/imodelhub-client";
 import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
 import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects } from "@bentley/imodeljs-backend";
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
-import { ITwinConnector } from "./ITwinConnector";
+import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import { JobArgs, HubArgs, PCFArgs } from "./Args";
 import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
@@ -18,7 +18,7 @@ export class ConnectorRunner {
   private _pcfArgs?: PCFArgs;
 
   private _db?: IModelDb;
-  private _connector?: ITwinConnector;
+  private _connector?: BaseConnector;
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs, pcfArgs?: PCFArgs) {
@@ -97,7 +97,7 @@ export class ConnectorRunner {
     return this._db;
   }
 
-  public get connector(): ITwinConnector {
+  public get connector(): BaseConnector {
     if (!this._connector)
       throw new Error("Connector has not been loaded.");
     return this._connector;
@@ -141,7 +141,7 @@ export class ConnectorRunner {
     this._initProgressMeter();
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await this.connector.openSourceData();
+    await this.connector.openSourceData(this.jobArgs.source);
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
 
     Logger.logInfo(LoggerCategories.Framework, "connector.onOpenIModel started.");

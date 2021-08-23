@@ -4,5 +4,5 @@
 *--------------------------------------------------------------------------------------------*/
 export * from "./LoggerCategory";
 export * from "./ConnectorRunner";
-export * from "./ITwinConnector";
+export * from "./BaseConnector";
 export * from "./Synchronizer";

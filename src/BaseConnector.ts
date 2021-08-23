@@ -12,7 +12,7 @@ import * as fs from "fs";
 /** Abstract implementation of the iTwin Connector.
  * @beta
  */
-export abstract class ITwinConnector {
+export abstract class BaseConnector {
   private _synchronizer: Synchronizer | undefined;
   private _jobSubject?: Subject;
 
