@@ -5,7 +5,7 @@ import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcas
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import { JobArgs, HubArgs, PCFArgs } from "./Args";
+import { JobArgs, HubArgs } from "./Args";
 import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
@@ -15,16 +15,14 @@ export class ConnectorRunner {
 
   private _jobArgs: JobArgs;
   private _hubArgs?: HubArgs;
-  private _pcfArgs?: PCFArgs;
 
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
-  constructor(jobArgs: JobArgs, hubArgs?: HubArgs, pcfArgs?: PCFArgs) {
+  constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
     this._jobArgs = jobArgs;
     this._hubArgs = hubArgs;
-    this._pcfArgs = pcfArgs;
   }
 
   public static fromFile(file: string): ConnectorRunner {
@@ -49,14 +47,7 @@ export class ConnectorRunner {
         throw new Error("Invalid hubArgs");
     }
 
-    let pcfArgs: PCFArgs | undefined = undefined;
-    if ("pcfArgs" in json) {
-      pcfArgs = new PCFArgs(json.pcfArgs);
-      if (pcfArgs.isValid())
-        throw new Error("Invalid pcfArgs");
-    }
-
-    return new ConnectorRunner(jobArgs, hubArgs, pcfArgs);
+    return new ConnectorRunner(jobArgs, hubArgs);
   }
 
   public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
@@ -92,8 +83,14 @@ export class ConnectorRunner {
     return this._hubArgs;
   }
 
-  public get pcfArgs(): PCFArgs | undefined {
-    return this._pcfArgs;
+  public get jobSubjectName(): string {
+    let name = this.jobArgs.source;
+
+    const moreArgs = this.jobArgs.moreArgs;
+    if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
+      name = moreArgs.pcf.subjectNode; 
+
+    return name;
   }
 
   public get db(): IModelDb {
@@ -233,11 +230,7 @@ export class ConnectorRunner {
   }
 
   private _updateJobSubject(): Subject {
-    let subjectName = this.jobArgs.source;
-    if (this.pcfArgs)
-      subjectName = this.pcfArgs.subjectNode; 
-
-    const code = Subject.createCode(this.db, IModel.rootSubjectId, subjectName);
+    const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
     const existingSubjectId = this.db.elements.queryElementIdByCode(code);
 
     let subject: Subject;
@@ -250,7 +243,7 @@ export class ConnectorRunner {
           Job: {
             Properties: {
               ConnectorVersion: this.connector.getApplicationVersion(),
-              ConnectorType: this.pcfArgs ? "PCFConnector" : "JSConnector",
+              ConnectorType: "JSConnector",
             },
             Connector: this.connector.getConnectorName(),
           }

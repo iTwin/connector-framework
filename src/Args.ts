@@ -136,26 +136,3 @@ export class HubArgs implements IArgs {
   }
 }
 
-export interface PCFArgsProps {
-  subjectNode: string;
-  loaderNode: string;
-  loaderLazyMode: string;
-}
-
-export class PCFArgs implements IArgs {
-
-  public subjectNode: string;
-  public loaderNode: string;
-  public loaderLazyMode: boolean = false;
-
-  constructor(json: PCFArgsProps) {
-    this.subjectNode = json.subjectNode;
-    this.loaderNode = json.loaderNode;
-    if (json.loaderLazyMode !== undefined && json.loaderLazyMode.toLowerCase() === "true")
-      this.loaderLazyMode = true;
-  }
-
-  public isValid() {
-    return true;
-  }
-}
