@@ -29,7 +29,7 @@ export class JobArgs implements IArgs {
   public connectorFile: string;
   public source: string;
   public stagingDir: string = path.join(__dirname, "staging");
-  public revisionHeader: string = "jsfwk";
+  public revisionHeader: string = "JSFWK";
   public env: "0" | "102" | "103" = "0";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
   public badgersDbFile?: string

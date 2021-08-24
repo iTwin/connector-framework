@@ -47,7 +47,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
   it("Should fail and create a error file", async () => {
     const connectorJobDef = new JobArgs({
       source: undefined,
-      connectorFile: "./test/integration/TestiTwinConnector.js",
+      connectorFile: "./test/integration/TestConnector.js",
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });

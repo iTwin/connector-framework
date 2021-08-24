@@ -80,11 +80,12 @@ describe("iTwin Connector Fwk (#integration)", () => {
       throw new Error("runner.synchronize() failed.");
 
     const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
+    console.log(briefcases);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
-    const imodel = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
-    utils.verifyIModel(imodel, jobArgs, isUpdate);
-    imodel.close();
+    const db = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
+    utils.verifyIModel(db, jobArgs, isUpdate);
+    db.close();
   }
 
   it("should download and perform updates", async () => {
@@ -93,7 +94,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelJsFs.copySync(sourcePath, targetPath, { overwrite: true });
     const jobArgs = new JobArgs({
       source: targetPath,
-      connectorFile: "./test/integration/TestiTwinConnector.js",
+      connectorFile: "./test/integration/TestConnector.js",
     });
 
     const hubArgs = new HubArgs({
