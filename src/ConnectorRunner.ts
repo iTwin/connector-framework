@@ -60,21 +60,26 @@ export class ConnectorRunner {
   }
 
   public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
-    const reqContext = this._reqContext as AuthorizedClientRequestContext;
-    if (!(reqContext instanceof AuthorizedClientRequestContext))
+    if (!this._reqContext || !(this._reqContext instanceof AuthorizedClientRequestContext))
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (reqContext.accessToken.isExpired(5000))
-      reqContext.accessToken = await this._getToken();
-    return reqContext;
+    if (this._reqContext.accessToken.isExpired(5000)) {
+      this._reqContext.accessToken = await this._getToken();
+      Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
+    }
+    return this._reqContext;
   }
 
   public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
-    let reqContext;
+    if (!this._reqContext)
+      throw new Error("ConnectorRunner.reqContext has not been loaded.");
+
+    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
     if (this.db.isBriefcaseDb())
       reqContext = await this.getAuthReqContext();
-    if (!this._reqContext)
-      throw new Error("ConnectorRunner.reqContext is not defined.");
-    return this._reqContext;
+    else
+      reqContext = this._reqContext;
+
+    return reqContext;
   }
 
   public get jobArgs(): JobArgs {
@@ -108,7 +113,8 @@ export class ConnectorRunner {
     try {
       await this._synchronize();
     } catch (err) {
-      Logger.logError(LoggerCategories.Framework, (err as any).message);
+      console.log(err);
+      // Logger.logError(LoggerCategories.Framework, (err as any).message);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
@@ -126,11 +132,15 @@ export class ConnectorRunner {
   private async _synchronize() {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-    await this._loadReqContext();
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.reqContext has been loaded.");
+    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+
+    // load
 
     await this._loadConnector();
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
+
+    await this._loadReqContext();
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.reqContext has been loaded.");
 
     await this._loadDb();
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.db has been loaded.");
@@ -140,6 +150,8 @@ export class ConnectorRunner {
 
     this._initProgressMeter();
 
+    // init
+
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
     await this.connector.openSourceData(this.jobArgs.source);
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
@@ -148,29 +160,58 @@ export class ConnectorRunner {
     await this.connector.onOpenIModel();
     Logger.logInfo(LoggerCategories.Framework, "connector.onOpenIModel ended.");
 
+    // domain schema
+
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
     await this._enterChannel(IModel.repositoryModelId);
-    await this.connector.importDomainSchema(await this.getReqContext());
+
+    reqContext = await this.getReqContext();
+    await this.connector.importDomainSchema(reqContext);
+
     await this._persistChanges(`Domain Schema Update`, ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
 
+    // dynamic schema
+
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
     await this._enterChannel(IModel.repositoryModelId);
-    await this.connector.importDynamicSchema(await this.getReqContext());
+
+    reqContext = await this.getReqContext();
+    await this.connector.importDynamicSchema(reqContext);
+
     await this._persistChanges("Dynamic Schema Update", ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
 
+    // job subject
+
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner._updateJobSubject started");
     await this._enterChannel(IModel.repositoryModelId);
+
     const jobSubject = this._updateJobSubject();
+    await this.connector.initializeJob();
+
     await this._persistChanges("Job Subject Update", ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner._updateJobSubject ended");
 
+    // definitions
+    
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.importDefinitions started");
+    await this._enterChannel(jobSubject.id);
+
+    await this.connector.importDefinitions();
+
+    await this._persistChanges("Definitions Update", ChangesType.Regular);
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.importDefinitions ended");
+
+    // data
+    
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateExistingData started");
     await this._enterChannel(jobSubject.id);
+
     await this.connector.updateExistingData();
     this._updateDeletedElements();
     this._updateProjectExtent();
+
     await this._persistChanges("Data Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateExistingData ended");
 
@@ -235,11 +276,11 @@ export class ConnectorRunner {
   private _initProgressMeter() {}
 
   private async _loadReqContext() {
-    if (this.db.isBriefcaseDb()) {
+    const activityId = Guid.createValue();
+    const appId = this.connector.getApplicationId();
+    const appVersion = this.connector.getApplicationVersion();
+    if (this.jobArgs.dbType === "briefcase") {
       const token = await this._getToken();
-      const activityId = Guid.createValue();
-      const appId = this.connector.getApplicationId();
-      const appVersion = this.connector.getApplicationVersion();
       this._reqContext = new AuthorizedClientRequestContext(token, activityId, appId, appVersion);
     } else {
       this._reqContext = new ClientRequestContext();
@@ -366,13 +407,13 @@ export class ConnectorRunner {
   private async _persistChanges(changeDesc: string, ctype: ChangesType) {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
-    const reqContext = await this.getAuthReqContext();
     if (this.db.isBriefcaseDb()) {
+      const authReqContext = await this.getAuthReqContext();
       this._db = this.db as BriefcaseDb;
-      await this.db.concurrencyControl.request(reqContext);
-      await this.db.pullAndMergeChanges(reqContext);
+      await this.db.concurrencyControl.request(authReqContext);
+      await this.db.pullAndMergeChanges(authReqContext);
       this.db.saveChanges("pullAndMergeChanges");
-      await this.db.pushChanges(reqContext, comment, ctype);
+      await this.db.pushChanges(authReqContext, comment, ctype);
     } else {
       this.db.saveChanges(comment);
     }

@@ -78,14 +78,14 @@ export class JobArgs implements IArgs {
   }
 }
 
-export interface HubArgProps {
+export interface HubArgsProps {
   briefcaseFile?: string;
   briefcaseId?: string;
   projectGuid: string;
   iModelGuid: string;
   clientConfig: NativeAppAuthorizationConfiguration;
   tokenCallbackUrl?: string;
-  doInteractiveSignIn: string;
+  doInteractiveSignIn?: string;
 }
 
 export class HubArgs implements IArgs {
@@ -100,7 +100,7 @@ export class HubArgs implements IArgs {
   public tokenCallback?: () => Promise<AccessToken>;
   public doInteractiveSignIn: boolean = false;
 
-  constructor(json: HubArgProps) {
+  constructor(json: HubArgsProps) {
     this.briefcaseFile = json.briefcaseFile;
     this.briefcaseId = json.briefcaseId ? parseInt(json.briefcaseId) : undefined;
     this.projectGuid = json.projectGuid;

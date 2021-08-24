@@ -22,7 +22,6 @@ import {
   TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement,
 } from "./TestConnectorElements";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
-
 import * as hash from "object-hash";
 import * as fs from "fs";
 
@@ -42,6 +41,7 @@ class TestConnector extends BaseConnector {
     assert(this._repositoryLink !== undefined);
     return this._repositoryLink;
   }
+
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
       this.createGroupModel();
@@ -113,7 +113,7 @@ class TestConnector extends BaseConnector {
     return "1.0.0.0";
   }
   public getConnectorName(): string {
-    return "TestiTwinConnector";
+    return "TestConnector";
   }
 
   private getDocumentStatus(): SynchronizationResults {

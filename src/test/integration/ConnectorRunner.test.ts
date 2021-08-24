@@ -6,10 +6,10 @@ import { Id64String, Config, BentleyStatus, ClientRequestContext, Logger } from 
 import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
 import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
 import { AccessToken } from "@bentley/itwin-client";
-import { getTestAccessToken } from "@bentley/oidc-signin-tool";
+import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration } from "@bentley/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { JobArgs, HubArgs } from "../../Args";
+import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { HubUtility } from "./HubUtility";
 import * as utils from "../ConnectorTestUtils";
@@ -40,7 +40,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
         email: process.env.test_user_name!,
         password: process.env.test_user_password!,
       };
-      const token = await getTestAccessToken(testClientConfig, userCred, 102);
+      const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred, 102);
       requestContext = new AuthorizedBackendRequestContext(token);
     } catch (error) {
       Logger.logError("Error", `Failed with error: ${error}`);
@@ -61,12 +61,12 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await utils.shutdownBackend();
   });
 
-  async function runConnector(connectorJobDef: JobArgs, serverArgs: ServerArgs, isUpdate: boolean = false) {
+  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, isUpdate: boolean = false) {
     let doThrow = false;
     const endTrackingCallback = utils.setupLoggingWithAPIMRateTrap();
 
     try {
-      const runner = new ConnectorRunner(connectorJobDef, serverArgs);
+      const runner = new ConnectorRunner(jobArgs, hubArgs);
       const status = await runner.synchronize();
       if (status !== BentleyStatus.SUCCESS)
         throw new Error;
@@ -79,11 +79,11 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (doThrow)
       throw new Error("runner.synchronize() failed.");
 
-    const briefcases = BriefcaseManager.getCachedBriefcases(serverArgs.iModelId);
+    const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
     const imodel = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
-    utils.verifyIModel(imodel, connectorJobDef, isUpdate);
+    utils.verifyIModel(imodel, jobArgs, isUpdate);
     imodel.close();
   }
 
@@ -99,7 +99,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
       iModelGuid: testIModelId,
-    });
+      clientConfig: testClientConfig,
+    } as HubArgsProps);
+
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return requestContext.accessToken;
     };

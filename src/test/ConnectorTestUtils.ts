@@ -103,7 +103,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
-  const jobSubjectName = `TestiTwinConnector:${jobArgs.source}`;
+  const jobSubjectName = jobArgs.source;
   const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
   assert.isTrue(Id64.isValidId64(subjectId));
 
