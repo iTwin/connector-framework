@@ -6,6 +6,7 @@ import { IModelJsFs, SnapshotDb } from "@bentley/imodeljs-backend";
 import { BentleyStatus } from "@bentley/bentleyjs-core";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorRunner } from "../../ConnectorRunner";
+import { SqliteIssueReporter } from "../../SqliteIssueReporter";
 import { JobArgs } from "../../Args";
 import * as utils from "../ConnectorTestUtils";
 import { expect } from "chai";
@@ -36,6 +37,9 @@ describe("iTwin Connector Fwk StandAlone", () => {
 
     const runner = new ConnectorRunner(jobArgs);
     const dbpath = path.join(KnownTestLocations.outputDir, "TestConnector.bim");
+    const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
+    issueReporter.recordSourceFileInfo("TestBridge.json", "TestBridge", "TestBridge", "itemType", "dataSource", "state", "failureReason", true, 200, true);
+    runner.issueReporter = issueReporter;
     const status = await runner.synchronize();
     expect(status === BentleyStatus.SUCCESS);
     const db = SnapshotDb.openFile(dbpath);

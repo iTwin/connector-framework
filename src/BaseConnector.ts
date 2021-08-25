@@ -5,6 +5,7 @@
 import { assert, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
 import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
+import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import { Synchronizer } from "./Synchronizer";
 import { JobArgs } from "./Args";
 import * as fs from "fs";
@@ -15,6 +16,7 @@ import * as fs from "fs";
 export abstract class BaseConnector {
   private _synchronizer: Synchronizer | undefined;
   private _jobSubject?: Subject;
+  private _issueReporter?: ConnectorIssueReporter;
 
   /** Any initialization steps that the connector must do in order to begin synchronization. */
   public abstract initialize(args: JobArgs): any;
@@ -89,6 +91,14 @@ export abstract class BaseConnector {
   public get synchronizer(): Synchronizer {
     assert(this._synchronizer !== undefined);
     return this._synchronizer;
+  }
+
+  public set issueReporter(reporter: ConnectorIssueReporter | undefined) {
+    this._issueReporter = reporter;
+  }
+
+  public get issueReporter(): ConnectorIssueReporter | undefined {
+    return this._issueReporter;
   }
 
   public set jobSubject(subject: Subject) {

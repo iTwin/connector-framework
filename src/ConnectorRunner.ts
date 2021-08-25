@@ -8,6 +8,7 @@ import { LoggerCategories } from "./LoggerCategory";
 import { JobArgs, HubArgs } from "./Args";
 import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
+import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -18,6 +19,7 @@ export class ConnectorRunner {
 
   private _db?: IModelDb;
   private _connector?: BaseConnector;
+  private _issueReporter?: ConnectorIssueReporter;
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
@@ -62,7 +64,7 @@ export class ConnectorRunner {
 
   public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
     if (!this._reqContext)
-      throw new Error("ConnectorRunner.reqContext has not been loaded.");
+      throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
 
     let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
     if (this.db.isBriefcaseDb())
@@ -79,8 +81,12 @@ export class ConnectorRunner {
 
   public get hubArgs(): HubArgs {
     if (!this._hubArgs)
-      throw new Error("ConnectorRunner.hubArgs is not defined.");
+      throw new Error(`ConnectorRunner.hubArgs is not defined for current iModel with type = ${this.jobArgs.dbType}.`);
     return this._hubArgs;
+  }
+
+  public set issueReporter(reporter: ConnectorIssueReporter) {
+    this._issueReporter = reporter;
   }
 
   public get jobSubjectName(): string {
@@ -110,7 +116,8 @@ export class ConnectorRunner {
     try {
       await this._synchronize();
     } catch (err) {
-      Logger.logError(LoggerCategories.Framework, (err as any).message);
+      const msg = (err as any).message;
+      Logger.logError(LoggerCategories.Framework, msg);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
@@ -121,6 +128,9 @@ export class ConnectorRunner {
         this._db.abandonChanges();
         this._db.close();
       }
+
+      if (this.connector.issueReporter)
+        await this.connector.issueReporter.publishReport();
     }
     return runStatus;
   }
@@ -179,7 +189,7 @@ export class ConnectorRunner {
     await this._persistChanges("Dynamic Schema Update", ChangesType.Schema);
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
 
-    // init
+    // initialize job subject
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
     await this._enterChannel(IModel.repositoryModelId);
@@ -189,7 +199,7 @@ export class ConnectorRunner {
     await this._persistChanges(`Job Subject Update`, ChangesType.GlobalProperties);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
-    // definitions
+    // definitions changes
     
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
     await this._enterChannel(jobSubject.id);
@@ -200,7 +210,7 @@ export class ConnectorRunner {
     await this._persistChanges("Definitions Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
 
-    // data
+    // data changes
     
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
     await this._enterChannel(jobSubject.id);
@@ -357,7 +367,6 @@ export class ConnectorRunner {
       bcFile = this.hubArgs.briefcaseFile;
     } else {
       const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelGuid);
-      console.log("_loadBriefcaseDb:", briefcases);
       for (const bc of briefcases) {
         assert(bc.iModelId === this.hubArgs.iModelGuid);
         if (this.hubArgs.briefcaseId && bc.briefcaseId !== this.hubArgs.briefcaseId)
