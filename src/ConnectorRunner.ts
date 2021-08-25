@@ -110,8 +110,7 @@ export class ConnectorRunner {
     try {
       await this._synchronize();
     } catch (err) {
-      console.log(err);
-      // Logger.logError(LoggerCategories.Framework, (err as any).message);
+      Logger.logError(LoggerCategories.Framework, (err as any).message);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
