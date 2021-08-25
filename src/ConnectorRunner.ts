@@ -193,7 +193,7 @@ export class ConnectorRunner {
     }
     if (this._connectorArgs.synchConfigLink) {
       const synchConfigData: SynchronizationConfigLinkProps = require(this._connectorArgs.synchConfigLink);
-      iModelDbBuilder.insertSynchronizationConfigLink("Testname", synchConfigData);
+      iModelDbBuilder.insertSynchronizationConfigLink("SynchConfig", synchConfigData);
       iModelDbBuilder.imodel.saveChanges();
     }
 
@@ -201,7 +201,6 @@ export class ConnectorRunner {
       await this._connector.openSourceData(this._connectorArgs.sourcePath);
       await this._connector.onOpenIModel();
       await iModelDbBuilder.updateExistingIModel();
-      // const synchConfig = iModelDbBuilder.insertSynchronizationConfigLink("TestName"); // only put information that this is the last successful run when everything else is done, not sure if should go in finally or not
     } catch (err) {
       Logger.logError(ConnectorLoggerCategory.Framework, err.message);
       this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), err.message, "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "Error during processing", "");
@@ -349,7 +348,7 @@ abstract class IModelDbBuilder {
     await this._initDomainSchema();
     await this._importDefinitions();
     await this._updateExistingData();
-    this.insertSynchronizationConfigLink("TestName");
+    this.insertSynchronizationConfigLink("SynchConfig");
     await this._finalizeChanges();
   }
 
