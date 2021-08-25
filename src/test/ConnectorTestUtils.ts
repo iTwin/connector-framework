@@ -8,7 +8,7 @@ import * as path from "path";
 import { DbResult, Id64, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
 import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@bentley/imodeljs-common";
-import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject } from "@bentley/imodeljs-backend";
+import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
 import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
 import { ConnectorJobDefArgs } from "../connector-framework"; 
 import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils"; 
@@ -79,7 +79,7 @@ function configLogging() {
   }
 }
 
-function getCount(imodel: IModelDb, className: string) { 
+export function getCount(imodel: IModelDb, className: string) { 
   let count = 0; 
   imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => { assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
   const row = stmt.getRow(); count = row.count; });
@@ -104,6 +104,7 @@ export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefA
   assert.equal(isUpdate ? 2 : 1, getCount(imodel, "TestConnector:RectangleTile"));
   assert.equal(10, getCount(imodel, "TestConnector:RightTriangleTile"));
   assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
+  assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
   const jobSubjectName = `TestiTwinConnector:${connectorJobDef.sourcePath!}`;

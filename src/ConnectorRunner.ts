@@ -16,9 +16,9 @@ import { assert, BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logg
 import { ChangesType } from "@bentley/imodelhub-client";
 import {
   BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs,
-  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects,
+  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink, LinkElement,
 } from "@bentley/imodeljs-backend";
-import { IModel, IModelError, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
+import { IModel, IModelError, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
 import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { ConnectorLoggerCategory } from "./ConnectorLoggerCategory";
 import { IModelBankArgs, IModelBankUtils } from "./IModelBankUtils";
@@ -55,6 +55,8 @@ export class ConnectorJobDefArgs {
   public isSnapshot: boolean = false;
   /** The synchronizer will automatically delete any element that wasn't visited. Some connectors do not visit each element on every run. Set this to false to disable automatic deletion */
   public doDetectDeletedElements: boolean = true;
+  /** File Path that has json file with the values for SynchronizationConfigLink to be passed in, can be null */
+  public synchConfigLink?: string;
 }
 
 class StaticTokenStore {
@@ -96,6 +98,7 @@ export class ConnectorRunner {
         case "--fwk-output": connectorJobDef.outputDir = keyVal[1].trim(); break;
         case "--fwk-connector-library": connectorJobDef.connectorModule = keyVal[1].trim(); break;
         case "--fwk-create-repository-if-necessary": serverArgs.createiModel = true; break;
+        case "--fwk-synchronization-config-json-file": connectorJobDef.synchConfigLink = keyVal[1].trim(); break;
         case "--server-repository": serverArgs.iModelName = keyVal[1].trim(); break;
         case "--server-project": serverArgs.contextName = keyVal[1].trim(); break;
         case "--server-project-guid": serverArgs.contextId = keyVal[1].trim(); break;
@@ -185,20 +188,26 @@ export class ConnectorRunner {
       this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Failed to open iModel", "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "BadiModel", "");
       throw new IModelError(IModelStatus.BadModel, "Failed to open iModel", Logger.logError, ConnectorLoggerCategory.Framework);
     }
+    if (this._connectorArgs.synchConfigLink) {
+      const synchConfigData: SynchronizationConfigLinkProps = require(this._connectorArgs.synchConfigLink);
+      iModelDbBuilder.insertSynchronizationConfigLink("Testname", synchConfigData);
+      iModelDbBuilder.imodel.saveChanges();
+    }
 
     try {
       await this._connector.openSourceData(this._connectorArgs.sourcePath);
       await this._connector.onOpenIModel();
       await iModelDbBuilder.updateExistingIModel();
+      // const synchConfig = iModelDbBuilder.insertSynchronizationConfigLink("TestName"); // only put information that this is the last successful run when everything else is done, not sure if should go in finally or not
     } catch (err) {
       Logger.logError(ConnectorLoggerCategory.Framework, err.message);
+      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), err.message, "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "Error during processing", "");
       return BentleyStatus.ERROR;
     } finally {
       if (iModelDbBuilder.imodel.isBriefcaseDb() || iModelDbBuilder.imodel.isSnapshotDb()) {
         iModelDbBuilder.imodel.close();
       }
     }
-
     return BentleyStatus.SUCCESS;
   }
 
@@ -280,6 +289,22 @@ abstract class IModelDbBuilder {
 
     return subject;
   }
+  public insertSynchronizationConfigLink(name: string, props?: SynchronizationConfigLinkProps): Id64String {
+    assert(this._imodel !== undefined);
+    if(props === undefined) {
+      props = {
+        classFullName: SynchronizationConfigLink.classFullName,
+        model: IModel.repositoryModelId,
+        code: LinkElement.createCode(this._imodel, IModel.repositoryModelId, name),
+        lastSuccessfulRun: Date.now().toString(),
+      };
+    } else {
+      props.classFullName = SynchronizationConfigLink.classFullName;
+      props.model = IModel.repositoryModelId;
+      props.code = LinkElement.createCode(this._imodel, IModel.repositoryModelId, name);
+    }
+    return this._imodel.elements.insertElement(props);
+  }
 
   protected _onChangeChannel(_newParentId: Id64String): void {
     assert(this._imodel !== undefined);
@@ -316,6 +341,7 @@ abstract class IModelDbBuilder {
     await this._initDomainSchema();
     await this._importDefinitions();
     await this._updateExistingData();
+    this.insertSynchronizationConfigLink("TestName");
     await this._finalizeChanges();
   }
 
