@@ -11,6 +11,7 @@ import { JobArgs } from "../../Args";
 import * as utils from "../ConnectorTestUtils";
 import { expect } from "chai";
 import * as path from "path";
+import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
 
@@ -37,9 +38,6 @@ describe("iTwin Connector Fwk StandAlone", () => {
 
     const runner = new ConnectorRunner(jobArgs);
     const dbpath = path.join(KnownTestLocations.outputDir, "TestConnector.bim");
-    const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
-    issueReporter.recordSourceFileInfo("TestBridge.json", "TestBridge", "TestBridge", "itemType", "dataSource", "state", "failureReason", true, 200, true);
-    runner.issueReporter = issueReporter;
     const status = await runner.synchronize();
     expect(status === BentleyStatus.SUCCESS);
     const db = SnapshotDb.openFile(dbpath);
@@ -47,23 +45,26 @@ describe("iTwin Connector Fwk StandAlone", () => {
     db.close();
   });
 
-  /*
   it("Should fail and create a error file", async () => {
-    const connectorJobDef = new JobArgs({
-      source: undefined,
+    const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: '',
       connectorFile: "./test/integration/TestConnector.js",
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });
 
-    const runner = new ConnectorRunner(connectorJobDef);
     const fileName = `SyncError.json`;
     try{
+      const runner = new ConnectorRunner(jobArgs);
+      const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
+      issueReporter.recordSourceFileInfo("TestBridge.json", "TestBridge", "TestBridge", "itemType", "dataSource", "state", "failureReason", true, 200, true);
+      runner.issueReporter = issueReporter;
       await runner.synchronize();
     } catch (error) {
-      expect(error.message).to.eql("Source path is not defined");
+      expect(error.message).to.eql("Invalid jobArgs");
     }
-    expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
+    // disable for now
+    // expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
   });
-  */
 });

@@ -59,19 +59,19 @@ export class JobArgs implements IArgs {
 
   public isValid() {
     if (!this.connectorFile) {
-      Logger.logError(LoggerCategories.Framework, "argument 'connectorFile' is missing");
+      Logger.logError(LoggerCategories.Framework, "JobArgs.connectorFile is missing");
       return false;
     }
-    if (!fs.existsSync(this.connectorFile)) {
-      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'connectorFile' does not exist");
+    if (!fs.existsSync(path.join(__dirname, this.connectorFile))) {
+      Logger.logError(LoggerCategories.Framework, "JobArgs.connectorFile does not exist");
       return false;
     }
     if (!this.source) {
-      Logger.logError(LoggerCategories.Framework, "argument 'source' is missing");
+      Logger.logError(LoggerCategories.Framework, "JobArgs.source is missing");
       return false;
     }
     if (this.loggerConfigJSONFile && !fs.existsSync(this.loggerConfigJSONFile)) {
-      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'loggerConfigJSONFile' does not exist");
+      Logger.logError(LoggerCategories.Framework, "JobArgs.loggerConfigJSONFile does not exist");
       return false;
     }
     return true;
@@ -113,23 +113,23 @@ export class HubArgs implements IArgs {
 
   public isValid() {
     if (!this.briefcaseFile) {
-      Logger.logError(LoggerCategories.Framework, "argument 'briefacseFile' is missing");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile has invalid value");
       return false;
     }
     if (!fs.existsSync(this.briefcaseFile)) {
-      Logger.logError(LoggerCategories.Framework, "file pointed by argument 'briefacseFile' does not exist");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile does not exist");
       return false;
     }
     if (!this.iModelGuid) {
-      Logger.logError(LoggerCategories.Framework, "argument 'hubIModelGuid' is missing");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.IModelGuid has invalid value");
       return false;
     }
     if (!this.projectGuid) {
-      Logger.logError(LoggerCategories.Framework, "argument 'hubProjectGuid' is missing");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.ProjectGuid has invalid value");
       return false;
     }
     if (!this.doInteractiveSignIn && !this.tokenCallbackUrl && !this.tokenCallback) {
-      Logger.logError(LoggerCategories.Framework, "argument either 'tokenCallback' or 'tokenCallbackUrl' must be defined when 'doInteractiveSignIn' is false");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.tokenCallback or HubArgs.tokenCallbackUrl must be defined if HubArgs.doInteractiveSignIn=false");
       return false;
     }
     return true;

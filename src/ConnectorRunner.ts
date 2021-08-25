@@ -23,8 +23,15 @@ export class ConnectorRunner {
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
+    if (!jobArgs.isValid())
+      throw new Error("Invalid jobArgs");
     this._jobArgs = jobArgs;
-    this._hubArgs = hubArgs;
+
+    if (hubArgs) {
+      if (!hubArgs.isValid())
+        throw new Error("Invalid hubArgs");
+      this._hubArgs = hubArgs;
+    }
   }
 
   public static fromFile(file: string): ConnectorRunner {
@@ -39,15 +46,10 @@ export class ConnectorRunner {
     if (!("jobArgs" in json))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
-    if (!jobArgs.isValid())
-      throw new Error("Invalid jobArgs");
 
     let hubArgs: HubArgs | undefined = undefined;
-    if ("hubArgs" in json) {
+    if ("hubArgs" in json)
       hubArgs = new HubArgs(json.hubArgs);
-      if (hubArgs.isValid())
-        throw new Error("Invalid hubArgs");
-    }
 
     return new ConnectorRunner(jobArgs, hubArgs);
   }
