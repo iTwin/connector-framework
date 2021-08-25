@@ -32,9 +32,6 @@ class TestConnector extends BaseConnector {
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
   private _repositoryLink?: RepositoryLink;
-  public initialize(_params: any) {
-    // nothing to do here
-  }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
   private get repositoryLink(): RepositoryLink {

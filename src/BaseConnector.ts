@@ -14,12 +14,9 @@ import * as fs from "fs";
  * @beta
  */
 export abstract class BaseConnector {
-  private _synchronizer: Synchronizer | undefined;
+  private _synchronizer?: Synchronizer;
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
-
-  /** Any initialization steps that the connector must do in order to begin synchronization. */
-  public abstract initialize(args: JobArgs): any;
 
   /** If the connector needs to perform any steps once the iModel has been opened */
   public async onOpenIModel(): Promise<BentleyStatus> {
