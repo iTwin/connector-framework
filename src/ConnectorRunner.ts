@@ -7,7 +7,6 @@
  */
 
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 import { assert, BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
 /** @packageDocumentation
@@ -25,6 +24,7 @@ import { IModelBankArgs, IModelBankUtils } from "./IModelBankUtils";
 import { ITwinConnector } from "./ITwinConnector";
 import { ServerArgs } from "./IModelHubUtils";
 import { Synchronizer } from "./Synchronizer";
+import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 
 /** Arguments that define how a connector job should be run
  * @beta
@@ -71,6 +71,7 @@ export class ConnectorRunner {
 
   private _connectorArgs: ConnectorJobDefArgs;
   private _serverArgs?: ServerArgs | IModelBankArgs;
+  private _issueReporter?: ConnectorIssueReporter;
 
   public getCacheDirectory() {
     if (this._connectorArgs.isSnapshot) {
@@ -166,6 +167,8 @@ export class ConnectorRunner {
     }
     await this._connector.initialize(this._connectorArgs);
 
+    this._connector.issueReporter = this._issueReporter;
+
     if (this._connectorArgs.sourcePath === undefined) {
       this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Source path undefined",  "ConnectorRunner:Synchronize", "Initialization", ConnectorLoggerCategory.Framework, false, "BadArg", "");
       throw new IModelError(IModelStatus.BadArg, "Source path is not defined", Logger.logError, ConnectorLoggerCategory.Framework);
@@ -204,11 +207,16 @@ export class ConnectorRunner {
       this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), err.message, "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "Error during processing", "");
       return BentleyStatus.ERROR;
     } finally {
+      await this._connector.issueReporter?.publishReport();
       if (iModelDbBuilder.imodel.isBriefcaseDb() || iModelDbBuilder.imodel.isSnapshotDb()) {
         iModelDbBuilder.imodel.close();
       }
     }
     return BentleyStatus.SUCCESS;
+  }
+
+  public setIssueReporter(issueReporter: ConnectorIssueReporter) {
+    this._issueReporter = issueReporter;
   }
 
   private async loadConnector(connectorModulePath: string): Promise<boolean> {

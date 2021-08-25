@@ -6,12 +6,12 @@
  * @module Framework
  */
 import * as fs from "fs";
-import { assert, BentleyStatus, ClientRequestContext, IModelStatus, Logger } from "@bentley/bentleyjs-core";
+import { assert, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
 import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { ConnectorJobDefArgs } from "./ConnectorRunner";
 import { Synchronizer } from "./Synchronizer";
-import { IModelError } from "@bentley/imodeljs-common";
+import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -19,6 +19,7 @@ import { IModelError } from "@bentley/imodeljs-common";
 export abstract class ITwinConnector {
   private _synchronizer: Synchronizer | undefined;
   private _jobSubject?: Subject;
+  private _issueReporter?: ConnectorIssueReporter;
 
   /** Any initialization steps that the connector must do in order to begin synchronization. */
   public abstract initialize(params: ConnectorJobDefArgs): any;
@@ -93,6 +94,14 @@ export abstract class ITwinConnector {
   public get synchronizer(): Synchronizer {
     assert(this._synchronizer !== undefined);
     return this._synchronizer;
+  }
+
+  public set issueReporter(reporter: ConnectorIssueReporter | undefined) {
+    this._issueReporter = reporter;
+  }
+
+  public get issueReporter(): ConnectorIssueReporter | undefined {
+    return this._issueReporter;
   }
 
   public set jobSubject(subject: Subject) {
