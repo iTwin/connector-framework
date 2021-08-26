@@ -21,7 +21,6 @@ export interface JobArgsProps {
   source: string;
   stagingDir?: string;
   revisionHeader?: string;
-  env?: "0" | "102" | "103";
   dbType?: "briefcase" | "snapshot" | "standalone";
   issuesDbFile?: string
   loggerConfigJSONFile?: string;
@@ -36,7 +35,6 @@ export class JobArgs implements JobArgsProps, Validatable {
   public source: string;
   public stagingDir: string = path.join(__dirname, "staging");
   public revisionHeader: string = "JSFWK";
-  public env: "0" | "102" | "103" = "0";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
   public issuesDbFile?: string
   public loggerConfigJSONFile?: string;
@@ -49,7 +47,6 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.source = props.source;
     this.stagingDir = props.stagingDir ?? this.stagingDir;
     this.revisionHeader = props.revisionHeader ?? this.revisionHeader;
-    this.env = props.env ?? this.env;
     this.dbType = props.dbType ?? this.dbType;
     this.issuesDbFile = props.issuesDbFile ?? path.join(this.stagingDir, "issues.db");
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
@@ -69,11 +66,14 @@ export class JobArgs implements JobArgsProps, Validatable {
   }
 }
 
+export type ConnectRegion = "0" | "102" | "103";
+
 export interface HubArgsProps {
   briefcaseFile?: string;
   briefcaseId?: number;
   projectGuid: string;
   iModelGuid: string;
+  region?: ConnectRegion;
   tokenCallbackUrl?: string;
   doInteractiveSignIn?: boolean;
 }
@@ -87,21 +87,22 @@ export class HubArgs implements HubArgsProps, Validatable {
   public briefcaseId?: number;
   public projectGuid: string;
   public iModelGuid: string;
-  public clientConfig: NativeAppAuthorizationConfiguration;
+  public region: ConnectRegion = "0";
+  public clientConfig?: NativeAppAuthorizationConfiguration;
 
   public tokenCallbackUrl?: string;
   public tokenCallback?: () => Promise<AccessToken>;
   public doInteractiveSignIn: boolean = false;
 
-  constructor(json: HubArgsProps) {
-    this.briefcaseFile = json.briefcaseFile;
-    this.briefcaseId = json.briefcaseId;
-    this.projectGuid = json.projectGuid;
-    this.iModelGuid = json.iModelGuid;
-    this.clientConfig = json.clientConfig;
-    this.tokenCallbackUrl = json.tokenCallbackUrl;
-    if (json.doInteractiveSignIn !== undefined)
-      this.doInteractiveSignIn = json.doInteractiveSignIn;
+  constructor(props: HubArgsProps) {
+    this.briefcaseFile = props.briefcaseFile;
+    this.briefcaseId = props.briefcaseId;
+    this.projectGuid = props.projectGuid;
+    this.iModelGuid = props.iModelGuid;
+    this.region = props.region ?? this.region;
+    this.tokenCallbackUrl = props.tokenCallbackUrl;
+    if (props.doInteractiveSignIn !== undefined)
+      this.doInteractiveSignIn = props.doInteractiveSignIn;
   }
 
   public isValid() {
@@ -110,11 +111,15 @@ export class HubArgs implements HubArgsProps, Validatable {
       return false;
     }
     if (!this.iModelGuid) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.IModelGuid has invalid value");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.iModelGuid is not defined or has invalid value");
       return false;
     }
     if (!this.projectGuid) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.ProjectGuid has invalid value");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.projectGuid is not defined or has invalid value");
+      return false;
+    }
+    if (!this.clientConfig) {
+      Logger.logError(LoggerCategories.Framework, "HubArgs.clientConfig is not defined or has invalid value");
       return false;
     }
     if (!this.doInteractiveSignIn && !this.tokenCallbackUrl && !this.tokenCallback) {
