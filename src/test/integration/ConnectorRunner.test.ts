@@ -67,7 +67,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     try {
       const runner = new ConnectorRunner(jobArgs, hubArgs);
-      const status = await runner.synchronize();
+      const connectorFile = "./test/integration/TestConnector.js";
+      const status = await runner.run(connectorFile);
       if (status !== BentleyStatus.SUCCESS)
         throw new Error;
     } catch (err) {
@@ -77,10 +78,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     if (doThrow)
-      throw new Error("runner.synchronize() failed.");
+      throw new Error("runner.run() failed.");
 
     const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
-    console.log(briefcases);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
     const db = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
@@ -94,7 +94,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelJsFs.copySync(sourcePath, targetPath, { overwrite: true });
     const jobArgs = new JobArgs({
       source: targetPath,
-      connectorFile: "./test/integration/TestConnector.js",
     });
 
     const hubArgs = new HubArgs({

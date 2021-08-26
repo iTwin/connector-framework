@@ -139,13 +139,14 @@ export class ConnectorRunner {
    * This method does not throw any errors
    * @returns BentleyStatus
    */
-  public async synchronize(): Promise<BentleyStatus> {
+  public async run(connectorFile: string): Promise<BentleyStatus> {
     let runStatus = BentleyStatus.SUCCESS;
     try {
-      await this._synchronize();
+      await this._run(connectorFile);
     } catch (err) {
       const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
+      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
@@ -163,14 +164,14 @@ export class ConnectorRunner {
     return runStatus;
   }
 
-  private async _synchronize() {
+  private async _run(connectorFile: string) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
     let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
 
     // load
 
-    await this._loadConnector();
+    await this._loadConnector(connectorFile);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
 
     await this._loadReqContext();
@@ -306,6 +307,11 @@ export class ConnectorRunner {
 
   private _initProgressMeter() {}
 
+  private async _loadConnector(connectorFile: string) {
+    const connectorClass = require(connectorFile).default;
+    this._connector = await connectorClass.create();
+  }
+
   private async _loadReqContext() {
     const activityId = Guid.createValue();
     const appId = this.connector.getApplicationId();
@@ -422,11 +428,6 @@ export class ConnectorRunner {
 
     this._db = await BriefcaseDb.open(reqContext, openProps);
     (this._db as BriefcaseDb).concurrencyControl.startBulkMode();
-  }
-
-  private async _loadConnector() {
-    const connectorModule = require(this.jobArgs.connectorFile);
-    this._connector = await connectorModule.getConnectorInstance();
   }
 
   private async _loadSynchronizer() {

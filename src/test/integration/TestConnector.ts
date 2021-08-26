@@ -27,11 +27,16 @@ import * as fs from "fs";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Connector;
 
-class TestConnector extends BaseConnector {
+export default class TestConnector extends BaseConnector {
+
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
   private _repositoryLink?: RepositoryLink;
+
+  public static override async create(): Promise<TestConnector> {
+    return new TestConnector;
+  }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
   private get repositoryLink(): RepositoryLink {
@@ -518,10 +523,6 @@ class TestConnector extends BaseConnector {
   }
 }
 
-export function getConnectorInstance() {
-  return new TestConnector();
-}
-
 export enum ModelNames {
   Physical = "TestConnector_Physical",
   Definition = "TestConnector_Definitions",
@@ -531,3 +532,4 @@ export enum ModelNames {
 enum Palettes {
   TestConnector = "TestConnector", // eslint-disable-line @typescript-eslint/no-shadow
 }
+

@@ -18,18 +18,14 @@ export interface AllArgsProps {
 }
 
 export interface JobArgsProps {
-  connectorFile: string;
   source: string;
   stagingDir?: string;
   revisionHeader?: string;
   env?: "0" | "102" | "103";
   dbType?: "briefcase" | "snapshot" | "standalone";
-  badgersDbFile?: string
+  issuesDbFile?: string
   loggerConfigJSONFile?: string;
   moreArgs?: { [otherArg: string]: any };
-  doDetectDeletedElements?: boolean;
-  updateDomainSchemas?: boolean;
-  updateDbProfile?: boolean;
 }
 
 /**
@@ -37,13 +33,12 @@ export interface JobArgsProps {
  */
 export class JobArgs implements JobArgsProps, Validatable {
 
-  public connectorFile: string;
   public source: string;
   public stagingDir: string = path.join(__dirname, "staging");
   public revisionHeader: string = "JSFWK";
   public env: "0" | "102" | "103" = "0";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-  public badgersDbFile?: string
+  public issuesDbFile?: string
   public loggerConfigJSONFile?: string;
   public moreArgs?: { [otherArg: string]: any };
   public doDetectDeletedElements: boolean = true;
@@ -51,32 +46,17 @@ export class JobArgs implements JobArgsProps, Validatable {
   public updateDbProfile: boolean = true;
 
   constructor(props: JobArgsProps) {
-    this.connectorFile = props.connectorFile;
     this.source = props.source;
     this.stagingDir = props.stagingDir ?? this.stagingDir;
     this.revisionHeader = props.revisionHeader ?? this.revisionHeader;
     this.env = props.env ?? this.env;
     this.dbType = props.dbType ?? this.dbType;
-    this.badgersDbFile = props.badgersDbFile ?? path.join(this.stagingDir, "badgers.db");
+    this.issuesDbFile = props.issuesDbFile ?? path.join(this.stagingDir, "issues.db");
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
     this.moreArgs = props.moreArgs;
-    if (props.doDetectDeletedElements !== undefined)
-      this.doDetectDeletedElements = props.doDetectDeletedElements;
-    if (props.updateDomainSchemas !== undefined)
-      this.updateDomainSchemas = props.updateDomainSchemas;
-    if (props.updateDbProfile !== undefined)
-      this.updateDomainSchemas = props.updateDbProfile;
   }
 
   public isValid() {
-    if (!this.connectorFile) {
-      Logger.logError(LoggerCategories.Framework, "JobArgs.connectorFile is missing");
-      return false;
-    }
-    if (!fs.existsSync(path.join(__dirname, this.connectorFile))) {
-      Logger.logError(LoggerCategories.Framework, "JobArgs.connectorFile does not exist");
-      return false;
-    }
     if (!this.source) {
       Logger.logError(LoggerCategories.Framework, "JobArgs.source is missing");
       return false;
@@ -126,11 +106,7 @@ export class HubArgs implements HubArgsProps, Validatable {
   }
 
   public isValid() {
-    if (!this.briefcaseFile) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile has invalid value");
-      return false;
-    }
-    if (!fs.existsSync(this.briefcaseFile)) {
+    if (this.briefcaseFile && !fs.existsSync(this.briefcaseFile)) {
       Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile does not exist");
       return false;
     }
