@@ -74,7 +74,6 @@ export interface HubArgsProps {
   briefcaseId?: number;
   projectGuid: string;
   iModelGuid: string;
-  clientConfig: NativeAppAuthorizationConfiguration;
   tokenCallbackUrl?: string;
   doInteractiveSignIn?: boolean;
 }
