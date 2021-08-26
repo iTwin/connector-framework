@@ -5,8 +5,16 @@ import { LoggerCategories } from "./LoggerCategory"
 import * as fs from "fs";
 import * as path from "path";
 
-interface IArgs {
+interface Validatable {
   isValid(): boolean;
+}
+
+/**
+ * Defines the schema of your .json argument file used to initialize ConnectorRunner
+ */
+export interface AllArgsProps {
+  jobArgs: JobArgsProps;
+  hubArgs?: HubArgsProps;
 }
 
 export interface JobArgsProps {
@@ -19,12 +27,15 @@ export interface JobArgsProps {
   badgersDbFile?: string
   loggerConfigJSONFile?: string;
   moreArgs?: { [otherArg: string]: any };
-  doDetectDeletedElements?: string;
-  updateDomainSchemas?: string;
-  updateDbProfile?: string;
+  doDetectDeletedElements?: boolean;
+  updateDomainSchemas?: boolean;
+  updateDbProfile?: boolean;
 }
 
-export class JobArgs implements IArgs {
+/**
+ * Arguments specific to a connector job
+ */
+export class JobArgs implements JobArgsProps, Validatable {
 
   public connectorFile: string;
   public source: string;
@@ -49,12 +60,12 @@ export class JobArgs implements IArgs {
     this.badgersDbFile = props.badgersDbFile ?? path.join(this.stagingDir, "badgers.db");
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
     this.moreArgs = props.moreArgs;
-    if (props.doDetectDeletedElements !== undefined && props.doDetectDeletedElements.toLowerCase() === "false")
-      this.doDetectDeletedElements = false;
-    if (props.updateDomainSchemas !== undefined && props.updateDomainSchemas.toLowerCase() === "false")
-      this.updateDomainSchemas = false;
-    if (props.updateDbProfile !== undefined && props.updateDbProfile.toLowerCase() === "false")
-      this.updateDomainSchemas = false;
+    if (props.doDetectDeletedElements !== undefined)
+      this.doDetectDeletedElements = props.doDetectDeletedElements;
+    if (props.updateDomainSchemas !== undefined)
+      this.updateDomainSchemas = props.updateDomainSchemas;
+    if (props.updateDbProfile !== undefined)
+      this.updateDomainSchemas = props.updateDbProfile;
   }
 
   public isValid() {
@@ -80,15 +91,18 @@ export class JobArgs implements IArgs {
 
 export interface HubArgsProps {
   briefcaseFile?: string;
-  briefcaseId?: string;
+  briefcaseId?: number;
   projectGuid: string;
   iModelGuid: string;
   clientConfig: NativeAppAuthorizationConfiguration;
   tokenCallbackUrl?: string;
-  doInteractiveSignIn?: string;
+  doInteractiveSignIn?: boolean;
 }
 
-export class HubArgs implements IArgs {
+/**
+ * Arguments specific to iModelHub used in a connector job 
+ */
+export class HubArgs implements HubArgsProps, Validatable {
 
   public briefcaseFile?: string;
   public briefcaseId?: number;
@@ -102,13 +116,13 @@ export class HubArgs implements IArgs {
 
   constructor(json: HubArgsProps) {
     this.briefcaseFile = json.briefcaseFile;
-    this.briefcaseId = json.briefcaseId ? parseInt(json.briefcaseId) : undefined;
+    this.briefcaseId = json.briefcaseId;
     this.projectGuid = json.projectGuid;
     this.iModelGuid = json.iModelGuid;
     this.clientConfig = json.clientConfig;
     this.tokenCallbackUrl = json.tokenCallbackUrl;
-    if (json.doInteractiveSignIn !== undefined && json.doInteractiveSignIn.toLowerCase() === "true")
-      this.doInteractiveSignIn = true;
+    if (json.doInteractiveSignIn !== undefined)
+      this.doInteractiveSignIn = json.doInteractiveSignIn;
   }
 
   public isValid() {
@@ -135,4 +149,12 @@ export class HubArgs implements IArgs {
     return true;
   }
 }
+
+// BankArgs for iTwin Stack / iModel Bank is still WIP
+interface BankArgsProps {}
+
+/**
+ * Arguments specific to iModel Bank used in a connector job 
+ */
+class BankArgs {}
 

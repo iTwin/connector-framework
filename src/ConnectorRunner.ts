@@ -9,7 +9,7 @@ import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcas
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import { JobArgs, HubArgs } from "./Args";
+import { AllArgsProps, JobArgs, HubArgs } from "./Args";
 import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
@@ -20,12 +20,16 @@ export class ConnectorRunner {
 
   private _jobArgs: JobArgs;
   private _hubArgs?: HubArgs;
+  // private _bankArgs?: BankArgs;
 
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
   private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
+  /**
+   * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
+   */
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
     if (!jobArgs.isValid())
       throw new Error("Invalid jobArgs");
@@ -38,6 +42,12 @@ export class ConnectorRunner {
     }
   }
 
+  /**
+   * Generates a ConnectorRunner instance from a .json argument file
+   * @param file absolute path to a .json file that stores arguments
+   * @returns ConnectorRunner
+   * @throws Error when file does not exist
+   */
   public static fromFile(file: string): ConnectorRunner {
     if (fs.existsSync(file))
       throw new Error(`${file} does not exist`);
@@ -46,16 +56,23 @@ export class ConnectorRunner {
     return runner;
   }
 
-  public static fromJSON(json: any): ConnectorRunner {
-    if (!("jobArgs" in json))
+  /**
+   * Generates a ConnectorRunner instance from json body
+   * @param json
+   * @returns ConnectorRunner
+   * @throws Error when content does not include "jobArgs" as key
+   */
+  public static fromJSON(json: AllArgsProps): ConnectorRunner {
+    if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
 
     let hubArgs: HubArgs | undefined = undefined;
-    if ("hubArgs" in json)
+    if (json.hubArgs)
       hubArgs = new HubArgs(json.hubArgs);
 
-    return new ConnectorRunner(jobArgs, hubArgs);
+    const runner = new ConnectorRunner(jobArgs, hubArgs);
+    return runner;
   }
 
   public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
@@ -117,6 +134,11 @@ export class ConnectorRunner {
     return this._connector;
   }
 
+  /**
+   * Safely executes a connector job
+   * This method does not throw any errors
+   * @returns BentleyStatus
+   */
   public async synchronize(): Promise<BentleyStatus> {
     let runStatus = BentleyStatus.SUCCESS;
     try {
