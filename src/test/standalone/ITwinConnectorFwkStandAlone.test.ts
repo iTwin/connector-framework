@@ -74,7 +74,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     connectorJobDef.connectorModule = "./test/integration/FailTestiTwinConnector.js";
     connectorJobDef.outputDir = KnownTestLocations.outputDir;
     connectorJobDef.isSnapshot = true;
-    connectorJobDef.synchConfigLink = "D:\\git\\connector-framework\\src\\test\\synchConfigTest.json";
+    connectorJobDef.synchConfigLink = path.join(__dirname, "..\\..\\..\\src\\test\\synchConfigTest.json");
 
     const runner = new ConnectorRunner(connectorJobDef);
     const fileName = `SyncError.json`;
