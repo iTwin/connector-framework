@@ -69,6 +69,7 @@ export abstract class BaseConnector {
     Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
     fs.writeFileSync(`${dir}\\SyncError.json`, JSON.stringify(object), {flag: "w"});
   }
+
   /**
    * A connector can operate in one of two ways with regards to source files and channels:
    * I.	1:1 - Each source file gets its own distinct channel (this is more common)

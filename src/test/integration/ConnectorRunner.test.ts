@@ -99,9 +99,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
       iModelGuid: testIModelId,
-      clientConfig: testClientConfig,
     } as HubArgsProps);
 
+    hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return requestContext.accessToken;
     };
