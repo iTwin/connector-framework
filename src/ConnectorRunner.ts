@@ -194,8 +194,10 @@ export class ConnectorRunner {
     if (this._connectorArgs.synchConfigLink) {
       const synchConfigData: SynchronizationConfigLinkProps = require(this._connectorArgs.synchConfigLink);
       iModelDbBuilder.insertSynchronizationConfigLink("SynchConfig", synchConfigData);
-      iModelDbBuilder.imodel.saveChanges();
+    } else {
+      iModelDbBuilder.insertSynchronizationConfigLink("SynchConfig"); // Insert the element without any past run data so it can be updated later
     }
+    iModelDbBuilder.imodel.saveChanges();
 
     try {
       await this._connector.openSourceData(this._connectorArgs.sourcePath);
@@ -303,14 +305,25 @@ abstract class IModelDbBuilder {
         classFullName: SynchronizationConfigLink.classFullName,
         model: IModel.repositoryModelId,
         code: LinkElement.createCode(this._imodel, IModel.repositoryModelId, name),
-        lastSuccessfulRun: Date.now().toString(),
+        // Last sucessful run not set because no data was passed in, but element still needs to be inserted so it can be updated later
       };
     } else {
       props.classFullName = SynchronizationConfigLink.classFullName;
       props.model = IModel.repositoryModelId;
       props.code = LinkElement.createCode(this._imodel, IModel.repositoryModelId, name);
+      // Last successful run already set by data passed in
     }
     return this._imodel.elements.insertElement(props);
+  }
+  public updateSynchronizationConfigLink(name: string) {
+    assert(this._imodel !== undefined);
+    const props = {
+      classFullName: SynchronizationConfigLink.classFullName,
+      model: IModel.repositoryModelId,
+      code: LinkElement.createCode(this._imodel, IModel.repositoryModelId, name),
+      lastSuccessfulRun: Date.now().toString(),
+    };
+    return this._imodel.elements.updateElement(props);
   }
 
   protected _onChangeChannel(_newParentId: Id64String): void {
@@ -348,7 +361,7 @@ abstract class IModelDbBuilder {
     await this._initDomainSchema();
     await this._importDefinitions();
     await this._updateExistingData();
-    this.insertSynchronizationConfigLink("SynchConfig");
+    this.updateSynchronizationConfigLink("SynchConfig");
     await this._finalizeChanges();
   }
 
