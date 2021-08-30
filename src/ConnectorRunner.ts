@@ -195,6 +195,7 @@ export class ConnectorRunner {
       await iModelDbBuilder.updateExistingIModel();
     } catch (err) {
       Logger.logError(ConnectorLoggerCategory.Framework, err.message);
+      await iModelDbBuilder.onFailure();
       return BentleyStatus.ERROR;
     } finally {
       await this._connector.issueReporter?.publishReport();
@@ -233,6 +234,7 @@ abstract class IModelDbBuilder {
 
   public abstract initialize(): Promise<void>;
   public abstract acquire(): Promise<void>;
+  public abstract onFailure(): Promise<void>;
 
   protected abstract _updateExistingData(): Promise<void>;
   protected abstract _finalizeChanges(): Promise<void>;
@@ -536,6 +538,13 @@ class BriefcaseDbBuilder extends IModelDbBuilder {
 
     briefcaseDb.concurrencyControl.startBulkMode(); // We will run in bulk mode the whole time.
   }
+
+  public async onFailure() {
+    this._imodel?.abandonChanges();
+    if (this._imodel?.isBriefcaseDb() && this._requestContext) {
+      await this._imodel.concurrencyControl.abandonResources(this._requestContext);
+    }
+  }
 }
 
 class SnapshotDbBuilder extends IModelDbBuilder {
@@ -555,6 +564,10 @@ class SnapshotDbBuilder extends IModelDbBuilder {
 
     const synchronizer = new Synchronizer(this._imodel, this._connector.supportsMultipleFilesPerChannel());
     this._connector.synchronizer = synchronizer;
+  }
+
+  public async onFailure() {
+    this._imodel?.abandonChanges();
   }
 
   protected async _enterChannel(channelRootId: Id64String, _lockRoot?: boolean): Promise<void> {
