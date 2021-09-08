@@ -18,9 +18,11 @@
 - stale file handling
 - DMS input handling (will instant on handle this for us in time?)
 
-# Potential js args
-
-See src/Args.ts
+# Supports 
+|  | @itwin/connector-framework | native connector framework | iTwin Synchronizer | Cloud Orchestrator (Instant On) |
+|- | -------------------------- | -------------------------- | ------------------ | ------------------------------- |
+| JobArgs.source | yes |  |  |  |
+| ... |  |  |  |  |
 
 # All native args (reference)
 ```
