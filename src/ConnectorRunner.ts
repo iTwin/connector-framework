@@ -49,7 +49,7 @@ export class ConnectorRunner {
    * @throws Error when file does not exist
    */
   public static fromFile(file: string): ConnectorRunner {
-    if (fs.existsSync(file))
+    if (!fs.existsSync(file))
       throw new Error(`${file} does not exist`);
     const json = JSON.parse(fs.readFileSync(file, "utf8"));
     const runner = ConnectorRunner.fromJSON(json);
