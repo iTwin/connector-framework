@@ -2,648 +2,475 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-/** @packageDocumentation
- * @module Framework
- */
-
-import * as fs from "fs";
-import * as path from "path";
-import { assert, BentleyStatus, Guid, GuidString, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-/** @packageDocumentation
- * @module Framework
- */
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
-import {
-  BackendRequestContext, BriefcaseDb, BriefcaseManager, ComputeProjectExtentsOptions, ConcurrencyControl, IModelDb, IModelJsFs,
-  LockScope, SnapshotDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink, LinkElement,
-} from "@bentley/imodeljs-backend";
-import { IModel, IModelError, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
-import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { ConnectorLoggerCategory } from "./ConnectorLoggerCategory";
-import { IModelBankArgs, IModelBankUtils } from "./IModelBankUtils";
-import { ITwinConnector } from "./ITwinConnector";
-import { ServerArgs } from "./IModelHubUtils";
+import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
+import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects } from "@bentley/imodeljs-backend";
+import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
+import { BaseConnector } from "./BaseConnector";
+import { LoggerCategories } from "./LoggerCategory";
+import { AllArgsProps, JobArgs, HubArgs } from "./Args";
+import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import * as fs from "fs";
+import * as path from "path";
 
-/** Arguments that define how a connector job should be run
- * @beta
- */
-export class ConnectorJobDefArgs {
-  /** Comment to be used as the initial string for all changesets.  Can be null. */
-  public revisionComments?: string;
-  /** Should be run after all documents have been synchronized.  Runs any actions (like project extent calculations) that need to run on the completed iModel */
-  public allDocsProcessed: boolean = false;
-  /** Indicates whether the ConnectorRunner should update the profile of the iModel's db. This would only need to be set to false if the iModel needs to be opened by legacy products */
-  public updateDbProfile: boolean = true;
-  /** Indicates whether the ConnectorRunner should update any of the core domain schemas in the iModel */
-  public updateDomainSchemas: boolean = true;
-  /** The module containing the iTwin Connector implementation */
-  public connectorModule?: string;
-  /** Path to the source file */
-  public sourcePath?: string;
-  /** Path to the output directory - Only necessary when creating a snapshot */
-  public outputDir?: string;
-  public documentGuid?: string;
-  /** The urn to fetch the input file. This and associated workspace will be downloaded */
-  public dmsServerUrl?: string;
-  /** OIDC or SAML access token used to login to DMS system. If omitted or empty, user credentials are used for login. */
-  public dmsAccessToken?: string;
-  /** Additional arguments in JSON format. */
-  public argsJson: any;
-  /** Synchronizes a snapshot iModel, outside of iModelHub */
-  public isSnapshot: boolean = false;
-  /** The synchronizer will automatically delete any element that wasn't visited. Some connectors do not visit each element on every run. Set this to false to disable automatic deletion */
-  public doDetectDeletedElements: boolean = true;
-  /** File Path that has json file with the values for SynchronizationConfigLink to be passed in, can be null */
-  public synchConfigLink?: string;
-}
-
-class StaticTokenStore {
-  public static tokenString: string;
-}
-
-/** The driver for synchronizing content to an iModel.
- * @beta
- */
 export class ConnectorRunner {
-  private _connector?: ITwinConnector;
 
-  private _connectorArgs: ConnectorJobDefArgs;
-  private _serverArgs?: ServerArgs | IModelBankArgs;
+  private _jobArgs: JobArgs;
+  private _hubArgs?: HubArgs;
+  // private _bankArgs?: BankArgs;
+
+  private _db?: IModelDb;
+  private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
+  private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
 
-  public getCacheDirectory() {
-    if (this._connectorArgs.isSnapshot) {
-      return this._connectorArgs.outputDir;
-    } else {
-      return BriefcaseManager.cacheDir;
+  /**
+   * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
+   */
+  constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
+    if (!jobArgs.isValid())
+      throw new Error("Invalid jobArgs");
+    this._jobArgs = jobArgs;
+
+    if (hubArgs) {
+      if (!hubArgs.isValid())
+        throw new Error("Invalid hubArgs");
+      this._hubArgs = hubArgs;
     }
   }
 
-  private static parseArguments(args: string[], connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, bankArgs: IModelBankArgs) {
-    for (const line of args) {
-      if (!line)
-        continue;
-      const keyVal = line.split("=");
-      if (keyVal[0].startsWith("@")) {
-        const argFile = keyVal[0].substr(1);
-        if (!fs.existsSync(argFile))
-          throw new Error("Error file {argFile} does not exist.");
-        ConnectorRunner.parseArgumentFile(argFile, connectorJobDef, serverArgs, bankArgs);
-        continue;
+  /**
+   * Generates a ConnectorRunner instance from a .json argument file
+   * @param file absolute path to a .json file that stores arguments
+   * @returns ConnectorRunner
+   * @throws Error when file does not exist
+   */
+  public static fromFile(file: string): ConnectorRunner {
+    if (fs.existsSync(file))
+      throw new Error(`${file} does not exist`);
+    const json = JSON.parse(fs.readFileSync(file, "utf8"));
+    const runner = ConnectorRunner.fromJSON(json);
+    return runner;
+  }
+
+  /**
+   * Generates a ConnectorRunner instance from json body
+   * @param json
+   * @returns ConnectorRunner
+   * @throws Error when content does not include "jobArgs" as key
+   */
+  public static fromJSON(json: AllArgsProps): ConnectorRunner {
+    if (!(json.jobArgs))
+      throw new Error("jobArgs is not defined");
+    const jobArgs = new JobArgs(json.jobArgs);
+
+    let hubArgs: HubArgs | undefined = undefined;
+    if (json.hubArgs)
+      hubArgs = new HubArgs(json.hubArgs);
+
+    const runner = new ConnectorRunner(jobArgs, hubArgs);
+    return runner;
+  }
+
+  public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
+    if (!this._reqContext || !(this._reqContext instanceof AuthorizedClientRequestContext))
+      throw new Error("AuthorizedClientRequestContext has not been loaded.");
+    if (this._reqContext.accessToken.isExpired(5)) {
+      this._reqContext.accessToken = await this.getToken();
+      Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
+    }
+    return this._reqContext;
+  }
+
+  public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
+    if (!this._reqContext)
+      throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
+
+    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+    if (this.db.isBriefcaseDb())
+      reqContext = await this.getAuthReqContext();
+    else
+      reqContext = this._reqContext;
+
+    return reqContext;
+  }
+
+  public get jobArgs(): JobArgs {
+    return this._jobArgs;
+  }
+
+  public get hubArgs(): HubArgs {
+    if (!this._hubArgs)
+      throw new Error(`ConnectorRunner.hubArgs is not defined for current iModel with type = ${this.jobArgs.dbType}.`);
+    return this._hubArgs;
+  }
+
+  public set issueReporter(reporter: ConnectorIssueReporter) {
+    this._issueReporter = reporter;
+  }
+
+  public get jobSubjectName(): string {
+    let name = this.jobArgs.source;
+
+    const moreArgs = this.jobArgs.moreArgs;
+    if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
+      name = moreArgs.pcf.subjectNode; 
+
+    return name;
+  }
+
+  public get db(): IModelDb {
+    if (!this._db)
+      throw new Error("IModelDb has not been loaded.");
+    return this._db;
+  }
+
+  public get connector(): BaseConnector {
+    if (!this._connector)
+      throw new Error("Connector has not been loaded.");
+    return this._connector;
+  }
+
+  /**
+   * Safely executes a connector job
+   * This method does not throw any errors
+   * @returns BentleyStatus
+   */
+  public async run(connectorFile: string): Promise<BentleyStatus> {
+    let runStatus = BentleyStatus.SUCCESS;
+    try {
+      await this.runUnsafe(connectorFile);
+    } catch (err) {
+      const msg = (err as any).message;
+      Logger.logError(LoggerCategories.Framework, msg);
+      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
+      runStatus = BentleyStatus.ERROR;
+      if (this._db && this._db.isBriefcaseDb()) {
+        const reqContext = await this.getAuthReqContext();
+        await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
       }
-      const argName = keyVal[0].trim();
-      switch (argName) {
-        case "--fwk-input": connectorJobDef.sourcePath = keyVal[1].trim(); break;
-        case "--fwk-output": connectorJobDef.outputDir = keyVal[1].trim(); break;
-        case "--fwk-connector-library": connectorJobDef.connectorModule = keyVal[1].trim(); break;
-        case "--fwk-create-repository-if-necessary": serverArgs.createiModel = true; break;
-        case "--fwk-synchronization-config-json-file": connectorJobDef.synchConfigLink = keyVal[1].trim(); break;
-        case "--server-repository": serverArgs.iModelName = keyVal[1].trim(); break;
-        case "--server-project": serverArgs.contextName = keyVal[1].trim(); break;
-        case "--server-project-guid": serverArgs.contextId = keyVal[1].trim(); break;
-        case "--server-environment": serverArgs.environment = keyVal[1].trim(); break;
-        case "--snapshot": connectorJobDef.isSnapshot = true; break;
-        case "--server-accessToken": {
-          StaticTokenStore.tokenString = fs.readFileSync(keyVal[1]).toString();
-          serverArgs.getToken = async (): Promise<AccessToken> => AccessToken.fromTokenString(StaticTokenStore.tokenString);
-          break;
-        }
-
-        case "--imodel-bank-url": bankArgs.url = keyVal[1].trim(); break;
-        // TODO: more iModelBank-specific args
-
-        case "--dms-inputFileUrn=": connectorJobDef.dmsServerUrl = keyVal[1].trim(); break;
-        case "--dms-accessToken=": connectorJobDef.dmsAccessToken = keyVal[1].trim(); break;
-        case "--dms-documentGuid=": connectorJobDef.documentGuid = keyVal[1].trim(); break;
-        default:
-          /** Unsupported options
-           * --fwk-skip-assignment-check
-           * --server-user=abeesh.basheer@bentley.com
-           * --server-password=ReplaceMe
-           */
-          Logger.logError(ConnectorLoggerCategory.Framework, `${line} is not supported`);
+    } finally {
+      if (this._db) {
+        this._db.abandonChanges();
+        this._db.close();
       }
-    }
 
-    // TODO: check that we have serverArgs or bankArgs, or neither, but not both
+      if (this.connector.issueReporter)
+        await this.connector.issueReporter.publishReport();
+    }
+    return runStatus;
   }
 
-  private static parseArgumentFile(argFile: string, connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, bankArgs: IModelBankArgs) {
-    const fileContent = fs.readFileSync(argFile).toString().split("\n");
-    this.parseArguments(fileContent, connectorJobDef, serverArgs, bankArgs);
-  }
+  private async runUnsafe(connectorFile: string) {
+    Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-  /** Create a new instance of ConnectorRunner from command line arguments */
-  public static fromArgs(args: string[]): ConnectorRunner {
-    const connectorJobDef = new ConnectorJobDefArgs();
-    const serverArgs = new ServerArgs();
-    const bankArgs = new IModelBankArgs();
-    ConnectorRunner.parseArguments(args, connectorJobDef, serverArgs, bankArgs);
-    const sargs = IModelBankUtils.isValidArgs(bankArgs) ? bankArgs : serverArgs;
-    return new ConnectorRunner(connectorJobDef, sargs);
-  }
+    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
 
-  /** Create a new instance with the given arguments. */
-  public constructor(jobDefArgs: ConnectorJobDefArgs, serverArgs?: ServerArgs | IModelBankArgs) {
-    // this._ldClient = iModelBridgeLDClient.getInstance(env);
-    this._connectorArgs = jobDefArgs;
-    this._serverArgs = serverArgs;
-    if (this._connectorArgs.isSnapshot && undefined === this._connectorArgs.outputDir) {
-      throw new Error("Output directory must be defined for snapshot.");
-    }
-  }
+    // load
 
-  /** Main driver. */
-  public async synchronize(): Promise<BentleyStatus> {
-    // If we can't load the connector, no point in trying anything else;
-    if (this._connectorArgs.connectorModule === undefined) {
-      throw new IModelError(IModelStatus.BadArg, "Connector module undefined", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-    await this.loadConnector(this._connectorArgs.connectorModule);
-    if (this._connector === undefined) {
-      throw new IModelError(IModelStatus.BadArg, "Failed to load connector", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-    await this._connector.initialize(this._connectorArgs);
+    await this.loadConnector(connectorFile);
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
 
-    this._connector.issueReporter = this._issueReporter;
+    await this.loadReqContext();
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.reqContext has been loaded.");
 
-    if (this._connectorArgs.sourcePath === undefined) {
-      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Source path undefined",  "ConnectorRunner:Synchronize", "Initialization", ConnectorLoggerCategory.Framework, false, "BadArg", "");
-      throw new IModelError(IModelStatus.BadArg, "Source path is not defined", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
+    await this.loadDb();
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.db has been loaded.");
 
-    let iModelDbBuilder: IModelDbBuilder;
-    if (this._connectorArgs.isSnapshot) {
-      iModelDbBuilder = new SnapshotDbBuilder(this._connector, this._connectorArgs);
-    } else {
-      assert(this._serverArgs !== undefined);
-      iModelDbBuilder = new BriefcaseDbBuilder(this._connector, this._connectorArgs, this._serverArgs);
-    }
-
-    await iModelDbBuilder.initialize();
+    await this.loadSynchronizer();
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector.synchronizer has been loaded.");
 
     this.initProgressMeter();
 
-    await iModelDbBuilder.acquire();
-    if (undefined === iModelDbBuilder.imodel || !iModelDbBuilder.imodel.isOpen) {
-      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), "Failed to open iModel", "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "BadiModel", "");
-      throw new IModelError(IModelStatus.BadModel, "Failed to open iModel", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-    if (this._connectorArgs.synchConfigLink) {
-      const synchConfigData: SynchronizationConfigLinkProps = require(this._connectorArgs.synchConfigLink);
-      iModelDbBuilder.insertSynchronizationConfigLink("SynchConfig", synchConfigData);
-    } else {
-      iModelDbBuilder.insertSynchronizationConfigLink("SynchConfig"); // Insert the element without any past run data so it can be updated later
-    }
-    iModelDbBuilder.imodel.saveChanges();
+    // source data
 
-    try {
-      await this._connector.openSourceData(this._connectorArgs.sourcePath);
-      await this._connector.onOpenIModel();
-      await iModelDbBuilder.updateExistingIModel();
-    } catch (err) {
-      Logger.logError(ConnectorLoggerCategory.Framework, err.message);
-      this._connector.reportError((this._connectorArgs.outputDir === undefined ? path.join(__dirname, "output") : this._connectorArgs.outputDir), err.message, "ConnectorRunner:Synchronize", "Synchronization", ConnectorLoggerCategory.Framework, false, "Error during processing", "");
-      await iModelDbBuilder.onFailure();
-      return BentleyStatus.ERROR;
-    } finally {
-      await this._connector.issueReporter?.publishReport();
-      if (iModelDbBuilder.imodel.isBriefcaseDb() || iModelDbBuilder.imodel.isSnapshotDb()) {
-        iModelDbBuilder.imodel.close();
-      }
-    }
-    return BentleyStatus.SUCCESS;
+    Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
+    await this.enterChannel(IModel.repositoryModelId);
+
+    await this.connector.openSourceData(this.jobArgs.source);
+    await this.connector.onOpenIModel();
+
+    await this.persistChanges(`Initialization`, ChangesType.Definition);
+    Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
+
+    // domain schema
+
+    Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
+    await this.enterChannel(IModel.repositoryModelId);
+
+    reqContext = await this.getReqContext();
+    await this.connector.importDomainSchema(reqContext);
+
+    await this.persistChanges(`Domain Schema Update`, ChangesType.Schema);
+    Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
+
+    // dynamic schema
+
+    Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
+    await this.enterChannel(IModel.repositoryModelId);
+
+    reqContext = await this.getReqContext();
+    await this.connector.importDynamicSchema(reqContext);
+
+    await this.persistChanges("Dynamic Schema Update", ChangesType.Schema);
+    Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
+
+    // initialize job subject
+
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
+    await this.enterChannel(IModel.repositoryModelId);
+
+    const jobSubject = this.updateJobSubject();
+
+    await this.persistChanges(`Job Subject Update`, ChangesType.GlobalProperties);
+    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
+
+    // definitions changes
+    
+    Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
+    await this.enterChannel(jobSubject.id);
+
+    await this.connector.initializeJob();
+    await this.connector.importDefinitions();
+
+    await this.persistChanges("Definitions Update", ChangesType.Regular);
+    Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
+
+    // data changes
+    
+    Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
+    await this.enterChannel(jobSubject.id);
+
+    await this.connector.updateExistingData();
+    this.updateDeletedElements();
+    this.updateProjectExtent();
+
+    await this.persistChanges("Data Update", ChangesType.Regular);
+    Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
+
+    Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
 
-  public setIssueReporter(issueReporter: ConnectorIssueReporter) {
-    this._issueReporter = issueReporter;
+  private updateDeletedElements() {
+    if (this.jobArgs.doDetectDeletedElements)
+      this.connector.synchronizer.detectDeletedElements();
   }
 
-  private async loadConnector(connectorModulePath: string): Promise<boolean> {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const connectorModule = require(connectorModulePath); // throws if not found
-    this._connector = connectorModule.getConnectorInstance();
-    return null !== this._connector;
-  }
-
-  private initProgressMeter() {
-  }
-}
-
-abstract class IModelDbBuilder {
-  protected _imodel?: BriefcaseDb | SnapshotDb;
-  protected _jobSubjectName: string;
-  protected _jobSubject?: Subject;
-
-  constructor(protected readonly _connector: ITwinConnector, protected readonly _connectorArgs: ConnectorJobDefArgs) {
-    // this._jobSubjectName = this.connector.getConnectorName() + ":" + this._connectorArgs.sourcePath!;
-    this._jobSubjectName = this._connector.getJobSubjectName(this._connectorArgs.sourcePath!);
-  }
-
-  public abstract initialize(): Promise<void>;
-  public abstract acquire(): Promise<void>;
-  public abstract onFailure(): Promise<void>;
-
-  protected abstract _updateExistingData(): Promise<void>;
-  protected abstract _finalizeChanges(): Promise<void>;
-  protected abstract _initDomainSchema(): Promise<void>;
-  protected abstract _importDefinitions(): Promise<void>;
-
-  protected getRevisionComment(pushComments: string): string {
-    let comment = "";
-    if (this._connectorArgs.revisionComments !== undefined)
-      comment = this._connectorArgs.revisionComments.substring(0, 400);
-    if (comment.length > 0)
-      comment = `${comment} - `;
-    return comment + pushComments;
-  }
-
-  protected findJob(): Subject | undefined {
-    assert(this._imodel !== undefined);
-    const jobCode = Subject.createCode(this._imodel, IModel.rootSubjectId, this._jobSubjectName);
-    const subjectId = this._imodel.elements.queryElementIdByCode(jobCode);
-    if (undefined === subjectId) {
-      return undefined;
-    }
-    return this._imodel.elements.tryGetElement<Subject>(subjectId);
-  }
-
-  protected insertJobSubject(): Subject {
-    assert(this._imodel !== undefined);
-    const connectorProps: any = {};
-    connectorProps.ConnectorVersion = this._connector.getApplicationVersion();
-    /// connectorProps.ConnectorType = ???;
-
-    const jobProps: any = {};
-    jobProps.Properties = connectorProps;
-    jobProps.Connector = this._connector.getConnectorName();
-    // jobProps.Comments = ???;
-
-    const subjProps: any = {};
-    subjProps.Subject = {};
-    subjProps.Subject.Job = jobProps;
-
-    const root = this._imodel.elements.getRootSubject();
-    const jobCode = Subject.createCode(this._imodel, root.id, this._jobSubjectName);
-
-    const subjectProps: SubjectProps = {
-      classFullName: Subject.classFullName,
-      model: root.model,
-      code: jobCode,
-      jsonProperties: subjProps,
-      parent: new SubjectOwnsSubjects(root.id),
-    };
-    const id = this._imodel.elements.insertElement(subjectProps);
-    const subject = this._imodel.elements.getElement<Subject>(id);
-
-    return subject;
-  }
-  public insertSynchronizationConfigLink(name: string, props?: SynchronizationConfigLinkProps): Id64String {
-    assert(this._imodel !== undefined);
-    if(props === undefined) {
-      props = {
-        classFullName: SynchronizationConfigLink.classFullName,
-        model: IModel.repositoryModelId,
-        code: LinkElement.createCode(this._imodel, IModel.repositoryModelId, name),
-        // Last sucessful run not set because no data was passed in, but element still needs to be inserted so it can be updated later
-      };
-    } else {
-      props.classFullName = SynchronizationConfigLink.classFullName;
-      props.model = IModel.repositoryModelId;
-      props.code = LinkElement.createCode(this._imodel, IModel.repositoryModelId, name);
-      // Last successful run already set by data passed in
-    }
-    return this._imodel.elements.insertElement(props);
-  }
-  public updateSynchronizationConfigLink(name: string) {
-    assert(this._imodel !== undefined);
-    const props = {
-      classFullName: SynchronizationConfigLink.classFullName,
-      model: IModel.repositoryModelId,
-      code: LinkElement.createCode(this._imodel, IModel.repositoryModelId, name),
-      lastSuccessfulRun: Date.now().toString(),
-    };
-    return this._imodel.elements.updateElement(props);
-  }
-
-  protected _onChangeChannel(_newParentId: Id64String): void {
-    assert(this._imodel !== undefined);
-  }
-
-  protected abstract _enterChannel(channelRootId: Id64String, lockRoot?: boolean): Promise<void>;
-
-  protected detectDeletedElements() {
-    if (this._connectorArgs.doDetectDeletedElements) {
-      this._connector.synchronizer.detectDeletedElements();
-    }
-  }
-
-  protected updateProjectExtents() {
-    const options: ComputeProjectExtentsOptions = {
+  private updateProjectExtent() {
+    const res = this.db.computeProjectExtents({
       reportExtentsWithOutliers: false,
       reportOutliers: false,
-    };
-    const results = this.imodel.computeProjectExtents(options);
-    this.imodel.updateProjectExtents(results.extents);
-    // TODO: Report outliers and then change the options to true
+    });
+    this.db.updateProjectExtents(res.extents);
   }
 
-  public async enterRepositoryChannel(lockRoot: boolean = true) {
-    return this._enterChannel(IModelDb.repositoryModelId, lockRoot);
+  private updateJobSubject(): Subject {
+    const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
+    const existingSubjectId = this.db.elements.queryElementIdByCode(code);
+
+    let subject: Subject;
+
+    if (existingSubjectId) {
+      subject = this.db.elements.getElement<Subject>(existingSubjectId);
+    } else {
+      const jsonProperties: any = {
+        Subject: {
+          Job: {
+            Properties: {
+              ConnectorVersion: this.connector.getApplicationVersion(),
+              ConnectorType: "JSConnector",
+            },
+            Connector: this.connector.getConnectorName(),
+          }
+        },
+      };
+
+      const root = this.db.elements.getRootSubject();
+      const subjectProps: SubjectProps = {
+        classFullName: Subject.classFullName,
+        model: root.model,
+        code,
+        jsonProperties,
+        parent: new SubjectOwnsSubjects(root.id),
+      };
+
+      const newSubjectId = this.db.elements.insertElement(subjectProps);
+      subject = this.db.elements.getElement<Subject>(newSubjectId);
+    }
+
+    this.connector.jobSubject = subject;
+    return subject;
   }
 
-  public async enterConnectorChannel(lockRoot: boolean = true) {
-    assert(this._jobSubject !== undefined);
-    return this._enterChannel(this._jobSubject.id, lockRoot);
+  private initProgressMeter() {}
+
+  private async loadConnector(connectorFile: string) {
+    const connectorClass = require(connectorFile).default;
+    this._connector = await connectorClass.create();
   }
 
-  public async updateExistingIModel() {
-    await this._initDomainSchema();
-    await this._importDefinitions();
-    await this._updateExistingData();
-    this.updateSynchronizationConfigLink("SynchConfig");
-    await this._finalizeChanges();
+  private async loadReqContext() {
+    const activityId = Guid.createValue();
+    const appId = this.connector.getApplicationId();
+    const appVersion = this.connector.getApplicationVersion();
+    if (this.jobArgs.dbType === "briefcase") {
+      const token = await this.getToken();
+      this._reqContext = new AuthorizedClientRequestContext(token, activityId, appId, appVersion);
+    } else {
+      this._reqContext = new ClientRequestContext();
+    }
   }
 
-  public get imodel() {
-    assert(this._imodel !== undefined);
-    return this._imodel;
-  }
-}
-
-class BriefcaseDbBuilder extends IModelDbBuilder {
-  private _requestContext?: AuthorizedClientRequestContext;
-  private _activityId: GuidString;
-  private _serverArgs: ServerArgs | IModelBankArgs;
-
-  constructor(connector: ITwinConnector, connectorArgs: ConnectorJobDefArgs, serverArgs: ServerArgs | IModelBankArgs) {
-    super(connector, connectorArgs);
-    this._serverArgs = serverArgs;
-    this._activityId = Guid.createValue();
+  private async getToken() {
+    let token: AccessToken;
+    if (!this.hubArgs)
+      throw new Error("ConnectorRunner._getToken: undefined hubArgs.");
+    if (this.hubArgs.doInteractiveSignIn)
+      token = await this.getTokenInteractive();
+    else
+      token = await this.getTokenSilent();
+    return token;
   }
 
-  protected async _saveAndPushChanges(pushComments: string, changeType: ChangesType): Promise<void> {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    assert(this._imodel.txns !== undefined);
-
-    await this._imodel.concurrencyControl.request(this._requestContext);
-    this._imodel.saveChanges();
-    await this._imodel.pullAndMergeChanges(this._requestContext);
-    this._imodel.saveChanges();
-    const comment = this.getRevisionComment(pushComments);
-    await this._imodel.pushChanges(this._requestContext, comment, changeType);
+  private async getTokenSilent() {
+    let token: AccessToken;
+    if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
+      const response = await fetch(this.hubArgs.tokenCallbackUrl);
+      const tokenStr = await response.json();
+      token = AccessToken.fromTokenString(tokenStr);
+    } else if (this.hubArgs && this.hubArgs.tokenCallback) {
+      token = await this.hubArgs.tokenCallback();
+    } else {
+      throw new Error("Define either HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to retrieve accessToken");
+    }
+    return token;
   }
 
-  protected override _onChangeChannel(newParentId: Id64String) {
-    super._onChangeChannel(newParentId);
-    assert(this._imodel instanceof BriefcaseDb);
-    assert(!this._imodel.concurrencyControl.hasPendingRequests);
-    assert(this._imodel.concurrencyControl.isBulkMode);
-    assert(!this._imodel.concurrencyControl.locks.hasSchemaLock, "ConnectorRunner must release all locks before switching channels");
-    assert(!this._imodel.concurrencyControl.locks.hasCodeSpecsLock, "ConnectorRunner must release all locks before switching channels");
-    const currentRoot = this._imodel.concurrencyControl.channel.channelRoot;
-    if (currentRoot !== undefined)
-      assert(!this._imodel.concurrencyControl.locks.holdsLock(ConcurrencyControl.Request.getElementLock(currentRoot, LockScope.Exclusive)), "ConnectorRunner must release channel locks before switching channels");
+  private async getTokenInteractive() {
+		const client = new ElectronAuthorizationBackend();
+    await client.initialize(this.hubArgs.clientConfig);
+    return new Promise<AccessToken>((resolve, reject) => {
+      NativeHost.onUserStateChanged.addListener((token) => {
+        if (token !== undefined)
+          resolve(token);
+        else
+          reject(new Error("Failed to sign in"));
+      });
+      client.signIn();
+    });
   }
 
-  protected async _enterChannel(channelRootId: Id64String, lockRoot: boolean = true) {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    this._onChangeChannel(channelRootId);
-    this._imodel.concurrencyControl.channel.channelRoot = channelRootId;
-    if (!lockRoot)
+  private async loadDb() {
+    if (this.jobArgs.dbType === "briefcase") {
+      await this.loadBriefcaseDb();
+    } else if (this.jobArgs.dbType === "standalone") {
+      this.loadStandaloneDb();
+    } else if (this.jobArgs.dbType === "snapshot") {
+      this.loadSnapshotDb();
+    } else {
+      throw new Error("Invalid JobArgs.dbType");
+    }
+  }
+
+  private async loadSnapshotDb() {
+    const cname = this.connector.getConnectorName();
+    const fname = `${cname}.bim`;
+    const fpath = path.join(this.jobArgs.stagingDir, fname);
+    if (fs.existsSync(fpath))
+      fs.unlinkSync(fpath);
+    this._db = SnapshotDb.createEmpty(fpath, { rootSubject: { name: cname } });
+  }
+
+  private async loadStandaloneDb() {
+    const cname = this.connector.getConnectorName(); 
+    const fname = `${cname}.bim`;
+    const fpath = path.join(this.jobArgs.stagingDir, fname);
+    if (fs.existsSync(fpath))
+      this._db = StandaloneDb.openFile(fpath);
+    else
+      this._db = StandaloneDb.createEmpty(fpath, { rootSubject: { name: cname } });
+  }
+
+  private async loadBriefcaseDb() {
+
+    let bcFile: string | undefined = undefined;
+    if (this.hubArgs.briefcaseFile) {
+      bcFile = this.hubArgs.briefcaseFile;
+    } else {
+      const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelGuid);
+      for (const bc of briefcases) {
+        assert(bc.iModelId === this.hubArgs.iModelGuid);
+        if (this.hubArgs.briefcaseId && bc.briefcaseId !== this.hubArgs.briefcaseId)
+          continue;
+        bcFile = bc.fileName;
+        break;
+      }
+    }
+
+    const reqContext = await this.getAuthReqContext();
+    let openProps: OpenBriefcaseProps;
+    if (bcFile) {
+      openProps = { fileName: bcFile };
+    } else {
+      const reqArg: RequestNewBriefcaseArg = { contextId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      if (this.hubArgs.briefcaseId)
+        reqArg.briefcaseId = this.hubArgs.briefcaseId;
+
+      const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqContext, reqArg);
+      if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
+        await BriefcaseDb.upgradeSchemas(reqContext, bcProps);
+
+      openProps = { fileName: bcProps.fileName };
+    }
+
+    this._db = await BriefcaseDb.open(reqContext, openProps);
+    (this._db as BriefcaseDb).concurrencyControl.startBulkMode();
+  }
+
+  private async loadSynchronizer() {
+    const reqContext = await this.getReqContext();
+    const synchronizer = new Synchronizer(this.db, false, reqContext as AuthorizedClientRequestContext);
+    this.connector.synchronizer = synchronizer;
+  }
+
+  private async persistChanges(changeDesc: string, ctype: ChangesType) {
+    const { revisionHeader } = this.jobArgs;
+    const comment = `${revisionHeader} - ${changeDesc}`;
+    if (this.db.isBriefcaseDb()) {
+      const authReqContext = await this.getAuthReqContext();
+      this._db = this.db as BriefcaseDb;
+      await this.db.concurrencyControl.request(authReqContext);
+      await this.db.pullAndMergeChanges(authReqContext);
+      this.db.saveChanges(comment);
+      await this.db.pushChanges(authReqContext, comment, ctype);
+    } else {
+      this.db.saveChanges(comment);
+    }
+  }
+
+  private async enterChannel(rootId: Id64String) {
+    if (!this.db.isBriefcaseDb())
       return;
-    assert(this._requestContext !== undefined);
-    return this._imodel.concurrencyControl.channel.lockChannelRoot(this._requestContext);
-  }
 
-  protected async _importDefinitions() {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    const briefcaseDb = this._imodel;
-    assert(briefcaseDb.concurrencyControl.isBulkMode);
+    this._db = this.db as BriefcaseDb;
+    if (!this.db.concurrencyControl.isBulkMode)
+      this.db.concurrencyControl.startBulkMode();
+    if (this.db.concurrencyControl.hasPendingRequests)
+      throw new Error("has pending requests");
+    if (this.db.concurrencyControl.locks.hasSchemaLock)
+      throw new Error("has schema lock");
+    if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
+      throw new Error("has code spec lock");
+    if (this.db.concurrencyControl.channel.isChannelRootLocked)
+      throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
 
-    await this.enterRepositoryChannel(); // (also acquires schema lock)
+    this.db.concurrencyControl.channel.channelRoot = rootId;
 
-    this._jobSubject = this.findJob();
-    if (undefined !== this._jobSubject) {
-      this._connector.jobSubject = this._jobSubject;
-    } else {
-      this._jobSubject = this.insertJobSubject();    // this is the first time that this connector has tried to convert this input file into this iModel
-
-      await this._saveAndPushChanges("Inserted Connector Job Subject", ChangesType.GlobalProperties);
-
-      await this.enterConnectorChannel(); // (also locks the Job Subject)
-
-      this._connector.jobSubject = this._jobSubject;
-      await this._connector.initializeJob();
-
-      await this._saveAndPushChanges("Initialized Connector Job Subject", ChangesType.Regular);
-
-      await this.enterRepositoryChannel();
-    }
-
-    assert(this._imodel.concurrencyControl.locks.hasSchemaLock);
-    assert(briefcaseDb.concurrencyControl.isBulkMode);
-
-    await this._connector.importDefinitions();
-
-    return this._saveAndPushChanges("Definition changes", ChangesType.Definition);
-  }
-
-  protected async _initDomainSchema() {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    assert(!this._imodel.concurrencyControl.locks.hasSchemaLock);
-    assert(this._imodel.concurrencyControl.isBulkMode);
-
-    await this._saveAndPushChanges("Initialization", ChangesType.Definition); // in case openSourceData or any other preliminary step wrote anything
-
-    await this.enterRepositoryChannel();
-    await this._connector.importDomainSchema(this._requestContext);
-    await this._saveAndPushChanges("Schema changes", ChangesType.Schema);
-
-    await this.enterRepositoryChannel();
-    await this._connector.importDynamicSchema(this._requestContext);
-    await this._imodel.concurrencyControl.request(this._requestContext);
-    this._imodel.saveChanges();
-    return this._saveAndPushChanges("Dynamic schema changes", ChangesType.Schema);
-  }
-
-  protected async _updateExistingData(): Promise<void> {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    assert(!this._imodel.concurrencyControl.locks.hasSchemaLock);
-    assert(this._imodel.concurrencyControl.isBulkMode);
-
-    await this.enterConnectorChannel();
-    assert(this._imodel.concurrencyControl.channel.isChannelRootLocked);
-
-    // WIP: need detectSpatialDataTransformChanged check?
-    await this._connector.updateExistingData();
-
-    let dataChangesDescription = "Data changes";
-    if (this._connector.getDataChangesDescription)
-      dataChangesDescription = this._connector.getDataChangesDescription();
-
-    return this._saveAndPushChanges(dataChangesDescription, ChangesType.Regular);
-  }
-
-  protected async _finalizeChanges(): Promise<void> {
-    assert(this._requestContext !== undefined);
-    assert(this._imodel instanceof BriefcaseDb);
-    assert(!this._imodel.concurrencyControl.locks.hasSchemaLock);
-    assert(this._imodel.concurrencyControl.isBulkMode);
-
-    await this.enterConnectorChannel();
-    assert(this._imodel.concurrencyControl.channel.isChannelRootLocked);
-
-    this.detectDeletedElements();
-    this.updateProjectExtents();
-
-    let dataChangesDescription = "Finalizing changes";
-    if (this._connector.getDataChangesDescription)
-      dataChangesDescription = this._connector.getDataChangesDescription();
-
-    return this._saveAndPushChanges(dataChangesDescription, ChangesType.Regular);
-  }
-
-  public async initialize() {
-    if (undefined === this._serverArgs.getToken) {
-      throw new IModelError(IModelStatus.BadArg, "getToken() undefined", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-
-    const token = await this._serverArgs.getToken();
-    this._requestContext = new AuthorizedClientRequestContext(token, this._activityId, this._connector.getApplicationId(), this._connector.getApplicationVersion());
-    if (this._requestContext === undefined) {
-      throw new IModelError(IModelStatus.BadRequest, "Failed to instantiate AuthorizedClientRequestContext", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-    assert(this._serverArgs.contextId !== undefined);
-  }
-
-  private tryFindExistingBriefcase(): LocalBriefcaseProps | undefined {
-    if (this._connectorArgs.argsJson === undefined || this._connectorArgs.argsJson.briefcaseId === undefined || this._serverArgs.iModelId === undefined)
-      return undefined;
-    const briefcases = BriefcaseManager.getCachedBriefcases(this._serverArgs.iModelId);
-    for (const briefcase of briefcases) {
-      assert(briefcase.iModelId === this._serverArgs.iModelId);
-      if (briefcase.briefcaseId === this._connectorArgs.argsJson.briefcaseId) {
-        return briefcase;
-      }
-    }
-    return undefined;
-  }
-
-  /** This will download the briefcase, open it with the option to update the Db profile, close it, re-open with the option to upgrade core domain schemas */
-  public async acquire(): Promise<void> {
-    // Can't actually get here with a null _requestContext, but this guard removes the need to instead use this._requestContext!
-    if (this._requestContext === undefined)
-      throw new Error("Must initialize AuthorizedClientRequestContext before using");
-    if (this._serverArgs.contextId === undefined)
-      throw new Error("Must initialize ContextId before using");
-    if (this._serverArgs.iModelId === undefined)
-      throw new Error("Must initialize IModelId before using");
-    let props: LocalBriefcaseProps;
-    if (this._connectorArgs.argsJson && this._connectorArgs.argsJson.briefcaseId) {
-      const local = this.tryFindExistingBriefcase();
-      if (local !== undefined)
-        props = local;
-      else
-        props = await BriefcaseManager.downloadBriefcase(this._requestContext, { briefcaseId: this._connectorArgs.argsJson.briefcaseId, contextId: this._serverArgs.contextId, iModelId: this._serverArgs.iModelId });
-    } else {
-      props = await BriefcaseManager.downloadBriefcase(this._requestContext, { contextId: this._serverArgs.contextId, iModelId: this._serverArgs.iModelId });
-      if (this._connectorArgs.argsJson) {
-        this._connectorArgs.argsJson.briefcaseId = props.briefcaseId; // don't overwrite other arguments if anything is passed in
-      } else {
-        this._connectorArgs.argsJson = { briefcaseId: props.briefcaseId };
-      }
-    }
-    let briefcaseDb: BriefcaseDb | undefined;
-    const openArgs: OpenBriefcaseProps = {
-      fileName: props.fileName,
-    };
-    if (this._connectorArgs.updateDbProfile || this._connectorArgs.updateDomainSchemas)
-      await BriefcaseDb.upgradeSchemas(this._requestContext, props);
-    if (briefcaseDb === undefined || !briefcaseDb.isOpen)
-      briefcaseDb = await BriefcaseDb.open(this._requestContext, openArgs);
-
-    this._imodel = briefcaseDb;
-    const synchronizer = new Synchronizer(briefcaseDb, this._connector.supportsMultipleFilesPerChannel(), this._requestContext);
-    this._connector.synchronizer = synchronizer;
-
-    briefcaseDb.concurrencyControl.startBulkMode(); // We will run in bulk mode the whole time.
-  }
-
-  public async onFailure() {
-    this._imodel?.abandonChanges();
-    if (this._imodel?.isBriefcaseDb() && this._requestContext) {
-      await this._imodel.concurrencyControl.abandonResources(this._requestContext);
-    }
+    const reqContext = await this.getAuthReqContext();
+    await this.db.concurrencyControl.channel.lockChannelRoot(reqContext);
   }
 }
 
-class SnapshotDbBuilder extends IModelDbBuilder {
-  public async initialize() {
-  }
-
-  public async acquire(): Promise<void> {
-    const fileName = `${path.basename(this._connectorArgs.sourcePath!, path.extname(this._connectorArgs.sourcePath!))}.bim`;
-    const filePath = path.join(this._connectorArgs.outputDir!, fileName);
-    if (IModelJsFs.existsSync(filePath)) {
-      IModelJsFs.unlinkSync(filePath);
-    }
-    this._imodel = SnapshotDb.createEmpty(filePath, { rootSubject: { name: this._connector.getConnectorName() } });
-    if (undefined === this._imodel) {
-      throw new IModelError(IModelStatus.BadModel, `Unable to create empty SnapshotDb at ${filePath}`, Logger.logError, ConnectorLoggerCategory.Framework);
-    }
-
-    const synchronizer = new Synchronizer(this._imodel, this._connector.supportsMultipleFilesPerChannel());
-    this._connector.synchronizer = synchronizer;
-  }
-
-  public async onFailure() {
-    this._imodel?.abandonChanges();
-  }
-
-  protected async _enterChannel(channelRootId: Id64String, _lockRoot?: boolean): Promise<void> {
-    return this._onChangeChannel(channelRootId);
-  }
-
-  protected async _importDefinitions() {
-    assert(this._imodel !== undefined);
-    this._jobSubject = this.findJob();
-    if (undefined !== this._jobSubject) {
-      this._connector.jobSubject = this._jobSubject;
-    } else {
-      this._jobSubject = this.insertJobSubject();    // this is the first time that this connector has tried to convert this input file into this iModel
-      this._connector.jobSubject = this._jobSubject;
-      await this._connector.initializeJob();
-    }
-
-    await this._connector.importDefinitions();
-    this._imodel.saveChanges();
-  }
-
-  protected async _initDomainSchema() {
-    assert(this._imodel !== undefined);
-    await this._connector.importDomainSchema(new BackendRequestContext());
-    await this._connector.importDynamicSchema(new BackendRequestContext());
-    this._imodel.saveChanges();
-  }
-
-  protected async _updateExistingData() {
-    assert(this._imodel !== undefined);
-    await this._connector.updateExistingData();
-    this._imodel.saveChanges();
-  }
-
-  protected async _finalizeChanges() {
-    assert(this._imodel !== undefined);
-    this.detectDeletedElements();
-    this.updateProjectExtents();
-    this._imodel.saveChanges();
-  }
-}

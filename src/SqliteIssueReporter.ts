@@ -5,10 +5,10 @@
 import { DbResult, Guid, GuidString, Logger } from "@bentley/bentleyjs-core";
 import { ECDb } from "@bentley/imodeljs-backend";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { ConnectorLoggerCategory } from "./ConnectorLoggerCategory";
 
 interface ContextInfo {
   activityId: string;
@@ -100,7 +100,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
 
   public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string,) {
     if (sourceId !== this._fileInfo.fileId) {
-      Logger.logWarning(ConnectorLoggerCategory.Framework, "Source file Id does not match value set in constructor");
+      Logger.logWarning(LoggerCategories.Framework, "Source file Id does not match value set in constructor");
     }
     const values = [this._contextInfo.activityId, this._contextInfo.contextId, this._contextInfo.jobId, this._contextInfo.iModelId, this._contextInfo.briefcaseId, sourceId, this._fileInfo.filePath,
       "SourceFile", itemType, dataSource, name, exists, downloadUrl, state, failureReason, uniqueName, fileSize, foundByConnector];

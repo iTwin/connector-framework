@@ -9,7 +9,7 @@ import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChi
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
 import { Code, ExternalSourceAspectProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
-import { ConnectorLoggerCategory } from "./ConnectorLoggerCategory";
+import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
  * @beta
@@ -85,10 +85,8 @@ export class Synchronizer {
   private _links = new Map<string, SynchronizationResults>();
 
   public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AuthorizedClientRequestContext) {
-    if (imodel.isBriefcaseDb() && undefined === _requestContext) {
-
-      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb", Logger.logError, ConnectorLoggerCategory.Framework);
-    }
+    if (imodel.isBriefcaseDb() && undefined === _requestContext)
+      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb", Logger.logError, LoggerCategories.Framework);
   }
 
   /** Insert or update a RepositoryLink element to represent the source document.  Also inserts or updates an ExternalSourceAspect for provenance.
@@ -115,7 +113,7 @@ export class Synchronizer {
     };
 
     if (undefined === results.element) {
-      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`, Logger.logError, ConnectorLoggerCategory.Framework);
+      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`, Logger.logError, LoggerCategories.Framework);
     }
 
     const itemState = this.detectChanges(scope, kind, sourceItem).state;
@@ -123,7 +121,7 @@ export class Synchronizer {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
       However, no ExternalSourceAspect with scope=${scope} and kind=${kind} was found for this element.
       Maybe RecordDocument was previously called on this file with a different scope or kind.`;
-      throw new IModelError(IModelStatus.NotFound, error, Logger.logError, ConnectorLoggerCategory.Framework);
+      throw new IModelError(IModelStatus.NotFound, error, Logger.logError, LoggerCategories.Framework);
     }
 
     results.itemState = itemState;
@@ -389,7 +387,7 @@ export class Synchronizer {
     if (existing.classFullName !== results.element.classFullName) {
       const error = `Attempt to change element's class in an update operation. Do delete + add instead. ElementId ${results.element.id},
       old class=${existing.classFullName}, new class=${results.element.classFullName}`;
-      Logger.logError(ConnectorLoggerCategory.Framework, error);
+      Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.WrongClass;
     }
 
@@ -405,7 +403,7 @@ export class Synchronizer {
     }
     if (!Id64.isValidId64(results.element.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
-      Logger.logError(ConnectorLoggerCategory.Framework, error);
+      Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {

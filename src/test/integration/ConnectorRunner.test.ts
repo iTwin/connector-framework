@@ -4,11 +4,12 @@
 *--------------------------------------------------------------------------------------------*/
 import { Id64String, Config, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
 import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
+import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
 import { AccessToken } from "@bentley/itwin-client";
-import { getTestAccessToken } from "@bentley/oidc-signin-tool";
+import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration } from "@bentley/oidc-signin-tool";
 import { expect } from "chai";
-import { ConnectorJobDefArgs, ConnectorRunner } from "../../ConnectorRunner";
-import { ServerArgs } from "../../IModelHubUtils";
+import { ConnectorRunner } from "../../ConnectorRunner";
+import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { HubUtility } from "./HubUtility";
 import * as utils from "../ConnectorTestUtils";
@@ -19,6 +20,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
   let testIModelId: Id64String;
+  let testClientConfig: NativeAppAuthorizationConfiguration;
   let requestContext: AuthorizedBackendRequestContext;
 
   before(async () => {
@@ -29,16 +31,16 @@ describe("iTwin Connector Fwk (#integration)", () => {
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
 
     try {
-      const clientCred = {
+      testClientConfig = {
         clientId: process.env.test_client_id!,
         redirectUri: process.env.test_redirect_uri!,
         scope: process.env.test_scopes!,
-      };
+      } as NativeAppAuthorizationConfiguration;
       const userCred = {
         email: process.env.test_user_name!,
         password: process.env.test_user_password!,
       };
-      const token = await getTestAccessToken(clientCred, userCred, 102);
+      const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred, 102);
       requestContext = new AuthorizedBackendRequestContext(token);
     } catch (error) {
       Logger.logError("Error", `Failed with error: ${error}`);
@@ -59,13 +61,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await utils.shutdownBackend();
   });
 
-  async function runConnector(connectorJobDef: ConnectorJobDefArgs, serverArgs: ServerArgs, isUpdate: boolean = false) {
+  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, isUpdate: boolean = false) {
     let doThrow = false;
     const endTrackingCallback = utils.setupLoggingWithAPIMRateTrap();
 
     try {
-      const runner = new ConnectorRunner(connectorJobDef, serverArgs);
-      const status = await runner.synchronize();
+      const runner = new ConnectorRunner(jobArgs, hubArgs);
+      const connectorFile = "./test/integration/TestConnector.js";
+      const status = await runner.run(connectorFile);
       if (status !== BentleyStatus.SUCCESS)
         throw new Error;
     } catch (err) {
@@ -75,34 +78,36 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     if (doThrow)
-      throw new Error("runner.synchronize() failed.");
+      throw new Error("runner.run() failed.");
 
-    const briefcases = BriefcaseManager.getCachedBriefcases(serverArgs.iModelId);
+    const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
-    const imodel = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
-    utils.verifyIModel(imodel, connectorJobDef, isUpdate);
-    imodel.close();
+    const db = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
+    utils.verifyIModel(db, jobArgs, isUpdate);
+    db.close();
   }
 
   it("should download and perform updates", async () => {
-
-    const connectorJobDef = new ConnectorJobDefArgs();
     const sourcePath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const targetPath = path.join(KnownTestLocations.assetsDir, "TestConnector_.json");
     IModelJsFs.copySync(sourcePath, targetPath, { overwrite: true });
-    connectorJobDef.sourcePath = targetPath;
-    connectorJobDef.connectorModule = "./test/integration/TestiTwinConnector.js";
+    const jobArgs = new JobArgs({
+      source: targetPath,
+    });
 
-    const serverArgs = new ServerArgs();  // TODO have an iModelBank version of this test
-    serverArgs.contextId = testProjectId;
-    serverArgs.iModelId = testIModelId;
-    serverArgs.getToken = async (): Promise<AccessToken> => {
+    const hubArgs = new HubArgs({
+      projectGuid: testProjectId,
+      iModelGuid: testIModelId,
+    } as HubArgsProps);
+
+    hubArgs.clientConfig = testClientConfig;
+    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return requestContext.accessToken;
     };
 
-    await runConnector(connectorJobDef, serverArgs);
-    await runConnector(connectorJobDef, serverArgs, false);
+    await runConnector(jobArgs, hubArgs);
+    await runConnector(jobArgs, hubArgs, false);
 
     // verify that a changed source changes the imodel
     IModelJsFs.copySync(path.join(KnownTestLocations.assetsDir, "TestConnector_v2.json"), targetPath, { overwrite: true });
@@ -114,7 +119,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       fs.closeSync(fs.openSync(targetPath, "w"));
     }
 
-    await runConnector(connectorJobDef, serverArgs, true);
+    await runConnector(jobArgs, hubArgs, true);
 
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });

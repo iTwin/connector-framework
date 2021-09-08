@@ -10,12 +10,10 @@ import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@bentley/imodeljs-common";
 import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
 import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
-import { ConnectorJobDefArgs } from "../connector-framework"; 
-import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils"; 
 import { CodeSpecs, RectangleTile, SmallSquareTile } from "./integration/TestConnectorElements"; 
-import { ModelNames } from "./integration/TestITwinConnector"; 
+import { ModelNames } from "./integration/TestConnector"; 
 import { KnownTestLocations } from "./KnownTestLocations"; 
-import { IModelHubUtils } from "../IModelHubUtils"; 
+import { JobArgs } from "../Args";
 
 export function setupLogging() {
   Logger.initializeToConsole();
@@ -50,12 +48,11 @@ export function setupLoggingWithAPIMRateTrap() {
   return () => clearInterval(resetIntervalId);
 }
 
-export async function startBackend(clientArgs?: IModelBankArgs): Promise<void> {
+export async function startBackend(): Promise<void> {
   loadEnv(path.join(__dirname, "..", "..", ".env"));
   const config = new IModelHostConfiguration();
   config.concurrentQuery.concurrent = 4; // for test restrict this to two threads. Making closing connection faster
   config.cacheDir = KnownTestLocations.outputDir;
-  config.imodelClient = (undefined === clientArgs) ? IModelHubUtils.makeIModelClient() : IModelBankUtils.makeIModelClient(clientArgs);
   await IModelHost.startup(config);
 }
 
@@ -87,7 +84,7 @@ export function getCount(imodel: IModelDb, className: string) {
 }
 
 
-export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefArgs, isUpdate: boolean = false) {
+export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boolean = false) {
   // Confirm the schema was imported simply by trying to get the meta data for one of the classes.
   assert.isDefined(imodel.getMetaData("TestConnector:TestConnectorGroup"));
   assert.equal(1, getCount(imodel, "BisCore:RepositoryLink"));
@@ -107,7 +104,7 @@ export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefA
   assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
-  const jobSubjectName = `TestiTwinConnector:${connectorJobDef.sourcePath!}`;
+  const jobSubjectName = jobArgs.source;
   const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
   assert.isTrue(Id64.isValidId64(subjectId));
 
