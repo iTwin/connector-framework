@@ -5,10 +5,10 @@
 /** @packageDocumentation
  * @module Framework
  */
-import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
+import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-import { Code, ExternalSourceAspectProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
+import { Code, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
 import { ConnectorLoggerCategory } from "./ConnectorLoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -109,6 +109,14 @@ export class Synchronizer {
       // C++ calls GetParams().QueryDocumentURN()
     }
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
+
+    const xseProps: ExternalSourceProps = {
+      model: scope,
+      classFullName: ExternalSource.classFullName,
+      repository: {id: repositoryLink.id, relClassName: RepositoryLink.classFullName },
+      code: Code.createEmpty(),
+    };
+
     const results: SynchronizationResults = {
       element: repositoryLink,
       itemState: ItemState.New,
@@ -127,7 +135,7 @@ export class Synchronizer {
     }
 
     results.itemState = itemState;
-    this.updateIModel(results, scope, sourceItem, kind);
+    this.updateIModel(results, scope, sourceItem, kind, xseProps);
 
     this._links.set(key, results);
 
@@ -191,9 +199,10 @@ export class Synchronizer {
    * @param scope Id of the scoping element
    * @param sourceItem Defines the source item
    * @param kind The kind of the source item
+   * @param externalSourceElement External source pointing to the Repository Link
    * @beta
    */
-  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string): IModelStatus {
+  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
     if (ItemState.Unchanged === results.itemState) {
       this.onElementSeen(results.element.id);
@@ -206,6 +215,11 @@ export class Synchronizer {
       if (xsa.aspectId !== undefined) {
         aspectId = xsa.aspectId;
       }
+    }
+
+    let source;
+    if (externalSourceElement) {
+      source = this.imodel.elements.insertElement(externalSourceElement);
     }
 
     // WIP: Handle the case where we are doing a delete + insert and are re-using the old element's id
@@ -225,7 +239,7 @@ export class Synchronizer {
         return status;
       }
     }
-    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind);
+    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind, source);
     return status;
   }
 
@@ -235,9 +249,11 @@ export class Synchronizer {
    * @param scope The id of the scoping element
    * @param sourceItem Defines the source item
    * @param kind The kind of the source item
+   * @param source The id of the external source element
    * @beta
    */
-  public setExternalSourceAspect(element: Element, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string): IModelStatus {
+  public setExternalSourceAspect(element: Element, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string, sourceId?: Id64String): IModelStatus {
+    const source = sourceId ? { id: sourceId } : undefined;
     const aspectProps: ExternalSourceAspectProps = {
       classFullName: ExternalSourceAspect.classFullName,
       element: { id: element.id },
@@ -246,6 +262,7 @@ export class Synchronizer {
       kind,
       checksum: sourceItem.checksum,
       version: sourceItem.version,
+      source,
     };
     if (itemState === ItemState.New) {
       this.imodel.elements.insertAspect(aspectProps); // throws on error
