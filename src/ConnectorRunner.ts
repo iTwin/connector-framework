@@ -2,10 +2,10 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
 import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
-import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects } from "@bentley/imodeljs-backend";
+import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink, LinkElement } from "@bentley/imodeljs-backend";
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
@@ -190,6 +190,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
     await this.enterChannel(IModel.repositoryModelId);
 
+    this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
 
@@ -247,6 +248,7 @@ export class ConnectorRunner {
     await this.connector.updateExistingData();
     this.updateDeletedElements();
     this.updateProjectExtent();
+    this.updateSynchronizationConfigLink();
 
     await this.persistChanges("Data Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
@@ -310,6 +312,29 @@ export class ConnectorRunner {
   private async loadConnector(connectorFile: string) {
     const connectorClass = require(connectorFile).default;
     this._connector = await connectorClass.create();
+  }
+
+  private insertSynchronizationConfigLink(){
+    assert(this._db !== undefined);
+    let synchConfigData: SynchronizationConfigLinkProps = {
+      classFullName:  SynchronizationConfigLink.classFullName,
+      model: IModel.repositoryModelId,
+      code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
+    };
+    if (this.jobArgs.synchConfigFile) {
+      synchConfigData = require(this.jobArgs.synchConfigFile);
+    }
+    return this._db.elements.insertElement(synchConfigData);
+  }
+  private updateSynchronizationConfigLink(){
+    assert(this._db !== undefined);
+    const synchConfigData: SynchronizationConfigLinkProps = {
+      classFullName:  SynchronizationConfigLink.classFullName,
+      model: IModel.repositoryModelId,
+      code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
+      lastSuccessfulRun: Date.now().toString(),
+    };
+    return this._db.elements.insertElement(synchConfigData);
   }
 
   private async loadReqContext() {
