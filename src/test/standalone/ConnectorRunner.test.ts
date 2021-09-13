@@ -29,6 +29,14 @@ describe("iTwin Connector Fwk StandAlone", () => {
     await utils.shutdownBackend();
   });
 
+  it("Should parse args correctly", () => {
+    const argfile = path.join(KnownTestLocations.assetsDir, "TestArgs.json");
+    ConnectorRunner.fromFile(argfile); // throws
+
+    const json = JSON.parse(fs.readFileSync(argfile, "utf8"));
+    ConnectorRunner.fromJSON(json); // throws
+  });
+
   it("Should create empty snapshot and synchronize source data", async () => {
     const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({

@@ -121,8 +121,8 @@ export class HubArgs implements HubArgsProps, Validatable {
       Logger.logError(LoggerCategories.Framework, "HubArgs.projectGuid is not defined or has invalid value");
       return false;
     }
-    if (!this.clientConfig) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.clientConfig is not defined or has invalid value");
+    if (this.doInteractiveSignIn && !this.clientConfig) {
+      Logger.logError(LoggerCategories.Framework, "HubArgs.clientConfig must be defined if HubArgs.doInteractiveSignIn=true");
       return false;
     }
     if (!this.doInteractiveSignIn && !this.tokenCallbackUrl && !this.tokenCallback) {
