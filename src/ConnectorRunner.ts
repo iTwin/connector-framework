@@ -148,18 +148,9 @@ export class ConnectorRunner {
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       runStatus = BentleyStatus.ERROR;
-      if (this._db && this._db.isBriefcaseDb()) {
-        const reqContext = await this.getAuthReqContext();
-        await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
-      }
+      await this.onFailure();
     } finally {
-      if (this._db) {
-        this._db.abandonChanges();
-        this._db.close();
-      }
-
-      if (this.connector.issueReporter)
-        await this.connector.issueReporter.publishReport();
+      await this.onFinish();
     }
     return runStatus;
   }
@@ -252,6 +243,23 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
+  }
+
+  private async onFailure() {
+    if (this._db && this._db.isBriefcaseDb()) {
+      const reqContext = await this.getAuthReqContext();
+      await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
+    }
+  }
+
+  private async onFinish() {
+    if (this._db) {
+      this._db.abandonChanges();
+      this._db.close();
+    }
+
+    if (this.connector.issueReporter)
+      await this.connector.issueReporter.publishReport();
   }
 
   private updateDeletedElements() {
