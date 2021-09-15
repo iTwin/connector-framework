@@ -49,7 +49,7 @@ export class ConnectorRunner {
    * @throws Error when file does not exist
    */
   public static fromFile(file: string): ConnectorRunner {
-    if (fs.existsSync(file))
+    if (!fs.existsSync(file))
       throw new Error(`${file} does not exist`);
     const json = JSON.parse(fs.readFileSync(file, "utf8"));
     const runner = ConnectorRunner.fromJSON(json);
@@ -147,6 +147,7 @@ export class ConnectorRunner {
       const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
+      this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
@@ -157,7 +158,6 @@ export class ConnectorRunner {
         this._db.abandonChanges();
         this._db.close();
       }
-
       if (this.connector.issueReporter)
         await this.connector.issueReporter.publishReport();
     }
@@ -190,7 +190,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
     await this.enterChannel(IModel.repositoryModelId);
 
-    this.insertSynchronizationConfigLink();
+    const synchConfig = this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
 
@@ -246,9 +246,9 @@ export class ConnectorRunner {
     await this.enterChannel(jobSubject.id);
 
     await this.connector.updateExistingData();
+    this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
-    this.updateSynchronizationConfigLink();
 
     await this.persistChanges("Data Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
@@ -316,7 +316,7 @@ export class ConnectorRunner {
 
   private insertSynchronizationConfigLink(){
     assert(this._db !== undefined);
-    let synchConfigData: SynchronizationConfigLinkProps = {
+    let synchConfigData = {
       classFullName:  SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
@@ -326,15 +326,16 @@ export class ConnectorRunner {
     }
     return this._db.elements.insertElement(synchConfigData);
   }
-  private updateSynchronizationConfigLink(){
+  private updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
-    const synchConfigData: SynchronizationConfigLinkProps = {
+    const synchConfigData = {
+      id: synchConfigId,
       classFullName:  SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    return this._db.elements.insertElement(synchConfigData);
+    return this._db.elements.updateElement(synchConfigData);
   }
 
   private async loadReqContext() {

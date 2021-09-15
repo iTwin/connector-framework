@@ -13,7 +13,6 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, Geometry
 import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@bentley/geometry-core";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
-import { ITwinConnector } from "../../ITwinConnector";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
@@ -25,12 +24,15 @@ import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquar
 
 import * as hash from "object-hash";
 import * as fs from "fs";
-import { ConnectorLoggerCategory } from "../../connector-framework";
-import { ModelNames } from "./TestITwinConnector";
+import { ModelNames } from "./TestConnector";
+import { BaseConnector } from "../../BaseConnector";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Connector;
 
-class TestConnector extends ITwinConnector {
+export default class TestConnector extends BaseConnector {
+  public static override async create(): Promise<TestConnector> {
+    return new TestConnector;
+  }
   public async importDefinitions(): Promise<any> {
     return;
   }
@@ -81,7 +83,7 @@ class TestConnector extends ITwinConnector {
     this._repositoryLink = documentStatus.element;
   }
   public override async onOpenIModel(): Promise<BentleyStatus> {
-    throw new IModelError(IModelStatus.BadArg, "Expected Fail for test", Logger.logError, ConnectorLoggerCategory.Framework);
+    throw new IModelError(IModelStatus.BadArg, "Expected Fail for test", Logger.logError, TestConnectorLoggerCategory.Connector);
   }
   public async importDomainSchema(_requestContext: AuthorizedClientRequestContext | ClientRequestContext): Promise<any> {
     if (this._sourceDataState === ItemState.Unchanged) {
