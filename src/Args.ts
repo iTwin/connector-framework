@@ -13,6 +13,7 @@ interface Validatable {
  * Defines the schema of the .json argument file used to initialize ConnectorRunner
  */
 export interface AllArgsProps {
+  version: "0.0.1",
   jobArgs: JobArgsProps;
   hubArgs?: HubArgsProps;
 }

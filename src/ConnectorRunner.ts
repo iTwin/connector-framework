@@ -63,6 +63,9 @@ export class ConnectorRunner {
    * @throws Error when content does not include "jobArgs" as key
    */
   public static fromJSON(json: AllArgsProps): ConnectorRunner {
+    const supportedVersion = "0.0.1";
+    if (!json.version || json.version !== supportedVersion)
+      throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
