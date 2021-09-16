@@ -66,7 +66,7 @@ export class HubUtility {
       const deleteIModelId: GuidString = await HubUtility.queryIModelIdByName(requestContext, projectId, iModelName);
       await IModelHubBackend.iModelClient.iModels.delete(requestContext, projectId, deleteIModelId);
     } catch (err) {
-      console.log(err);
+      Logger.logError(HubUtility.logCategory, (err as any).message);
     }
 
     // Create a new iModel
