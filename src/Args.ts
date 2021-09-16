@@ -108,7 +108,7 @@ export class HubArgs implements HubArgsProps, Validatable {
 
   public isValid() {
     if (this.briefcaseFile && !fs.existsSync(this.briefcaseFile)) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile does not exist");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.briefcaseFile does not exist");
       return false;
     }
     if (!this.iModelGuid) {
