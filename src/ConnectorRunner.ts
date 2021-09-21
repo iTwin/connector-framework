@@ -170,8 +170,6 @@ export class ConnectorRunner {
   private async runUnsafe(connectorFile: string) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-    throw new Error("Test Error");
-
     let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
 
     // load
