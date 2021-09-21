@@ -73,7 +73,7 @@ function configLogging() {
   } else {
     // eslint-disable-next-line no-console
     console.log(`You can set the environment variable imjs_test_logging_config to point to a logging configuration json file.`);
-    Logger.setLevelDefault(LogLevel.Error);
+    Logger.setLevelDefault(LogLevel.Warning);
   }
 }
 
