@@ -2,16 +2,16 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { Id64String, Config, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
+import { BentleyStatus, ClientRequestContext, Config, Id64String, Logger } from "@bentley/bentleyjs-core";
 import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
 import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
 import { AccessToken } from "@bentley/itwin-client";
 import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration } from "@bentley/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
+import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
-import { HubUtility } from "./HubUtility";
+import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import * as fs from "fs";
@@ -70,7 +70,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       const connectorFile = "./test/integration/TestConnector.js";
       const status = await runner.run(connectorFile);
       if (status !== BentleyStatus.SUCCESS)
-        throw new Error;
+        throw new Error();
     } catch (err) {
       doThrow = true;
     } finally {
