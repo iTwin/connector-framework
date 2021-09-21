@@ -170,6 +170,8 @@ export class ConnectorRunner {
   private async runUnsafe(connectorFile: string) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
+    throw new Error("Test Error");
+
     let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
 
     // load
@@ -262,9 +264,19 @@ export class ConnectorRunner {
       const reqContext = await this.getAuthReqContext();
       await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
     }
-    const errorFile = path.join(this.jobArgs.stagingDir, "error.json");
-    fs.writeFileSync(errorFile, { error: err.message() });
-    Logger.logInfo(LoggerCategories.Framework, `Errors recorded at ${errorFile}`);
+    this.recordError(err);
+  }
+
+  public recordError(err: any) {
+    const errorFile = this.jobArgs.errorFile;
+    const errorStr = JSON.stringify({
+      "Id": this._connector ? this._connector.getApplicationId : -1,
+      "Message": "Failure",
+      "Description": err.message,
+      "ExtendedData": {}, 
+    });
+    fs.writeFileSync(errorFile, errorStr);
+    Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
   }
 
   private async onFinish() {
@@ -273,7 +285,7 @@ export class ConnectorRunner {
       this._db.close();
     }
 
-    if (this.connector.issueReporter)
+    if (this._connector && this.connector.issueReporter)
       await this.connector.issueReporter.publishReport();
   }
 
