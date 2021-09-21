@@ -1,7 +1,0 @@
-id: TestConnector
-displayName: TestConnector
-description: TestConnector
-defaultFileExtension: .json
-version: 1.0.0
-bridgeMainName: lib/test/TestConnector/Main.js
-isCustom: true
