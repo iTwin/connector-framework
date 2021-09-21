@@ -43,11 +43,12 @@ export class ConnectorRunner {
       this._hubArgs = hubArgs;
     }
 
+    Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
     if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
       Logger.configureLevels(require(loggerConfigJSONFile));
     else
-      Logger.setLevelDefault(LogLevel.Warning);
+      Logger.setLevelDefault(LogLevel.Info);
   }
 
   /**
@@ -159,7 +160,7 @@ export class ConnectorRunner {
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       runStatus = BentleyStatus.ERROR;
-      await this.onFailure();
+      await this.onFailure(err);
     } finally {
       await this.onFinish();
     }
@@ -256,11 +257,14 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
 
-  private async onFailure() {
+  private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
       const reqContext = await this.getAuthReqContext();
       await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
     }
+    const errorFile = path.join(this.jobArgs.stagingDir, "error.json");
+    fs.writeFileSync(errorFile, { error: err.message() });
+    Logger.logInfo(LoggerCategories.Framework, `Errors recorded at ${errorFile}`);
   }
 
   private async onFinish() {

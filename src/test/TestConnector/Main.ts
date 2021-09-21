@@ -12,7 +12,7 @@ async function main() {
   const runner = ConnectorRunner.fromFile(argfile);
 
   const runStatus = await runner.run(connectorFile);
-  if (runStatus !== BentleyStatus.ERROR)
+  if (runStatus !== BentleyStatus.SUCCESS)
     throw new Error("ConnectorRunner failed");
 
   await utils.shutdownBackend();
