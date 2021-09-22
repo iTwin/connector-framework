@@ -22,7 +22,9 @@
     "pretest": "cpx ./src/test/logging.config.json ./lib/test",
     "test": "npm run test:standalone",
     "test:standalone": "npm run pretest && betools test --testDir=\"./lib/test/standalone\"",
-    "test:integration": "npm run pretest && betools test --testDir=\"./lib/test/integration\""
+    "test:integration": "npm run pretest && betools test --testDir=\"./lib/test/integration\"",
+    "copy:itsyn-assets": "cpx \"./manifest.itsyn.yml\" \"lib/test/TestConnector/\" && cpx \"./node.exe\" \"lib/test/TestConnector/\"",
+    "test:connector": "node lib/test/TestConnector/Main.js lib/test/assets/TestArgs.json"
   },
   "keywords": [
     "Bentley",
@@ -72,6 +74,7 @@
   },
   "dependencies": {
     "@bentley/config-loader": "^2.18.4",
+    "axios": "^0.21.4",
     "object-hash": "^1.3.1"
   },
   "nyc": {

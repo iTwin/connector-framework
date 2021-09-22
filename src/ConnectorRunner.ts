@@ -4,7 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
-import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
+import { assert, BentleyStatus, Config, ClientRequestContext, Guid, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
 import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects } from "@bentley/imodeljs-backend";
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
@@ -15,6 +15,7 @@ import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
+import axios from "axios";
 
 export class ConnectorRunner {
 
@@ -38,8 +39,16 @@ export class ConnectorRunner {
     if (hubArgs) {
       if (!hubArgs.isValid())
         throw new Error("Invalid hubArgs");
+      Config.App.set("imjs_buddi_resolve_url_using_region", hubArgs.region);
       this._hubArgs = hubArgs;
     }
+
+    Logger.initializeToConsole();
+    const { loggerConfigJSONFile } = jobArgs;
+    if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+      Logger.configureLevels(require(loggerConfigJSONFile));
+    else
+      Logger.setLevelDefault(LogLevel.Info);
   }
 
   /**
@@ -120,7 +129,7 @@ export class ConnectorRunner {
 
     const moreArgs = this.jobArgs.moreArgs;
     if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
-      name = moreArgs.pcf.subjectNode; 
+      name = moreArgs.pcf.subjectNode;
 
     return name;
   }
@@ -151,7 +160,7 @@ export class ConnectorRunner {
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       runStatus = BentleyStatus.ERROR;
-      await this.onFailure();
+      await this.onFailure(err);
     } finally {
       await this.onFinish();
     }
@@ -223,7 +232,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
     // definitions changes
-    
+
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
     await this.enterChannel(jobSubject.id);
 
@@ -234,7 +243,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
 
     // data changes
-    
+
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
     await this.enterChannel(jobSubject.id);
 
@@ -248,11 +257,24 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
 
-  private async onFailure() {
+  private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
       const reqContext = await this.getAuthReqContext();
       await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
     }
+    this.recordError(err);
+  }
+
+  public recordError(err: any) {
+    const errorFile = this.jobArgs.errorFile;
+    const errorStr = JSON.stringify({
+      "Id": this._connector ? this._connector.getApplicationId : -1,
+      "Message": "Failure",
+      "Description": err.message,
+      "ExtendedData": {}, 
+    });
+    fs.writeFileSync(errorFile, errorStr);
+    Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
   }
 
   private async onFinish() {
@@ -261,7 +283,7 @@ export class ConnectorRunner {
       this._db.close();
     }
 
-    if (this.connector.issueReporter)
+    if (this._connector && this.connector.issueReporter)
       await this.connector.issueReporter.publishReport();
   }
 
@@ -349,8 +371,8 @@ export class ConnectorRunner {
   private async getTokenSilent() {
     let token: AccessToken;
     if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
-      const response = await fetch(this.hubArgs.tokenCallbackUrl);
-      const tokenStr = await response.json();
+      const response = await axios.get(this.hubArgs.tokenCallbackUrl);
+      const tokenStr = `Bearer ${response.data["access_token"]}`;
       token = AccessToken.fromTokenString(tokenStr);
     } else if (this.hubArgs && this.hubArgs.tokenCallback) {
       token = await this.hubArgs.tokenCallback();

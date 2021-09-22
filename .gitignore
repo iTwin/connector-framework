@@ -2,4 +2,5 @@ lib
 node_modules
 secret.bat
 .env
-
+manifest.itsyn.yml
+node.exe
