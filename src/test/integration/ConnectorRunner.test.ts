@@ -67,7 +67,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     try {
       const runner = new ConnectorRunner(jobArgs, hubArgs);
-      const connectorFile = "./test/integration/TestConnector.js";
+      const connectorFile = "./test/TestConnector/TestConnector.js";
       const status = await runner.run(connectorFile);
       if (status !== BentleyStatus.SUCCESS)
         throw new Error();
