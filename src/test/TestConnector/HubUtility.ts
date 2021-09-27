@@ -4,7 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 import { GuidString, Logger } from "@bentley/bentleyjs-core";
 import { BriefcaseQuery, HubIModel, IModelQuery } from "@bentley/imodelhub-client";
-import { IModelHubBackend, AuthorizedBackendRequestContext } from "@bentley/imodeljs-backend";
+import { AuthorizedBackendRequestContext, IModelHubBackend } from "@bentley/imodeljs-backend";
 
 export class HubUtility {
   public static logCategory = "HubUtility";
@@ -66,7 +66,7 @@ export class HubUtility {
       const deleteIModelId: GuidString = await HubUtility.queryIModelIdByName(requestContext, projectId, iModelName);
       await IModelHubBackend.iModelClient.iModels.delete(requestContext, projectId, deleteIModelId);
     } catch (err) {
-      Logger.logError(HubUtility.logCategory, (err as any).message);
+      Logger.logError(HubUtility.logCategory, "Failed to recreate an IModel");
     }
 
     // Create a new iModel

@@ -10,6 +10,7 @@ import { SqliteIssueReporter } from "../../SqliteIssueReporter";
 import { JobArgs } from "../../Args";
 import * as utils from "../ConnectorTestUtils";
 import { expect, assert } from "chai";
+import { expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
