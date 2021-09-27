@@ -13,7 +13,7 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, Geometry
 import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@bentley/geometry-core";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
-import { ITwinConnector } from "../../ITwinConnector";
+import { BaseConnector } from "../../BaseConnector";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
@@ -22,19 +22,20 @@ import {
   TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement,
 } from "./TestConnectorElements";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
-
 import * as hash from "object-hash";
 import * as fs from "fs";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Connector;
 
-class TestConnector extends ITwinConnector {
+export default class TestConnector extends BaseConnector {
+
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
   private _repositoryLink?: RepositoryLink;
-  public initialize(_params: any) {
-    // nothing to do here
+
+  public static override async create(): Promise<TestConnector> {
+    return new TestConnector();
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -42,6 +43,7 @@ class TestConnector extends ITwinConnector {
     assert(this._repositoryLink !== undefined);
     return this._repositoryLink;
   }
+
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
       this.createGroupModel();
@@ -115,7 +117,7 @@ class TestConnector extends ITwinConnector {
     return "1.0.0.0";
   }
   public getConnectorName(): string {
-    return "TestiTwinConnector";
+    return "TestConnector";
   }
 
   private getDocumentStatus(): SynchronizationResults {
@@ -521,10 +523,6 @@ class TestConnector extends ITwinConnector {
   }
 }
 
-export function getConnectorInstance() {
-  return new TestConnector();
-}
-
 export enum ModelNames {
   Physical = "TestConnector_Physical",
   Definition = "TestConnector_Definitions",
@@ -534,3 +532,4 @@ export enum ModelNames {
 enum Palettes {
   TestConnector = "TestConnector", // eslint-disable-line @typescript-eslint/no-shadow
 }
+

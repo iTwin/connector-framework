@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /*---------------------------------------------------------------------------------------------
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -10,12 +11,10 @@ import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@bentley/imodeljs-common";
 import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject } from "@bentley/imodeljs-backend";
 import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
-import { ConnectorJobDefArgs } from "../connector-framework"; 
-import { IModelBankArgs, IModelBankUtils } from "../IModelBankUtils"; 
-import { CodeSpecs, RectangleTile, SmallSquareTile } from "./integration/TestConnectorElements"; 
-import { ModelNames } from "./integration/TestITwinConnector"; 
-import { KnownTestLocations } from "./KnownTestLocations"; 
-import { IModelHubUtils } from "../IModelHubUtils"; 
+import { CodeSpecs, RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
+import { ModelNames } from "./TestConnector/TestConnector";
+import { KnownTestLocations } from "./KnownTestLocations";
+import { JobArgs } from "../Args";
 
 export function setupLogging() {
   Logger.initializeToConsole();
@@ -36,7 +35,7 @@ export function setupLoggingWithAPIMRateTrap() {
     if (hubReqs > 100)
       throw new Error("Reached 100 requests per minute rate limit.");
     console.log(`Info    |${category}| ${hubReqs}| ${message}${formatMetaData(getMetaData)}`);
-  }
+  };
 
   Logger.initialize(
     (category: string, message: string, getMetaData?: () => any): void => console.log(`Error   |${category}| ${message}${formatMetaData(getMetaData)}`),
@@ -50,12 +49,11 @@ export function setupLoggingWithAPIMRateTrap() {
   return () => clearInterval(resetIntervalId);
 }
 
-export async function startBackend(clientArgs?: IModelBankArgs): Promise<void> {
+export async function startBackend(): Promise<void> {
   loadEnv(path.join(__dirname, "..", "..", ".env"));
   const config = new IModelHostConfiguration();
   config.concurrentQuery.concurrent = 4; // for test restrict this to two threads. Making closing connection faster
   config.cacheDir = KnownTestLocations.outputDir;
-  config.imodelClient = (undefined === clientArgs) ? IModelHubUtils.makeIModelClient() : IModelBankUtils.makeIModelClient(clientArgs);
   await IModelHost.startup(config);
 }
 
@@ -75,19 +73,20 @@ function configLogging() {
   } else {
     // eslint-disable-next-line no-console
     console.log(`You can set the environment variable imjs_test_logging_config to point to a logging configuration json file.`);
-    Logger.setLevelDefault(LogLevel.Error);
+    Logger.setLevelDefault(LogLevel.Warning);
   }
 }
 
-function getCount(imodel: IModelDb, className: string) { 
-  let count = 0; 
-  imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => { assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
-  const row = stmt.getRow(); count = row.count; });
+function getCount(imodel: IModelDb, className: string) {
+  let count = 0;
+  imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => {
+    assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
+    const row = stmt.getRow(); count = row.count;
+  });
   return count;
 }
 
-
-export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefArgs, isUpdate: boolean = false) {
+export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boolean = false) {
   // Confirm the schema was imported simply by trying to get the meta data for one of the classes.
   assert.isDefined(imodel.getMetaData("TestConnector:TestConnectorGroup"));
   assert.equal(1, getCount(imodel, "BisCore:RepositoryLink"));
@@ -106,7 +105,7 @@ export function verifyIModel(imodel: IModelDb, connectorJobDef: ConnectorJobDefA
   assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
-  const jobSubjectName = `TestiTwinConnector:${connectorJobDef.sourcePath!}`;
+  const jobSubjectName = jobArgs.source;
   const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
   assert.isTrue(Id64.isValidId64(subjectId));
 
