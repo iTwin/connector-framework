@@ -77,7 +77,7 @@ function configLogging() {
   }
 }
 
-function getCount(imodel: IModelDb, className: string) {
+export function getCount(imodel: IModelDb, className: string) {
   let count = 0;
   imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => {
     assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());

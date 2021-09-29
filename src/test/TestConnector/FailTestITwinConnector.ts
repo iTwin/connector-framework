@@ -24,7 +24,7 @@ import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquar
 
 import * as hash from "object-hash";
 import * as fs from "fs";
-import { ModelNames } from "./TestConnector";
+import { ModelNames } from "../TestConnector/TestConnector";
 import { BaseConnector } from "../../BaseConnector";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Connector;

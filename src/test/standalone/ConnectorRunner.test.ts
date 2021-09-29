@@ -9,14 +9,13 @@ import { ConnectorRunner } from "../../ConnectorRunner";
 import { SqliteIssueReporter } from "../../SqliteIssueReporter";
 import { JobArgs } from "../../Args";
 import * as utils from "../ConnectorTestUtils";
-import { expect, assert } from "chai";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
 
-  const connectorFile = "./test/integration/TestConnector.js";
+  const connectorFile = "./test/TestConnector/TestConnector.js";
 
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
@@ -63,7 +62,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });
-    const failConnectorFile = "./test/integration/FailTestiTwinConnector.js";
+    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
     const fileName = `SyncError.json`;
     try{
       const runner = new ConnectorRunner(jobArgs);
@@ -86,7 +85,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       dbType: "snapshot",
       synchConfigFile: path.join(__dirname, "..\\..\\..\\src\\test\\synchConfigTest.json"),
     });
-    const failConnectorFile = "./test/integration/FailTestiTwinConnector.js";
+    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
     // const connectorJobDef = new ConnectorJobDefArgs();
     // connectorJobDef.sourcePath = assetFile;
     // connectorJobDef.connectorModule = ;
