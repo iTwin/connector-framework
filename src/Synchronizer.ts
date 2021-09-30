@@ -218,6 +218,15 @@ export class Synchronizer {
     let source;
     if (externalSourceElement) {
       source = this.imodel.elements.insertElement(externalSourceElement);
+    } else {
+      this.imodel.withStatement(
+        "select xse.ecinstanceid from BisCore.ExternalSource xse, BisCore.ExternalSourceAspect xsa where xse.Repository.Id = ? and xse.ecinstanceid = xsa.Element.Id and xsa.kind='ExternalSource ' and xsa.Identifier = ?",
+        (stmt) => {
+          stmt.bindValues([scope, ""]);
+          stmt.step();
+          source = stmt.getRow().id;
+        }
+      );
     }
 
     // WIP: Handle the case where we are doing a delete + insert and are re-using the old element's id
