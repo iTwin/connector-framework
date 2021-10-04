@@ -69,7 +69,7 @@ export default class TestConnector extends BaseConnector {
     }
     TestConnectorSchema.registerSchema();
     const fileName = TestConnectorSchema.schemaFilePath;
-    await this.synchronizer.imodel.importSchemas(_requestContext, [fileName]);
+    await this.synchronizer.imodel.importSchemas([fileName]);
   }
 
   public async importDynamicSchema(requestContext: AuthorizedClientRequestContext | ClientRequestContext): Promise<any> {
@@ -511,8 +511,7 @@ export default class TestConnector extends BaseConnector {
     if (undefined !== displayStyleId) {
       return displayStyleId;
     }
-    const viewFlags: ViewFlags = new ViewFlags();
-    viewFlags.renderMode = RenderMode.SmoothShade;
+    const viewFlags: ViewFlags = new ViewFlags({renderMode: RenderMode.SmoothShade});
     const options: DisplayStyleCreationOptions = {
       backgroundColor: ColorDef.fromTbgr(ColorByName.white),
       viewFlags,

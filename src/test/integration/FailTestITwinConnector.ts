@@ -91,7 +91,7 @@ export default class TestConnector extends BaseConnector {
     }
     TestConnectorSchema.registerSchema();
     const fileName = TestConnectorSchema.schemaFilePath;
-    await this.synchronizer.imodel.importSchemas(_requestContext, [fileName]);
+    await this.synchronizer.imodel.importSchemas([fileName]);
   }
   private getDocumentStatus(): SynchronizationResults {
     let timeStamp = Date.now();

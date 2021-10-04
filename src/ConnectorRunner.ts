@@ -151,7 +151,7 @@ export class ConnectorRunner {
       runStatus = BentleyStatus.ERROR;
       if (this._db && this._db.isBriefcaseDb()) {
         const reqContext = await this.getAuthReqContext();
-        await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
+        (this._db as BriefcaseDb).abandonChanges();
       }
     } finally {
       if (this._db) {
@@ -190,7 +190,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
     await this.enterChannel(IModel.repositoryModelId);
 
-    const synchConfig = this.insertSynchronizationConfigLink();
+    const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
 
@@ -224,13 +224,13 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
     await this.enterChannel(IModel.repositoryModelId);
 
-    const jobSubject = this.updateJobSubject();
+    const jobSubject = await this.updateJobSubject();
 
     await this.persistChanges(`Job Subject Update`, ChangesType.GlobalProperties);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
     // definitions changes
-    
+
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
     await this.enterChannel(jobSubject.id);
 
@@ -241,12 +241,12 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
 
     // data changes
-    
+
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
     await this.enterChannel(jobSubject.id);
 
     await this.connector.updateExistingData();
-    this.updateSynchronizationConfigLink(synchConfig);
+    await this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
 
@@ -269,7 +269,7 @@ export class ConnectorRunner {
     this.db.updateProjectExtents(res.extents);
   }
 
-  private updateJobSubject(): Subject {
+  private async updateJobSubject(): Promise<Subject> {
     const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
     const existingSubjectId = this.db.elements.queryElementIdByCode(code);
 
@@ -298,9 +298,10 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-
+      await this.db.locks.acquireSharedLock(IModel.dictionaryId);
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
+      await this.db.locks.releaseAllLocks();
     }
 
     this.connector.jobSubject = subject;
@@ -314,7 +315,7 @@ export class ConnectorRunner {
     this._connector = await connectorClass.create();
   }
 
-  private insertSynchronizationConfigLink(){
+  private async insertSynchronizationConfigLink(){
     assert(this._db !== undefined);
     let synchConfigData = {
       classFullName:  SynchronizationConfigLink.classFullName,
@@ -324,9 +325,13 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    return this._db.elements.insertElement(synchConfigData);
+    await this._db.locks.acquireSharedLock(IModel.dictionaryId);
+    const element =  this._db.elements.insertElement(synchConfigData);
+    await this._db.locks.releaseAllLocks();
+    return element;
+
   }
-  private updateSynchronizationConfigLink(synchConfigId: string){
+  private async updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
     const synchConfigData = {
       id: synchConfigId,
@@ -335,7 +340,9 @@ export class ConnectorRunner {
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    return this._db.elements.updateElement(synchConfigData);
+    await this._db.locks.acquireExclusiveLock(synchConfigData.id);
+    this._db.elements.updateElement(synchConfigData);
+    await this._db.locks.releaseAllLocks();
   }
 
   private async loadReqContext() {
@@ -441,19 +448,19 @@ export class ConnectorRunner {
     if (bcFile) {
       openProps = { fileName: bcFile };
     } else {
-      const reqArg: RequestNewBriefcaseArg = { contextId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
-      const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqContext, reqArg);
+      const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
       if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
-        await BriefcaseDb.upgradeSchemas(reqContext, bcProps);
+        await BriefcaseDb.upgradeSchemas(bcProps);
 
       openProps = { fileName: bcProps.fileName };
     }
 
-    this._db = await BriefcaseDb.open(reqContext, openProps);
-    (this._db as BriefcaseDb).concurrencyControl.startBulkMode();
+    this._db = await BriefcaseDb.open(openProps);
+    // (this._db as BriefcaseDb).concurrencyControl.startBulkMode(); // not sure what/if anything is the new "startBulkMode"
   }
 
   private async loadSynchronizer() {
@@ -462,16 +469,17 @@ export class ConnectorRunner {
     this.connector.synchronizer = synchronizer;
   }
 
-  private async persistChanges(changeDesc: string, ctype: ChangesType) {
+  private async persistChanges(changeDesc: string) {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
       this._db = this.db as BriefcaseDb;
-      await this.db.concurrencyControl.request(authReqContext);
-      await this.db.pullAndMergeChanges(authReqContext);
+      // await this.db.locks.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
+      await this.db.pullChanges(); // think this is accurate?
       this.db.saveChanges(comment);
-      await this.db.pushChanges(authReqContext, comment, ctype);
+      // await this.db.pushChanges(authReqContext, comment, ctype); // not sure if ctype is used anymore
+      await this.db.pushChanges({user: authReqContext, description: comment});
     } else {
       this.db.saveChanges(comment);
     }
@@ -482,21 +490,26 @@ export class ConnectorRunner {
       return;
 
     this._db = this.db as BriefcaseDb;
-    if (!this.db.concurrencyControl.isBulkMode)
-      this.db.concurrencyControl.startBulkMode();
-    if (this.db.concurrencyControl.hasPendingRequests)
-      throw new Error("has pending requests");
-    if (this.db.concurrencyControl.locks.hasSchemaLock)
-      throw new Error("has schema lock");
-    if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
-      throw new Error("has code spec lock");
-    if (this.db.concurrencyControl.channel.isChannelRootLocked)
-      throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
+    // all of these arguments are no longer present, not sure if i just dont know where they are though, doing the checks that were added instead
+    // if (!this.db.locks.isBulkMode)
+    //   this.db.concurrencyControl.startBulkMode();
+    // if (this.db.concurrencyControl.hasPendingRequests)
+    //   throw new Error("has pending requests");
+    // if (this.db.concurrencyControl.locks.hasSchemaLock)
+    //   throw new Error("has schema lock");
+    // if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
+    //   throw new Error("has code spec lock");
+    // if (this.db.concurrencyControl.channel.isChannelRootLocked)
+    //   throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
+    if(this.db.locks.holdsExclusiveLock(IModel.dictionaryId)) // I believe will check for whole model?
+      throw new Error("holds exclusive lock");
+    if(this.db.locks.holdsSharedLock(IModel.dictionaryId))
+      throw new Error("holds shared lock");
 
-    this.db.concurrencyControl.channel.channelRoot = rootId;
+    // this.db.concurrencyControl.channel.channelRoot = rootId;
 
-    const reqContext = await this.getAuthReqContext();
-    await this.db.concurrencyControl.channel.lockChannelRoot(reqContext);
+    // const reqContext = await this.getAuthReqContext();
+    // await this.db.concurrencyControl.channel.lockChannelRoot(reqContext); // Channel not present anymore either, think its handled with other new locking stuff instead but leaving just in case
   }
 }
 

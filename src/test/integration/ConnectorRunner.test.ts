@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { Id64String, Config, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
+import { Id64String, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core"; // config is missing, which makes us unable to set environment and im not sure what the new way to do that is
 import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
 import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
 import { AccessToken } from "@bentley/itwin-client";
@@ -46,7 +46,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       Logger.logError("Error", `Failed with error: ${error}`);
     }
 
-    Config.App.set("imjs_buddi_resolve_url_using_region", "102");
+    // Config.App.set("imjs_buddi_resolve_url_using_region", "102");
     testProjectId = process.env.test_project_id!;
     const imodelName = process.env.test_imodel_name!;
     testIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
@@ -83,7 +83,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
-    const db = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
+    const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
     utils.verifyIModel(db, jobArgs, isUpdate);
     db.close();
   }

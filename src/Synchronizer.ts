@@ -321,7 +321,7 @@ export class Synchronizer {
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        const elementChannelRoot = db.concurrencyControl.channel.getChannelOfElement(db.elements.getElement(elementId));
+        const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
         const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
         const hasSeenElement = this._seenElements.has(elementId);
         if (isInChannelRoot && !hasSeenElement) {
@@ -448,8 +448,8 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private getLocksAndCodes(element: Element) {
-    if (!this.imodel.isBriefcaseDb() || this.imodel.concurrencyControl.isBulkMode) {
+  private getLocksAndCodes(element: Element) { // think this function is no longer necessary because we acquire more general locks when making changes
+    if (!this.imodel.isBriefcaseDb() /* || this.imodel.concurrencyControl.isBulkMode*/) {
       return;
     }
     const briefcase = this.imodel;
