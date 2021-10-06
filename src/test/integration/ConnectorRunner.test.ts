@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { Id64String, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core"; // config is missing, which makes us unable to set environment and im not sure what the new way to do that is
+import { BentleyStatus, ClientRequestContext, Id64String, Logger } from "@bentley/bentleyjs-core"; // config is missing, which makes us unable to set environment and im not sure what the new way to do that is
 import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
 import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
 import { AccessToken } from "@bentley/itwin-client";

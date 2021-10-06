@@ -258,7 +258,7 @@ export class Synchronizer {
    * @beta
    */
   public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
-    this.getLocksAndCodes(results.element);
+    // this.getLocksAndCodes(results.element);
     results.element.insert(); // throws on error
 
     this.onElementSeen(results.element.id);
@@ -321,10 +321,10 @@ export class Synchronizer {
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
-        const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
+        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
+        // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
         const hasSeenElement = this._seenElements.has(elementId);
-        if (isInChannelRoot && !hasSeenElement) {
+        if (!hasSeenElement) {
           const element = db.elements.getElement(elementId);
           if (element instanceof DefinitionElement)
             defElementsToDelete.push(elementId);
@@ -391,7 +391,7 @@ export class Synchronizer {
       return IModelStatus.WrongClass;
     }
 
-    this.getLocksAndCodes(results.element);
+    // this.getLocksAndCodes(results.element);
     results.element.update();
 
     return IModelStatus.Success;
@@ -448,14 +448,14 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private getLocksAndCodes(element: Element) { // think this function is no longer necessary because we acquire more general locks when making changes
-    if (!this.imodel.isBriefcaseDb() /* || this.imodel.concurrencyControl.isBulkMode*/) {
-      return;
-    }
-    const briefcase = this.imodel;
-    element.buildConcurrencyControlRequest(Id64.isValid(element.id) ? DbOpcode.Update : DbOpcode.Insert);
-    (async () => briefcase.concurrencyControl.request(this._requestContext!, briefcase.concurrencyControl.pendingRequest));
-  }
+  // private getLocksAndCodes(element: Element) { // think this function is no longer necessary because we acquire more general locks when making changes
+  //   if (!this.imodel.isBriefcaseDb() /* || this.imodel.concurrencyControl.isBulkMode*/) {
+  //     return;
+  //   }
+  //   const briefcase = this.imodel;
+  //   element.buildConcurrencyControlRequest(Id64.isValid(element.id) ? DbOpcode.Update : DbOpcode.Insert);
+  //   (async () => briefcase.concurrencyControl.request(this._requestContext!, briefcase.concurrencyControl.pendingRequest));
+  // }
 
   private makeRepositoryLink(document: string, defaultCode: string, defaultURN: string, preferDefaultCode: boolean = false): Element {
     const [docProps, code] = this.getRepositoryLinkInfo(document, defaultCode, defaultURN, preferDefaultCode);

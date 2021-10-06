@@ -188,69 +188,69 @@ export class ConnectorRunner {
     // source data
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel(/* IModel.repositoryModelId */ );
 
     const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
 
-    await this.persistChanges(`Initialization`, ChangesType.Definition);
+    await this.persistChanges(`Initialization`);
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
 
     // domain schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel(/* IModel.repositoryModelId*/);
 
     reqContext = await this.getReqContext();
     await this.connector.importDomainSchema(reqContext);
 
-    await this.persistChanges(`Domain Schema Update`, ChangesType.Schema);
+    await this.persistChanges(`Domain Schema Update`);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
 
     // dynamic schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel(/* IModel.repositoryModelId*/);
 
     reqContext = await this.getReqContext();
     await this.connector.importDynamicSchema(reqContext);
 
-    await this.persistChanges("Dynamic Schema Update", ChangesType.Schema);
+    await this.persistChanges("Dynamic Schema Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
 
     // initialize job subject
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel(/* IModel.repositoryModelId*/);
 
     const jobSubject = await this.updateJobSubject();
 
-    await this.persistChanges(`Job Subject Update`, ChangesType.GlobalProperties);
+    await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
     // definitions changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-    await this.enterChannel(jobSubject.id);
+    await this.enterChannel(/* IModel.repositoryModelId*/);
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
 
-    await this.persistChanges("Definitions Update", ChangesType.Regular);
+    await this.persistChanges("Definitions Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
 
     // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
-    await this.enterChannel(jobSubject.id);
+    await this.enterChannel(/* jobSubject.id*/);
 
     await this.connector.updateExistingData();
     await this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
 
-    await this.persistChanges("Data Update", ChangesType.Regular);
+    await this.persistChanges("Data Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
@@ -485,7 +485,7 @@ export class ConnectorRunner {
     }
   }
 
-  private async enterChannel(rootId: Id64String) {
+  private async enterChannel() {
     if (!this.db.isBriefcaseDb())
       return;
 
