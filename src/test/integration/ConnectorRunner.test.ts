@@ -11,7 +11,7 @@ import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
 import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
-import { HubUtility } from "./HubUtility";
+import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import * as fs from "fs";
@@ -70,7 +70,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       const connectorFile = "./test/integration/TestConnector.js";
       const status = await runner.run(connectorFile);
       if (status !== BentleyStatus.SUCCESS)
-        throw new Error;
+        throw new Error();
     } catch (err) {
       doThrow = true;
     } finally {

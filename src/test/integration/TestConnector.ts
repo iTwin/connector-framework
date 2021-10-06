@@ -35,7 +35,11 @@ export default class TestConnector extends BaseConnector {
   private _repositoryLink?: RepositoryLink;
 
   public static override async create(): Promise<TestConnector> {
+<<<<<<< HEAD:src/test/integration/TestConnector.ts
     return new TestConnector;
+=======
+    return new TestConnector();
+>>>>>>> origin/main:src/test/TestConnector/TestConnector.ts
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention

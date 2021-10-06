@@ -13,6 +13,7 @@ interface Validatable {
  * Defines the schema of the .json argument file used to initialize ConnectorRunner
  */
 export interface AllArgsProps {
+  version: "0.0.1",
   jobArgs: JobArgsProps;
   hubArgs?: HubArgsProps;
 }
@@ -25,6 +26,7 @@ export interface JobArgsProps {
   issuesDbFile?: string
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
+  errorFile?: string;
   moreArgs?: { [otherArg: string]: any };
 }
 
@@ -39,11 +41,12 @@ export class JobArgs implements JobArgsProps, Validatable {
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
   public issuesDbFile?: string
   public loggerConfigJSONFile?: string;
-  public synchConfigFile?: string;
-  public moreArgs?: { [otherArg: string]: any };
+  public errorFile: string;
   public doDetectDeletedElements: boolean = true;
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
+  public moreArgs?: { [otherArg: string]: any };
+  public synchConfigFile?: string;
 
   constructor(props: JobArgsProps) {
     this.source = props.source;
@@ -52,8 +55,9 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.dbType = props.dbType ?? this.dbType;
     this.issuesDbFile = props.issuesDbFile ?? path.join(this.stagingDir, "issues.db");
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
-    this.synchConfigFile = props.synchConfigFile;
     this.moreArgs = props.moreArgs;
+    this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");
+    this.synchConfigFile = props.synchConfigFile;
   }
 
   public isValid() {
@@ -110,7 +114,7 @@ export class HubArgs implements HubArgsProps, Validatable {
 
   public isValid() {
     if (this.briefcaseFile && !fs.existsSync(this.briefcaseFile)) {
-      Logger.logError(LoggerCategories.Framework, "HubArgs.briefacseFile does not exist");
+      Logger.logError(LoggerCategories.Framework, "HubArgs.briefcaseFile does not exist");
       return false;
     }
     if (!this.iModelGuid) {
