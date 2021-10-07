@@ -258,7 +258,6 @@ export class Synchronizer {
    * @beta
    */
   public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
-    // this.getLocksAndCodes(results.element);
     results.element.insert(); // throws on error
 
     this.onElementSeen(results.element.id);
@@ -391,7 +390,6 @@ export class Synchronizer {
       return IModelStatus.WrongClass;
     }
 
-    // this.getLocksAndCodes(results.element);
     results.element.update();
 
     return IModelStatus.Success;
@@ -447,15 +445,6 @@ export class Synchronizer {
     }
     return IModelStatus.Success;
   }
-
-  // private getLocksAndCodes(element: Element) { // think this function is no longer necessary because we acquire more general locks when making changes
-  //   if (!this.imodel.isBriefcaseDb() /* || this.imodel.concurrencyControl.isBulkMode*/) {
-  //     return;
-  //   }
-  //   const briefcase = this.imodel;
-  //   element.buildConcurrencyControlRequest(Id64.isValid(element.id) ? DbOpcode.Update : DbOpcode.Insert);
-  //   (async () => briefcase.concurrencyControl.request(this._requestContext!, briefcase.concurrencyControl.pendingRequest));
-  // }
 
   private makeRepositoryLink(document: string, defaultCode: string, defaultURN: string, preferDefaultCode: boolean = false): Element {
     const [docProps, code] = this.getRepositoryLinkInfo(document, defaultCode, defaultURN, preferDefaultCode);
