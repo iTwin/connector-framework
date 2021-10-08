@@ -108,13 +108,6 @@ export class Synchronizer {
     }
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
 
-    const xseProps: ExternalSourceProps = {
-      model: scope,
-      classFullName: ExternalSource.classFullName,
-      repository: {id: repositoryLink.id, relClassName: RepositoryLink.classFullName },
-      code: Code.createEmpty(),
-    };
-
     const results: SynchronizationResults = {
       element: repositoryLink,
       itemState: ItemState.New,
@@ -133,7 +126,16 @@ export class Synchronizer {
     }
 
     results.itemState = itemState;
-    this.updateIModel(results, scope, sourceItem, kind, xseProps);
+    this.updateIModel(results, scope, sourceItem, kind);
+
+    const xseProps: ExternalSourceProps = {
+      model: scope,
+      classFullName: ExternalSource.classFullName,
+      repository: {id: results.element.id, relClassName: RepositoryLink.classFullName },
+      code: Code.createEmpty(),
+    };
+
+    this.imodel.elements.insertElement(xseProps);
 
     this._links.set(key, results);
 
@@ -197,7 +199,7 @@ export class Synchronizer {
    * @param scope Id of the scoping element
    * @param sourceItem Defines the source item
    * @param kind The kind of the source item
-   * @param externalSourceElement External source pointing to the Repository Link
+   * @param externalSourceElement External source pointing to the Repository Link. Use getExternalSourceElement for this parameter
    * @beta
    */
   public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
@@ -213,20 +215,6 @@ export class Synchronizer {
       if (xsa.aspectId !== undefined) {
         aspectId = xsa.aspectId;
       }
-    }
-
-    let source;
-    if (externalSourceElement) {
-      source = this.imodel.elements.insertElement(externalSourceElement);
-    } else {
-      this.imodel.withStatement(
-        "select xse.ecinstanceid from BisCore.ExternalSource xse, BisCore.ExternalSourceAspect xsa where xse.Repository.Id = ? and xse.ecinstanceid = xsa.Element.Id and xsa.kind='ExternalSource ' and xsa.Identifier = ?",
-        (stmt) => {
-          stmt.bindValues([scope, ""]);
-          stmt.step();
-          source = stmt.getRow().id;
-        }
-      );
     }
 
     // WIP: Handle the case where we are doing a delete + insert and are re-using the old element's id
@@ -246,7 +234,12 @@ export class Synchronizer {
         return status;
       }
     }
-    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind, source);
+
+    let sourceId;
+    if (externalSourceElement && externalSourceElement.id)
+      sourceId = externalSourceElement.id;
+
+    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind, sourceId);
     return status;
   }
 
@@ -277,6 +270,26 @@ export class Synchronizer {
       this.imodel.elements.updateAspect(aspectProps);
     }
     return IModelStatus.Success;
+  }
+
+  /** Returns the External Source Element associated with a repository link
+   * @param repositoryLink The repository link associated with the External Source Element
+   * @beta
+   */
+  public getExternalSourceElement(repositoryLink: Element): Element | undefined {
+    let sourceId;
+    this.imodel.withStatement(
+      "select * from BisCore.ExternalSource where repository.id=?",
+      (stmt) => {
+        stmt.bindValues([repositoryLink.id]);
+        stmt.step();
+        const row = stmt.getRow();
+        sourceId = row.id;
+      }
+    );
+    if(sourceId)
+      return this.imodel.elements.getElement(sourceId);
+    return;
   }
 
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim

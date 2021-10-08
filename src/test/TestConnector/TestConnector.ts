@@ -378,7 +378,8 @@ export default class TestConnector extends BaseConnector {
       };
       if (results.id !== undefined) // in case this is an update
         sync.element.id = results.id;
-      this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group");
+      const xse = this.synchronizer.getExternalSourceElement(this._repositoryLink!);
+      this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group", xse);
     }
   }
 
@@ -439,7 +440,8 @@ export default class TestConnector extends BaseConnector {
       element,
       itemState: results.state,
     };
-    this.synchronizer.updateIModel(sync, physicalModelId, sourceItem, "Tile");
+    const xse = this.synchronizer.getExternalSourceElement(this._repositoryLink!);
+    this.synchronizer.updateIModel(sync, physicalModelId, sourceItem, "Tile", xse);
     if (!tile.hasOwnProperty("Group")) {
       return;
     }
