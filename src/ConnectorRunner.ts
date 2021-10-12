@@ -2,15 +2,14 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
-import { ChangesType } from "@bentley/imodelhub-client";
-import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
-import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink, LinkElement } from "@bentley/imodeljs-backend";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
+import { assert, BentleyStatus, ClientRequestContext, Guid, Logger, LogLevel } from "@bentley/bentleyjs-core";
+import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import { AllArgsProps, JobArgs, HubArgs } from "./Args";
-import { AuthorizedClientRequestContext, AccessToken } from "@bentley/itwin-client";
+import { AllArgsProps, HubArgs, JobArgs } from "./Args";
+import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
@@ -77,7 +76,7 @@ export class ConnectorRunner {
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
 
-    let hubArgs: HubArgs | undefined = undefined;
+    let hubArgs: HubArgs | undefined;
     if (json.hubArgs)
       hubArgs = new HubArgs(json.hubArgs);
 
@@ -226,8 +225,6 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
     await this.enterChannel();
 
-    const jobSubject = await this.updateJobSubject();
-
     await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
@@ -260,7 +257,7 @@ export class ConnectorRunner {
 
   private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
-      (this._db as BriefcaseDb).abandonChanges();
+      (this._db ).abandonChanges();
     }
     this.recordError(err);
   }
@@ -317,7 +314,7 @@ export class ConnectorRunner {
               ConnectorType: "JSConnector",
             },
             Connector: this.connector.getConnectorName(),
-          }
+          },
         },
       };
 
@@ -414,16 +411,16 @@ export class ConnectorRunner {
   }
 
   private async getTokenInteractive() {
-		const client = new ElectronAuthorizationBackend();
+    const client = new ElectronAuthorizationBackend();
     await client.initialize(this.hubArgs.clientConfig);
-    return new Promise<AccessToken>((resolve, reject) => {
+    return new Promise<AccessToken>(async (resolve, reject) => {
       NativeHost.onUserStateChanged.addListener((token) => {
         if (token !== undefined)
           resolve(token);
         else
           reject(new Error("Failed to sign in"));
       });
-      client.signIn();
+      await client.signIn();
     });
   }
 
@@ -431,9 +428,9 @@ export class ConnectorRunner {
     if (this.jobArgs.dbType === "briefcase") {
       await this.loadBriefcaseDb();
     } else if (this.jobArgs.dbType === "standalone") {
-      this.loadStandaloneDb();
+      await this.loadStandaloneDb();
     } else if (this.jobArgs.dbType === "snapshot") {
-      this.loadSnapshotDb();
+      await this.loadSnapshotDb();
     } else {
       throw new Error("Invalid JobArgs.dbType");
     }
@@ -449,7 +446,7 @@ export class ConnectorRunner {
   }
 
   private async loadStandaloneDb() {
-    const cname = this.connector.getConnectorName(); 
+    const cname = this.connector.getConnectorName();
     const fname = `${cname}.bim`;
     const fpath = path.join(this.jobArgs.stagingDir, fname);
     if (fs.existsSync(fpath))
@@ -460,7 +457,7 @@ export class ConnectorRunner {
 
   private async loadBriefcaseDb() {
 
-    let bcFile: string | undefined = undefined;
+    let bcFile: string | undefined;
     if (this.hubArgs.briefcaseFile) {
       bcFile = this.hubArgs.briefcaseFile;
     } else {
@@ -474,7 +471,6 @@ export class ConnectorRunner {
       }
     }
 
-    const reqContext = await this.getAuthReqContext();
     let openProps: OpenBriefcaseProps;
     if (bcFile) {
       openProps = { fileName: bcFile };
