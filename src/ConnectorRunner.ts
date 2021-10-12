@@ -4,7 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
-import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger } from "@bentley/bentleyjs-core";
+import { assert, BentleyStatus, ClientRequestContext, Guid, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
 import { BriefcaseDb, BriefcaseManager, IModelDb, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink, LinkElement } from "@bentley/imodeljs-backend";
 import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
