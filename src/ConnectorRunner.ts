@@ -40,6 +40,13 @@ export class ConnectorRunner {
         throw new Error("Invalid hubArgs");
       this._hubArgs = hubArgs;
     }
+
+    Logger.initializeToConsole();
+    const { loggerConfigJSONFile } = jobArgs;
+    if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+      Logger.configureLevels(require(loggerConfigJSONFile));
+    else
+      Logger.setLevelDefault(LogLevel.Info);
   }
 
   /**
@@ -63,6 +70,9 @@ export class ConnectorRunner {
    * @throws Error when content does not include "jobArgs" as key
    */
   public static fromJSON(json: AllArgsProps): ConnectorRunner {
+    const supportedVersion = "0.0.1";
+    if (!json.version || json.version !== supportedVersion)
+      throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
@@ -117,7 +127,7 @@ export class ConnectorRunner {
 
     const moreArgs = this.jobArgs.moreArgs;
     if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
-      name = moreArgs.pcf.subjectNode; 
+      name = moreArgs.pcf.subjectNode;
 
     return name;
   }
@@ -149,17 +159,9 @@ export class ConnectorRunner {
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
-      if (this._db && this._db.isBriefcaseDb()) {
-        const reqContext = await this.getAuthReqContext();
-        (this._db as BriefcaseDb).abandonChanges();
-      }
+      await this.onFailure(err);
     } finally {
-      if (this._db) {
-        this._db.abandonChanges();
-        this._db.close();
-      }
-      if (this.connector.issueReporter)
-        await this.connector.issueReporter.publishReport();
+      await this.onFinish();
     }
     return runStatus;
   }
@@ -188,7 +190,7 @@ export class ConnectorRunner {
     // source data
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await this.enterChannel(/* IModel.repositoryModelId */ );
+    await this.enterChannel();
 
     const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
@@ -200,7 +202,7 @@ export class ConnectorRunner {
     // domain schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
-    await this.enterChannel(/* IModel.repositoryModelId*/);
+    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDomainSchema(reqContext);
@@ -211,7 +213,7 @@ export class ConnectorRunner {
     // dynamic schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
-    await this.enterChannel(/* IModel.repositoryModelId*/);
+    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDynamicSchema(reqContext);
@@ -222,7 +224,7 @@ export class ConnectorRunner {
     // initialize job subject
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
-    await this.enterChannel(/* IModel.repositoryModelId*/);
+    await this.enterChannel();
 
     const jobSubject = await this.updateJobSubject();
 
@@ -232,7 +234,7 @@ export class ConnectorRunner {
     // definitions changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-    await this.enterChannel(/* IModel.repositoryModelId*/);
+    await this.enterChannel();
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
@@ -243,7 +245,7 @@ export class ConnectorRunner {
     // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
-    await this.enterChannel(/* jobSubject.id*/);
+    await this.enterChannel();
 
     await this.connector.updateExistingData();
     await this.updateSynchronizationConfigLink(synchConfig);
@@ -254,6 +256,35 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
+  }
+
+  private async onFailure(err: any) {
+    if (this._db && this._db.isBriefcaseDb()) {
+      (this._db as BriefcaseDb).abandonChanges();
+    }
+    this.recordError(err);
+  }
+
+  public recordError(err: any) {
+    const errorFile = this.jobArgs.errorFile;
+    const errorStr = JSON.stringify({
+      "Id": this._connector ? this._connector.getApplicationId : -1,
+      "Message": "Failure",
+      "Description": err.message,
+      "ExtendedData": {}, 
+    });
+    fs.writeFileSync(errorFile, errorStr);
+    Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
+  }
+
+  private async onFinish() {
+    if (this._db) {
+      this._db.abandonChanges();
+      this._db.close();
+    }
+
+    if (this._connector && this.connector.issueReporter)
+      await this.connector.issueReporter.publishReport();
   }
 
   private updateDeletedElements() {
@@ -475,10 +506,9 @@ export class ConnectorRunner {
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
       this._db = this.db as BriefcaseDb;
-      // await this.db.locks.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
-      await this.db.pullChanges(); // think this is accurate?
+      // await this.db.concurrencyControl.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
+      await this.db.pullChanges();
       this.db.saveChanges(comment);
-      // await this.db.pushChanges(authReqContext, comment, ctype); // not sure if ctype is used anymore
       await this.db.pushChanges({user: authReqContext, description: comment});
     } else {
       this.db.saveChanges(comment);
