@@ -225,6 +225,8 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
     await this.enterChannel();
 
+    const jobSubject = this.updateJobSubject();
+
     await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
