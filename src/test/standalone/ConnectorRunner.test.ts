@@ -15,7 +15,7 @@ import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
 
-  const connectorFile = "./test/integration/TestConnector.js";
+  const connectorFile = "./test/TestConnector/TestConnector.js";
 
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
