@@ -473,11 +473,12 @@ export class ConnectorRunner {
       }
     }
 
+    const reqContext = await this.getAuthReqContext();
     let openProps: OpenBriefcaseProps;
     if (bcFile) {
       openProps = { fileName: bcFile };
     } else {
-      const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      const reqArg: RequestNewBriefcaseArg = { user: reqContext, iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 

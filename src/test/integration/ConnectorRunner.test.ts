@@ -45,8 +45,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     } catch (error) {
       Logger.logError("Error", `Failed with error: ${error}`);
     }
-
-    // Config.App.set("imjs_buddi_resolve_url_using_region", "102");
+    process.env.imjs_buddi_resolve_url_using_region = "102";
     testProjectId = process.env.test_project_id!;
     const imodelName = process.env.test_imodel_name!;
     testIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
