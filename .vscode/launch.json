@@ -22,15 +22,12 @@
         {
           "name": "iTwinConnectorFwk Tests (integration)",
           "cwd": "${workspaceFolder}",
-          "type": "pwa-node",
+          "type": "node",
           "request": "launch",
           "runtimeExecutable": "npm",
           "runtimeArgs": [
             "run",
             "test:integration"
-          ],
-          "outFiles": [
-            "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
           ]
       },
     ]
