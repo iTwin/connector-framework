@@ -44,7 +44,7 @@ stages:
 
       - task: NodeTool@0
         inputs:
-          versionSpec: '12.17.0'
+          versionSpec: '14.17.6'
         displayName: 'Install Node.js'
 
       - script: |
