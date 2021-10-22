@@ -13,7 +13,7 @@
     "url": "https://github.com/iTwin/connector-framework"
   },
   "scripts": {
-    "build": "tsc 1>&2 && npm run copy:assets && npm run copy:test-assets",
+    "build": "git config --local core.hooksPath .githooks && tsc 1>&2 && npm run copy:assets && npm run copy:test-assets",
     "clean": "rimraf lib",
     "copy:assets": "cpx \"./src/assets/**/*\" ./lib/assets",
     "copy:config": "internal-tools copy-config",
