@@ -46,6 +46,7 @@ export class ConnectorRunner {
     Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
     if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       Logger.configureLevels(require(loggerConfigJSONFile));
     else
       Logger.setLevelDefault(LogLevel.Info);
@@ -252,12 +253,15 @@ export class ConnectorRunner {
     await this.enterChannel(jobSubject.id);
 
     await this.connector.updateExistingData();
-    this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
 
     await this.persistChanges("Data Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
+
+    await this.enterChannel(IModel.repositoryModelId);
+    this.updateSynchronizationConfigLink(synchConfig);
+    await this.persistChanges("Synch Config Update", ChangesType.Regular);
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
@@ -273,7 +277,7 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      id: this._connector ? this._connector.getApplicationId : -1,
+      id: this._connector ? this._connector.getApplicationId() : -1,
       message: "Failure",
       description: err.message,
       extendedData: {},
@@ -345,6 +349,7 @@ export class ConnectorRunner {
   private initProgressMeter() {}
 
   private async loadConnector(connectorFile: string) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const connectorClass = require(connectorFile).default;
     this._connector = await connectorClass.create();
   }
@@ -359,7 +364,13 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    return this._db.elements.insertElement(synchConfigData);
+    const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
+    if(prevSynchConfigId === undefined)
+      return this._db.elements.insertElement(synchConfigData);
+    else {
+      this.updateSynchronizationConfigLink(prevSynchConfigId);
+      return prevSynchConfigId;
+    }
   }
   private updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
