@@ -3,14 +3,14 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { assert, ClientRequestContext, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
+import { AccessToken, assert, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
+//import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
   ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
-} from "@bentley/imodeljs-backend";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@bentley/imodeljs-common";
-import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@bentley/geometry-core";
+} from "@itwin/core-backend";
+import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
+import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
 import { BaseConnector } from "../../BaseConnector";
@@ -63,7 +63,7 @@ export default class TestConnector extends BaseConnector {
     this._repositoryLink = documentStatus.element;
   }
 
-  public async importDomainSchema(_requestContext: AuthorizedClientRequestContext | ClientRequestContext): Promise<any> {
+  public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
     if (this._sourceDataState === ItemState.Unchanged) {
       return;
     }
@@ -72,7 +72,7 @@ export default class TestConnector extends BaseConnector {
     await this.synchronizer.imodel.importSchemas([fileName]);
   }
 
-  public async importDynamicSchema(requestContext: AuthorizedClientRequestContext | ClientRequestContext): Promise<any> {
+  public async importDynamicSchema(requestContext: AccessToken): Promise<any> {
     if (null === requestContext)
       return;
   }
@@ -91,7 +91,7 @@ export default class TestConnector extends BaseConnector {
     const definitionModelId = this.queryDefinitionModel();
     if (undefined === groupModelId || undefined === physicalModelId || undefined === definitionModelId) {
       const error = `Unable to find model Id for ${undefined === groupModelId ? ModelNames.Group : (undefined === physicalModelId ? ModelNames.Physical : ModelNames.Definition)}`;
-      throw new IModelError(IModelStatus.BadArg, error, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, error);
     }
 
     this.issueReporter?.reportIssue(physicalModelId, "source", "Warning", "Test", "Test Message", "Type");
@@ -135,7 +135,7 @@ export default class TestConnector extends BaseConnector {
     const documentStatus = this.synchronizer.recordDocument(IModelDb.rootSubjectId, sourceItem);
     if (undefined === documentStatus) {
       const error = `Failed to retrieve a RepositoryLink for ${this._sourceData}`;
-      throw new IModelError(IModelStatus.BadArg, error, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, error);
     }
     return documentStatus;
   }
@@ -300,7 +300,7 @@ export default class TestConnector extends BaseConnector {
 
     const box = Box.createDgnBox(baseOrigin, vectorX, vectorY, topOrigin, baseX, baseY, topX, topY, true);
     if (undefined === box) {
-      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${casing.name()}`, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${casing.name()}`);
     }
     this.insertGeometry(definitionModelId, casing.name(), box);
   }
@@ -309,7 +309,7 @@ export default class TestConnector extends BaseConnector {
     const loop = Loop.createPolygon(casing.points());
     const sweep = LinearSweep.create(loop, casing.vec(), true);
     if (undefined === sweep) {
-      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${casing.name()}`, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${casing.name()}`);
     }
     this.insertGeometry(definitionModelId, casing.name(), sweep);
   }
@@ -321,7 +321,7 @@ export default class TestConnector extends BaseConnector {
     const cone = Cone.createAxisPoints(baseCenter, topCenter, radius, radius, true);
     const name = GeometryParts.CircularMagnet;
     if (undefined === cone) {
-      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${name}`, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${name}`);
     }
     this.insertGeometry(definitionModelId, name, cone);
   }
@@ -360,7 +360,7 @@ export default class TestConnector extends BaseConnector {
         continue;
       }
       if (group.name === undefined) {
-        throw new IModelError(IModelStatus.BadArg, "Name undefined for TestConnector group", Logger.logError, loggerCategory);
+        throw new IModelError(IModelStatus.BadArg, "Name undefined for TestConnector group");
       }
 
       const code = TestConnectorGroup.createCode(this.synchronizer.imodel, groupModelId, group.name);
@@ -406,7 +406,7 @@ export default class TestConnector extends BaseConnector {
       return;
     }
     if (tile.casingMaterial === undefined) {
-      throw new IModelError(IModelStatus.BadArg, `casingMaterial undefined for TestConnector Tile ${tile.guid}`, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, `casingMaterial undefined for TestConnector Tile ${tile.guid}`);
     }
 
     let element: PhysicalElement;
@@ -430,7 +430,7 @@ export default class TestConnector extends BaseConnector {
         element = RectangleTile.create(this.synchronizer.imodel, physicalModelId, definitionModelId, tile);
         break;
       default:
-        throw new IModelError(IModelStatus.BadArg, `unknown tile shape ${shape}`, Logger.logError, loggerCategory);
+        throw new IModelError(IModelStatus.BadArg, `unknown tile shape ${shape}`);
     }
     if (undefined !== results.id) {
       element.id = results.id;
@@ -491,7 +491,7 @@ export default class TestConnector extends BaseConnector {
 
     const categoryId = SpatialCategory.queryCategoryIdByName(this.synchronizer.imodel, definitionModelId, Categories.Category);
     if (undefined === categoryId) {
-      throw new IModelError(IModelStatus.BadElement, "Unable to find TestConnector Category", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, "Unable to find TestConnector Category");
     }
     return CategorySelector.insert(this.synchronizer.imodel, definitionModelId, "Default", [categoryId]);
   }

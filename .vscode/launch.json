@@ -5,19 +5,17 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "iTwinConnectorFwk Tests (standalone)",
             "cwd": "${workspaceFolder}",
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
             "runtimeExecutable": "npm",
             "runtimeArgs": [
               "run",
               "test:standalone"
             ],
-            "outFiles": [
-              "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
-            ]
         },
         {
           "name": "iTwinConnectorFwk Tests (integration)",
@@ -30,5 +28,16 @@
             "test:integration"
           ]
       },
+      {
+        "name": "pretest",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "pretest"
+        ],
+    },      
     ]
 }

@@ -2,14 +2,13 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
-import { assert, BentleyStatus, ClientRequestContext, Guid, Logger, LogLevel } from "@bentley/bentleyjs-core";
-import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
-import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
+import { AccessToken, assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
+import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
+import { ElectronAuthorizationBackend } from "@itwin/core-electron/lib/cjs/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import { AllArgsProps, HubArgs, JobArgs } from "./Args";
-import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
@@ -24,7 +23,7 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
-  private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
+  private _reqContext?: AccessToken;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -43,6 +42,7 @@ export class ConnectorRunner {
     Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
     if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       Logger.configureLevels(require(loggerConfigJSONFile));
     else
       Logger.setLevelDefault(LogLevel.Info);
@@ -84,21 +84,28 @@ export class ConnectorRunner {
     return runner;
   }
 
-  public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
-    if (!this._reqContext || !(this._reqContext instanceof AuthorizedClientRequestContext))
+  // NEEDSWORK - How to check if string version od Access Token is expired
+  isAccessTokenExpired () : boolean {
+  //  return this._reqContext.isExpired(5);
+  return true;
+  }
+
+
+  public async getAuthReqContext(): Promise<AccessToken> {
+    if (!this._reqContext )
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (this._reqContext.accessToken.isExpired(5)) {
-      this._reqContext.accessToken = await this.getToken();
+    if (this.isAccessTokenExpired()) {
+      this._reqContext = await this.getToken();
       Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
     }
     return this._reqContext;
   }
 
-  public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
+  public async getReqContext(): Promise<AccessToken> {
     if (!this._reqContext)
       throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
 
-    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+    let reqContext: AccessToken;
     if (this.db.isBriefcaseDb())
       reqContext = await this.getAuthReqContext();
     else
@@ -168,7 +175,7 @@ export class ConnectorRunner {
   private async runUnsafe(connectorFile: string) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+    let reqContext: AccessToken;
 
     // load
 
@@ -247,12 +254,15 @@ export class ConnectorRunner {
     await this.enterChannel();
 
     await this.connector.updateExistingData();
-    await this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
 
     await this.persistChanges("Data Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
+
+    await this.enterChannel();
+    this.updateSynchronizationConfigLink(synchConfig);
+    await this.persistChanges("Synch Config Update");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
@@ -267,7 +277,7 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      "Id": this._connector ? this._connector.getApplicationId : -1,
+      "Id": this._connector ? this._connector.getApplicationId() : -1,
       "Message": "Failure",
       "Description": err.message,
       "ExtendedData": {}, 
@@ -341,6 +351,7 @@ export class ConnectorRunner {
   private initProgressMeter() {}
 
   private async loadConnector(connectorFile: string) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const connectorClass = require(connectorFile).default;
     this._connector = await connectorClass.create();
   }
@@ -356,10 +367,16 @@ export class ConnectorRunner {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
     await this._db.locks.acquireSharedLock(IModel.dictionaryId);
-    const element =  this._db.elements.insertElement(synchConfigData);
+    const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
+    var idToReturn : string;
+    if(prevSynchConfigId === undefined)
+      idToReturn = this._db.elements.insertElement(synchConfigData);
+    else {
+      this.updateSynchronizationConfigLink(prevSynchConfigId);
+      idToReturn = prevSynchConfigId;
+      }
     await this._db.locks.releaseAllLocks();
-    return element;
-
+    return idToReturn;
   }
   private async updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
@@ -376,21 +393,15 @@ export class ConnectorRunner {
   }
 
   private async loadReqContext() {
-    const activityId = Guid.createValue();
-    const appId = this.connector.getApplicationId();
-    const appVersion = this.connector.getApplicationVersion();
-    if (this.jobArgs.dbType === "briefcase") {
-      const token = await this.getToken();
-      this._reqContext = new AuthorizedClientRequestContext(token, activityId, appId, appVersion);
-    } else {
-      this._reqContext = new ClientRequestContext();
-    }
+    const token = await this.getToken();
+    this._reqContext = token;
   }
 
   private async getToken() {
-    let token: AccessToken;
-    if (!this.hubArgs)
-      throw new Error("ConnectorRunner._getToken: undefined hubArgs.");
+    let token: string;
+    if (this._jobArgs.dbType == "snapshot")
+        return "notoken";
+
     if (this.hubArgs.doInteractiveSignIn)
       token = await this.getTokenInteractive();
     else
@@ -399,11 +410,11 @@ export class ConnectorRunner {
   }
 
   private async getTokenSilent() {
-    let token: AccessToken;
+    let token: string;
     if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
       const response = await fetch(this.hubArgs.tokenCallbackUrl);
       const tokenStr = await response.json();
-      token = AccessToken.fromTokenString(tokenStr);
+      token = tokenStr;
     } else if (this.hubArgs && this.hubArgs.tokenCallback) {
       token = await this.hubArgs.tokenCallback();
     } else {
@@ -415,8 +426,8 @@ export class ConnectorRunner {
   private async getTokenInteractive() {
     const client = new ElectronAuthorizationBackend();
     await client.initialize(this.hubArgs.clientConfig);
-    return new Promise<AccessToken>(async (resolve, reject) => {
-      NativeHost.onUserStateChanged.addListener((token) => {
+    return new Promise<string>(async (resolve, reject) => {
+      NativeHost.onAccessTokenChanged.addListener((token) => {
         if (token !== undefined)
           resolve(token);
         else
@@ -478,7 +489,7 @@ export class ConnectorRunner {
     if (bcFile) {
       openProps = { fileName: bcFile };
     } else {
-      const reqArg: RequestNewBriefcaseArg = { user: reqContext, iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
@@ -494,8 +505,8 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    const reqContext = await this.getReqContext();
-    const synchronizer = new Synchronizer(this.db, false, reqContext as AuthorizedClientRequestContext);
+    //const reqContext = await this.getReqContext();
+    const synchronizer = new Synchronizer(this.db, false);
     this.connector.synchronizer = synchronizer;
   }
 
@@ -508,7 +519,7 @@ export class ConnectorRunner {
       // await this.db.concurrencyControl.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
       await this.db.pullChanges();
       this.db.saveChanges(comment);
-      await this.db.pushChanges({user: authReqContext, description: comment});
+      await this.db.pushChanges({description: comment});
     } else {
       this.db.saveChanges(comment);
     }

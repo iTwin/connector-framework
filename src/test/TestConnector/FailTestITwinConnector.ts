@@ -3,14 +3,14 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { assert, ClientRequestContext, Id64String, IModelStatus, Logger, BentleyStatus } from "@bentley/bentleyjs-core";
-import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
+import { AccessToken, assert, Id64String, IModelStatus, Logger, BentleyStatus } from "@itwin/core-bentley";
+//import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
   ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
-} from "@bentley/imodeljs-backend";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@bentley/imodeljs-common";
-import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@bentley/geometry-core";
+} from "@itwin/core-backend";
+import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
+import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
@@ -36,7 +36,7 @@ export default class TestConnector extends BaseConnector {
   public async importDefinitions(): Promise<any> {
     return;
   }
-  public async importDynamicSchema(requestContext?: AuthorizedClientRequestContext | ClientRequestContext | undefined): Promise<any> {
+  public async importDynamicSchema(requestContext?: AccessToken): Promise<any> {
     assert(requestContext !== undefined);
     return;
   }
@@ -83,9 +83,9 @@ export default class TestConnector extends BaseConnector {
     this._repositoryLink = documentStatus.element;
   }
   public override async onOpenIModel(): Promise<BentleyStatus> {
-    throw new IModelError(IModelStatus.BadArg, "Expected Fail for test", Logger.logError, TestConnectorLoggerCategory.Connector);
+    throw new IModelError(IModelStatus.BadArg, "Expected Fail for test");
   }
-  public async importDomainSchema(_requestContext: AuthorizedClientRequestContext | ClientRequestContext): Promise<any> {
+  public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
     if (this._sourceDataState === ItemState.Unchanged) {
       return;
     }
@@ -108,7 +108,7 @@ export default class TestConnector extends BaseConnector {
     const documentStatus = this.synchronizer.recordDocument(IModelDb.rootSubjectId, sourceItem);
     if (undefined === documentStatus) {
       const error = `Failed to retrieve a RepositoryLink for ${this._sourceData}`;
-      throw new IModelError(IModelStatus.BadArg, error, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, error);
     }
     return documentStatus;
   }

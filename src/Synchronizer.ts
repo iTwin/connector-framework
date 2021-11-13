@@ -5,10 +5,10 @@
 /** @packageDocumentation
  * @module Framework
  */
-import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
-import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-import { Code, ExternalSourceAspectProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
+import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSourceAspect, IModelDb, RepositoryLink } from "@itwin/core-backend";
+//import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
+import { AccessToken, assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
+import { Code, ExternalSourceAspectProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -84,9 +84,9 @@ export class Synchronizer {
   private _unchangedSources: Id64String[] = new Array<Id64String>();
   private _links = new Map<string, SynchronizationResults>();
 
-  public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AuthorizedClientRequestContext) {
+  public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AccessToken) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
-      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb", Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
   }
 
   /** Insert or update a RepositoryLink element to represent the source document.  Also inserts or updates an ExternalSourceAspect for provenance.
@@ -113,7 +113,7 @@ export class Synchronizer {
     };
 
     if (undefined === results.element) {
-      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`, Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
     }
 
     const itemState = this.detectChanges(scope, kind, sourceItem).state;
@@ -121,7 +121,7 @@ export class Synchronizer {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
       However, no ExternalSourceAspect with scope=${scope} and kind=${kind} was found for this element.
       Maybe RecordDocument was previously called on this file with a different scope or kind.`;
-      throw new IModelError(IModelStatus.NotFound, error, Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.NotFound, error);
     }
 
     results.itemState = itemState;

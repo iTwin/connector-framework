@@ -2,8 +2,8 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
-import { BentleyStatus } from "@bentley/bentleyjs-core";
+import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@itwin/core-backend";
+import { BentleyStatus } from "@itwin/core-bentley";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorRunner } from "../../ConnectorRunner";
 import { SqliteIssueReporter } from "../../SqliteIssueReporter";
@@ -32,9 +32,6 @@ describe("iTwin Connector Fwk StandAlone", () => {
   it("Should parse args correctly", () => {
     const argfile = path.join(KnownTestLocations.assetsDir, "TestArgs.json");
     ConnectorRunner.fromFile(argfile); // throws
-
-    const json = JSON.parse(fs.readFileSync(argfile, "utf8"));
-    ConnectorRunner.fromJSON(json); // throws
   });
 
   it("Should create empty snapshot and synchronize source data", async () => {

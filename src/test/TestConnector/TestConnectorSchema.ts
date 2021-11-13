@@ -4,7 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 
 import * as path from "path";
-import { ClassRegistry, Schema, Schemas } from "@bentley/imodeljs-backend";
+import { ClassRegistry, Schema, Schemas } from "@itwin/core-backend";
 import { KnownTestLocations } from "../KnownTestLocations";
 import * as elementsModule from "./TestConnectorElements";
 import * as modelsModule from "./TestConnectorModels";

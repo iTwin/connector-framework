@@ -2,8 +2,8 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { DbResult, Guid, GuidString, Logger } from "@bentley/bentleyjs-core";
-import { ECDb } from "@bentley/imodeljs-backend";
+import { DbResult, Guid, GuidString, Logger } from "@itwin/core-bentley";
+import { ECDb } from "@itwin/core-backend";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
