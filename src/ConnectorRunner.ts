@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps, SynchronizationConfigLinkProps } from "@bentley/imodeljs-common";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
 import { ChangesType } from "@bentley/imodelhub-client";
 import { assert, BentleyStatus, ClientRequestContext, Config, Guid, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
 import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
@@ -46,6 +46,7 @@ export class ConnectorRunner {
     Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
     if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       Logger.configureLevels(require(loggerConfigJSONFile));
     else
       Logger.setLevelDefault(LogLevel.Info);
@@ -79,7 +80,7 @@ export class ConnectorRunner {
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
 
-    let hubArgs: HubArgs | undefined = undefined;
+    let hubArgs: HubArgs | undefined;
     if (json.hubArgs)
       hubArgs = new HubArgs(json.hubArgs);
 
@@ -156,7 +157,7 @@ export class ConnectorRunner {
     try {
       await this.runUnsafe(connectorFile);
     } catch (err) {
-      const msg = (err as any).message;
+      const msg = err.message;
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
@@ -252,12 +253,15 @@ export class ConnectorRunner {
     await this.enterChannel(jobSubject.id);
 
     await this.connector.updateExistingData();
-    this.updateSynchronizationConfigLink(synchConfig);
     this.updateDeletedElements();
     this.updateProjectExtent();
 
     await this.persistChanges("Data Update", ChangesType.Regular);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
+
+    await this.enterChannel(IModel.repositoryModelId);
+    this.updateSynchronizationConfigLink(synchConfig);
+    await this.persistChanges("Synch Config Update", ChangesType.Regular);
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
@@ -265,7 +269,7 @@ export class ConnectorRunner {
   private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
       const reqContext = await this.getAuthReqContext();
-      await (this._db as BriefcaseDb).concurrencyControl.abandonResources(reqContext);
+      await this._db.concurrencyControl.abandonResources(reqContext);
     }
     this.recordError(err);
   }
@@ -273,10 +277,10 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      "Id": this._connector ? this._connector.getApplicationId : -1,
-      "Message": "Failure",
-      "Description": err.message,
-      "ExtendedData": {}, 
+      id: this._connector ? this._connector.getApplicationId() : -1,
+      message: "Failure",
+      description: err.message,
+      extendedData: {},
     });
     fs.writeFileSync(errorFile, errorStr);
     Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
@@ -312,16 +316,16 @@ export class ConnectorRunner {
 
     if (existingSubjectId) {
       subject = this.db.elements.getElement<Subject>(existingSubjectId);
-    } else {
+    } else { // not sure if camelcasing these json properties will not cause problems, in the event it does just change them all back to capital
       const jsonProperties: any = {
-        Subject: {
-          Job: {
-            Properties: {
-              ConnectorVersion: this.connector.getApplicationVersion(),
-              ConnectorType: "JSConnector",
+        subject: {
+          job: {
+            properties: {
+              connectorVersion: this.connector.getApplicationVersion(),
+              connectorType: "JSConnector",
             },
-            Connector: this.connector.getConnectorName(),
-          }
+            connector: this.connector.getConnectorName(),
+          },
         },
       };
 
@@ -345,6 +349,7 @@ export class ConnectorRunner {
   private initProgressMeter() {}
 
   private async loadConnector(connectorFile: string) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const connectorClass = require(connectorFile).default;
     this._connector = await connectorClass.create();
   }
@@ -359,7 +364,13 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    return this._db.elements.insertElement(synchConfigData);
+    const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
+    if(prevSynchConfigId === undefined)
+      return this._db.elements.insertElement(synchConfigData);
+    else {
+      this.updateSynchronizationConfigLink(prevSynchConfigId);
+      return prevSynchConfigId;
+    }
   }
   private updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
@@ -400,7 +411,7 @@ export class ConnectorRunner {
     let token: AccessToken;
     if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
       const response = await axios.get(this.hubArgs.tokenCallbackUrl);
-      const tokenStr = `Bearer ${response.data["access_token"]}`;
+      const tokenStr = `Bearer ${response.data.access_token}`;
       token = AccessToken.fromTokenString(tokenStr);
     } else if (this.hubArgs && this.hubArgs.tokenCallback) {
       token = await this.hubArgs.tokenCallback();
@@ -411,16 +422,16 @@ export class ConnectorRunner {
   }
 
   private async getTokenInteractive() {
-		const client = new ElectronAuthorizationBackend();
+    const client = new ElectronAuthorizationBackend();
     await client.initialize(this.hubArgs.clientConfig);
-    return new Promise<AccessToken>((resolve, reject) => {
+    return new Promise<AccessToken>(async (resolve, reject) => { // making this async concerns me
       NativeHost.onUserStateChanged.addListener((token) => {
         if (token !== undefined)
           resolve(token);
         else
           reject(new Error("Failed to sign in"));
       });
-      client.signIn();
+      await client.signIn();
     });
   }
 
@@ -428,9 +439,9 @@ export class ConnectorRunner {
     if (this.jobArgs.dbType === "briefcase") {
       await this.loadBriefcaseDb();
     } else if (this.jobArgs.dbType === "standalone") {
-      this.loadStandaloneDb();
+      await this.loadStandaloneDb();
     } else if (this.jobArgs.dbType === "snapshot") {
-      this.loadSnapshotDb();
+      await this.loadSnapshotDb();
     } else {
       throw new Error("Invalid JobArgs.dbType");
     }
@@ -446,7 +457,7 @@ export class ConnectorRunner {
   }
 
   private async loadStandaloneDb() {
-    const cname = this.connector.getConnectorName(); 
+    const cname = this.connector.getConnectorName();
     const fname = `${cname}.bim`;
     const fpath = path.join(this.jobArgs.stagingDir, fname);
     if (fs.existsSync(fpath))
@@ -457,7 +468,7 @@ export class ConnectorRunner {
 
   private async loadBriefcaseDb() {
 
-    let bcFile: string | undefined = undefined;
+    let bcFile: string | undefined;
     if (this.hubArgs.briefcaseFile) {
       bcFile = this.hubArgs.briefcaseFile;
     } else {
@@ -502,7 +513,7 @@ export class ConnectorRunner {
     const comment = `${revisionHeader} - ${changeDesc}`;
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
-      this._db = this.db as BriefcaseDb;
+      this._db = this.db;
       await this.db.concurrencyControl.request(authReqContext);
       await this.db.pullAndMergeChanges(authReqContext);
       this.db.saveChanges(comment);
@@ -516,7 +527,7 @@ export class ConnectorRunner {
     if (!this.db.isBriefcaseDb())
       return;
 
-    this._db = this.db as BriefcaseDb;
+    this._db = this.db;
     if (!this.db.concurrencyControl.isBulkMode)
       this.db.concurrencyControl.startBulkMode();
     if (this.db.concurrencyControl.hasPendingRequests)

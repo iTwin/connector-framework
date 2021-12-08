@@ -7,7 +7,6 @@ import { Subject } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import { Synchronizer } from "./Synchronizer";
-import { JobArgs } from "./Args";
 import * as fs from "fs";
 
 /** Abstract implementation of the iTwin Connector.
@@ -21,7 +20,7 @@ export abstract class BaseConnector {
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
-  };
+  }
 
   /** If the connector needs to perform any steps once the iModel has been opened */
   public async onOpenIModel(): Promise<BentleyStatus> {
