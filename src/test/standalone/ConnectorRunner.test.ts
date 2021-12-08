@@ -52,6 +52,11 @@ describe("iTwin Connector Fwk StandAlone", () => {
     db.close();
   });
 
+  function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
+    if ('code' in (e as any)) return true;
+    else return false;
+  }
+
   it("Should fail and create a error file", async () => {
     const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
@@ -68,7 +73,10 @@ describe("iTwin Connector Fwk StandAlone", () => {
       runner.issueReporter = issueReporter;
       await runner.run(failConnectorFile);
     } catch (error) {
-      expect(error.message).to.eql("Connector has not been loaded.");
+      if (isErrnoException(error))
+        expect(error.message).to.eql("Connector has not been loaded.");
+      else
+        throw error;
     }
 
     // disable for now
