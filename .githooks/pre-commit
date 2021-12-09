@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+# A hook script to verify what is about to be committed.
+# Called by "git commit" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message if
+# it wants to stop the commit.
+
+# Verify that all staged files have the correct copyright header
+# if not, then the correct header will be added or replace the old
+
+node ./.githooks/copyright-linter.js || exit $?

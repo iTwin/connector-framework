@@ -64,6 +64,7 @@ export default class TestConnector extends BaseConnector {
   }
 
   public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
+
     if (this._sourceDataState === ItemState.Unchanged) {
       return;
     }

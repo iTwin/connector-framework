@@ -45,8 +45,8 @@ export class JobArgs implements JobArgsProps, Validatable {
   public doDetectDeletedElements: boolean = true;
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
-  public moreArgs?: { [otherArg: string]: any };
   public synchConfigFile?: string;
+  public moreArgs?: { [otherArg: string]: any };
 
   constructor(props: JobArgsProps) {
     this.source = props.source;
