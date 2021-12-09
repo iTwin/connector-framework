@@ -1,3 +1,7 @@
+/*---------------------------------------------------------------------------------------------
+* Copyright (c) Bentley Systems, Incorporated. All rights reserved.
+* See LICENSE.md in the project root for license terms and full copyright notice.
+*--------------------------------------------------------------------------------------------*/
 import { AccessToken, Logger } from "@itwin/core-bentley";
 //import { AccessToken } from "@bentley/itwin-client";
 import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
