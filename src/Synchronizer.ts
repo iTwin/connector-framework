@@ -5,10 +5,10 @@
 /** @packageDocumentation
  * @module Framework
  */
-import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
+import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
 import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-import { Code, ExternalSourceAspectProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
+import { Code, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
 import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -107,6 +107,7 @@ export class Synchronizer {
       // C++ calls GetParams().QueryDocumentURN()
     }
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
+
     const results: SynchronizationResults = {
       element: repositoryLink,
       itemState: ItemState.New,
@@ -126,6 +127,15 @@ export class Synchronizer {
 
     results.itemState = itemState;
     this.updateIModel(results, scope, sourceItem, kind);
+
+    const xseProps: ExternalSourceProps = {
+      model: scope,
+      classFullName: ExternalSource.classFullName,
+      repository: {id: results.element.id, relClassName: RepositoryLink.classFullName },
+      code: Code.createEmpty(),
+    };
+
+    this.imodel.elements.insertElement(xseProps);
 
     this._links.set(key, results);
 
@@ -189,9 +199,10 @@ export class Synchronizer {
    * @param scope Id of the scoping element
    * @param sourceItem Defines the source item
    * @param kind The kind of the source item
+   * @param externalSourceElement External source pointing to the Repository Link. Use getExternalSourceElement for this parameter
    * @beta
    */
-  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string): IModelStatus {
+  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
     if (ItemState.Unchanged === results.itemState) {
       this.onElementSeen(results.element.id);
@@ -223,7 +234,12 @@ export class Synchronizer {
         return status;
       }
     }
-    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind);
+
+    let sourceId;
+    if (externalSourceElement && externalSourceElement.id)
+      sourceId = externalSourceElement.id;
+
+    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind, sourceId);
     return status;
   }
 
@@ -233,9 +249,11 @@ export class Synchronizer {
    * @param scope The id of the scoping element
    * @param sourceItem Defines the source item
    * @param kind The kind of the source item
+   * @param source The id of the external source element
    * @beta
    */
-  public setExternalSourceAspect(element: Element, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string): IModelStatus {
+  public setExternalSourceAspect(element: Element, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string, sourceId?: Id64String): IModelStatus {
+    const source = sourceId ? { id: sourceId } : undefined;
     const aspectProps: ExternalSourceAspectProps = {
       classFullName: ExternalSourceAspect.classFullName,
       element: { id: element.id },
@@ -244,6 +262,7 @@ export class Synchronizer {
       kind,
       checksum: sourceItem.checksum,
       version: sourceItem.version,
+      source,
     };
     if (itemState === ItemState.New) {
       this.imodel.elements.insertAspect(aspectProps); // throws on error
@@ -251,6 +270,26 @@ export class Synchronizer {
       this.imodel.elements.updateAspect(aspectProps);
     }
     return IModelStatus.Success;
+  }
+
+  /** Returns the External Source Element associated with a repository link
+   * @param repositoryLink The repository link associated with the External Source Element
+   * @beta
+   */
+  public getExternalSourceElement(repositoryLink: Element): Element | undefined {
+    let sourceId;
+    this.imodel.withStatement(
+      "select * from BisCore.ExternalSource where repository.id=?",
+      (stmt) => {
+        stmt.bindValues([repositoryLink.id]);
+        stmt.step();
+        const row = stmt.getRow();
+        sourceId = row.id;
+      }
+    );
+    if(sourceId)
+      return this.imodel.elements.getElement(sourceId);
+    return;
   }
 
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim
