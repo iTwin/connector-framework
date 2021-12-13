@@ -25,6 +25,7 @@ export interface JobArgsProps {
   dbType?: "briefcase" | "snapshot" | "standalone";
   issuesDbFile?: string
   loggerConfigJSONFile?: string;
+  synchConfigFile?: string;
   errorFile?: string;
   moreArgs?: { [otherArg: string]: any };
 }
@@ -44,6 +45,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public doDetectDeletedElements: boolean = true;
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
+  public synchConfigFile?: string;
   public moreArgs?: { [otherArg: string]: any };
 
   constructor(props: JobArgsProps) {
@@ -55,6 +57,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
     this.moreArgs = props.moreArgs;
     this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");
+    this.synchConfigFile = props.synchConfigFile;
   }
 
   public isValid() {
