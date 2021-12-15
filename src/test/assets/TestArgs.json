@@ -1,8 +1,8 @@
 {
   "version": "0.0.1",
   "jobArgs": {
-    "source": "/home/zach/repos/connector-framework/lib/test/assets/TestConnector.json",
-    "stagingDir": "/home/zach/repos/connector-framework/lib/test/assets",
+    "source": "./lib/test/assets/TestConnector.json",
+    "stagingDir": "./lib/test/assets",
     "doInteractiveSignin": false
   },
   "hubArgs": {

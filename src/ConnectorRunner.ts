@@ -2,20 +2,17 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@bentley/imodeljs-common";
-import { ChangesType } from "@bentley/imodelhub-client";
-import { assert, BentleyStatus, ClientRequestContext, Config, Guid, Id64String, Logger, LogLevel } from "@bentley/bentleyjs-core";
-import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
-import { ElectronAuthorizationBackend } from "@bentley/electron-manager/lib/ElectronBackend";
+import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
+import { AccessToken, assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
+import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
+import { ElectronAuthorizationBackend } from "@itwin/core-electron/lib/cjs/ElectronBackend";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import { AllArgsProps, HubArgs, JobArgs } from "./Args";
-import { AccessToken, AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import { Synchronizer } from "./Synchronizer";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
-import axios from "axios";
 
 export class ConnectorRunner {
 
@@ -26,7 +23,7 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
-  private _reqContext?: ClientRequestContext | AuthorizedClientRequestContext;
+  private _reqContext?: AccessToken;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -39,7 +36,6 @@ export class ConnectorRunner {
     if (hubArgs) {
       if (!hubArgs.isValid())
         throw new Error("Invalid hubArgs");
-      Config.App.set("imjs_buddi_resolve_url_using_region", hubArgs.region);
       this._hubArgs = hubArgs;
     }
 
@@ -88,21 +84,28 @@ export class ConnectorRunner {
     return runner;
   }
 
-  public async getAuthReqContext(): Promise<AuthorizedClientRequestContext> {
-    if (!this._reqContext || !(this._reqContext instanceof AuthorizedClientRequestContext))
+  // NEEDSWORK - How to check if string version od Access Token is expired
+  isAccessTokenExpired () : boolean {
+  //  return this._reqContext.isExpired(5);
+  return true;
+  }
+
+
+  public async getAuthReqContext(): Promise<AccessToken> {
+    if (!this._reqContext )
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (this._reqContext.accessToken.isExpired(5)) {
-      this._reqContext.accessToken = await this.getToken();
+    if (this.isAccessTokenExpired()) {
+      this._reqContext = await this.getToken();
       Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
     }
     return this._reqContext;
   }
 
-  public async getReqContext(): Promise<ClientRequestContext | AuthorizedClientRequestContext> {
+  public async getReqContext(): Promise<AccessToken> {
     if (!this._reqContext)
       throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
 
-    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+    let reqContext: AccessToken;
     if (this.db.isBriefcaseDb())
       reqContext = await this.getAuthReqContext();
     else
@@ -157,7 +160,7 @@ export class ConnectorRunner {
     try {
       await this.runUnsafe(connectorFile);
     } catch (err) {
-      const msg = err.message;
+      const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
       Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
@@ -165,8 +168,6 @@ export class ConnectorRunner {
       await this.onFailure(err);
     } finally {
       await this.onFinish();
-      if (this.connector.issueReporter)
-        await this.connector.issueReporter.publishReport();
     }
     return runStatus;
   }
@@ -174,7 +175,7 @@ export class ConnectorRunner {
   private async runUnsafe(connectorFile: string) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-    let reqContext: ClientRequestContext | AuthorizedClientRequestContext;
+    let reqContext: AccessToken;
 
     // load
 
@@ -195,81 +196,80 @@ export class ConnectorRunner {
     // source data
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel();
 
-    const synchConfig = this.insertSynchronizationConfigLink();
+    const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
 
-    await this.persistChanges(`Initialization`, ChangesType.Definition);
+    await this.persistChanges(`Initialization`);
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
 
     // domain schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDomainSchema(reqContext);
 
-    await this.persistChanges(`Domain Schema Update`, ChangesType.Schema);
+    await this.persistChanges(`Domain Schema Update`);
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
 
     // dynamic schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDynamicSchema(reqContext);
 
-    await this.persistChanges("Dynamic Schema Update", ChangesType.Schema);
+    await this.persistChanges("Dynamic Schema Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
 
     // initialize job subject
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel();
 
     const jobSubject = this.updateJobSubject();
 
-    await this.persistChanges(`Job Subject Update`, ChangesType.GlobalProperties);
+    await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
 
     // definitions changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-    await this.enterChannel(jobSubject.id);
+    await this.enterChannel();
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
 
-    await this.persistChanges("Definitions Update", ChangesType.Regular);
+    await this.persistChanges("Definitions Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
 
     // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
-    await this.enterChannel(jobSubject.id);
+    await this.enterChannel();
 
     await this.connector.updateExistingData();
     this.updateDeletedElements();
     this.updateProjectExtent();
 
-    await this.persistChanges("Data Update", ChangesType.Regular);
+    await this.persistChanges("Data Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
-    await this.enterChannel(IModel.repositoryModelId);
+    await this.enterChannel();
     this.updateSynchronizationConfigLink(synchConfig);
-    await this.persistChanges("Synch Config Update", ChangesType.Regular);
+    await this.persistChanges("Synch Config Update");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
   }
 
   private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
-      const reqContext = await this.getAuthReqContext();
-      await this._db.concurrencyControl.abandonResources(reqContext);
+      (this._db ).abandonChanges();
     }
     this.recordError(err);
   }
@@ -277,10 +277,10 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      id: this._connector ? this._connector.getApplicationId() : -1,
-      message: "Failure",
-      description: err.message,
-      extendedData: {},
+      "Id": this._connector ? this._connector.getApplicationId() : -1,
+      "Message": "Failure",
+      "Description": err.message,
+      "ExtendedData": {}, 
     });
     fs.writeFileSync(errorFile, errorStr);
     Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
@@ -295,6 +295,7 @@ export class ConnectorRunner {
     if (this._connector && this.connector.issueReporter)
       await this.connector.issueReporter.publishReport();
   }
+
   private updateDeletedElements() {
     if (this.jobArgs.doDetectDeletedElements)
       this.connector.synchronizer.detectDeletedElements();
@@ -308,7 +309,7 @@ export class ConnectorRunner {
     this.db.updateProjectExtents(res.extents);
   }
 
-  private updateJobSubject(): Subject {
+  private async updateJobSubject(): Promise<Subject> {
     const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
     const existingSubjectId = this.db.elements.queryElementIdByCode(code);
 
@@ -316,15 +317,15 @@ export class ConnectorRunner {
 
     if (existingSubjectId) {
       subject = this.db.elements.getElement<Subject>(existingSubjectId);
-    } else { // not sure if camelcasing these json properties will not cause problems, in the event it does just change them all back to capital
+    } else {
       const jsonProperties: any = {
-        subject: {
-          job: {
-            properties: {
-              connectorVersion: this.connector.getApplicationVersion(),
-              connectorType: "JSConnector",
+        Subject: {
+          Job: {
+            Properties: {
+              ConnectorVersion: this.connector.getApplicationVersion(),
+              ConnectorType: "JSConnector",
             },
-            connector: this.connector.getConnectorName(),
+            Connector: this.connector.getConnectorName(),
           },
         },
       };
@@ -337,9 +338,10 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-
+      await this.db.locks.acquireSharedLock(IModel.dictionaryId);
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
+      await this.db.locks.releaseAllLocks();
     }
 
     this.connector.jobSubject = subject;
@@ -354,7 +356,7 @@ export class ConnectorRunner {
     this._connector = await connectorClass.create();
   }
 
-  private insertSynchronizationConfigLink(){
+  private async insertSynchronizationConfigLink(){
     assert(this._db !== undefined);
     let synchConfigData = {
       classFullName:  SynchronizationConfigLink.classFullName,
@@ -364,15 +366,19 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
+    await this._db.locks.acquireSharedLock(IModel.dictionaryId);
     const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
+    var idToReturn : string;
     if(prevSynchConfigId === undefined)
-      return this._db.elements.insertElement(synchConfigData);
+      idToReturn = this._db.elements.insertElement(synchConfigData);
     else {
       this.updateSynchronizationConfigLink(prevSynchConfigId);
-      return prevSynchConfigId;
-    }
+      idToReturn = prevSynchConfigId;
+      }
+    await this._db.locks.releaseAllLocks();
+    return idToReturn;
   }
-  private updateSynchronizationConfigLink(synchConfigId: string){
+  private async updateSynchronizationConfigLink(synchConfigId: string){
     assert(this._db !== undefined);
     const synchConfigData = {
       id: synchConfigId,
@@ -381,25 +387,21 @@ export class ConnectorRunner {
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    return this._db.elements.updateElement(synchConfigData);
+    await this._db.locks.acquireExclusiveLock(synchConfigData.id);
+    this._db.elements.updateElement(synchConfigData);
+    await this._db.locks.releaseAllLocks();
   }
 
   private async loadReqContext() {
-    const activityId = Guid.createValue();
-    const appId = this.connector.getApplicationId();
-    const appVersion = this.connector.getApplicationVersion();
-    if (this.jobArgs.dbType === "briefcase") {
-      const token = await this.getToken();
-      this._reqContext = new AuthorizedClientRequestContext(token, activityId, appId, appVersion);
-    } else {
-      this._reqContext = new ClientRequestContext();
-    }
+    const token = await this.getToken();
+    this._reqContext = token;
   }
 
   private async getToken() {
-    let token: AccessToken;
-    if (!this.hubArgs)
-      throw new Error("ConnectorRunner._getToken: undefined hubArgs.");
+    let token: string;
+    if (this._jobArgs.dbType == "snapshot")
+        return "notoken";
+
     if (this.hubArgs.doInteractiveSignIn)
       token = await this.getTokenInteractive();
     else
@@ -408,11 +410,11 @@ export class ConnectorRunner {
   }
 
   private async getTokenSilent() {
-    let token: AccessToken;
+    let token: string;
     if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
-      const response = await axios.get(this.hubArgs.tokenCallbackUrl);
-      const tokenStr = `Bearer ${response.data.access_token}`;
-      token = AccessToken.fromTokenString(tokenStr);
+      const response = await fetch(this.hubArgs.tokenCallbackUrl);
+      const tokenStr = await response.json();
+      token = tokenStr;
     } else if (this.hubArgs && this.hubArgs.tokenCallback) {
       token = await this.hubArgs.tokenCallback();
     } else {
@@ -424,8 +426,8 @@ export class ConnectorRunner {
   private async getTokenInteractive() {
     const client = new ElectronAuthorizationBackend();
     await client.initialize(this.hubArgs.clientConfig);
-    return new Promise<AccessToken>(async (resolve, reject) => { // making this async concerns me
-      NativeHost.onUserStateChanged.addListener((token) => {
+    return new Promise<string>(async (resolve, reject) => {
+      NativeHost.onAccessTokenChanged.addListener((token) => {
         if (token !== undefined)
           resolve(token);
         else
@@ -487,62 +489,67 @@ export class ConnectorRunner {
     if (bcFile) {
       openProps = { fileName: bcFile };
     } else {
-      const reqArg: RequestNewBriefcaseArg = { contextId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
-      const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqContext, reqArg);
+      const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
       if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
-        await BriefcaseDb.upgradeSchemas(reqContext, bcProps);
+        await BriefcaseDb.upgradeSchemas(bcProps);
 
       openProps = { fileName: bcProps.fileName };
     }
 
-    this._db = await BriefcaseDb.open(reqContext, openProps);
-    (this._db as BriefcaseDb).concurrencyControl.startBulkMode();
+    this._db = await BriefcaseDb.open(openProps);
+    // (this._db as BriefcaseDb).concurrencyControl.startBulkMode(); // not sure what/if anything is the new "startBulkMode"
   }
 
   private async loadSynchronizer() {
-    const reqContext = await this.getReqContext();
-    const synchronizer = new Synchronizer(this.db, false, reqContext as AuthorizedClientRequestContext);
+    //const reqContext = await this.getReqContext();
+    const synchronizer = new Synchronizer(this.db, false);
     this.connector.synchronizer = synchronizer;
   }
 
-  private async persistChanges(changeDesc: string, ctype: ChangesType) {
+  private async persistChanges(changeDesc: string) {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
-      this._db = this.db;
-      await this.db.concurrencyControl.request(authReqContext);
-      await this.db.pullAndMergeChanges(authReqContext);
+      this._db = this.db as BriefcaseDb;
+      // await this.db.concurrencyControl.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
+      await this.db.pullChanges();
       this.db.saveChanges(comment);
-      await this.db.pushChanges(authReqContext, comment, ctype);
+      await this.db.pushChanges({description: comment});
     } else {
       this.db.saveChanges(comment);
     }
   }
 
-  private async enterChannel(rootId: Id64String) {
+  private async enterChannel() {
     if (!this.db.isBriefcaseDb())
       return;
 
-    this._db = this.db;
-    if (!this.db.concurrencyControl.isBulkMode)
-      this.db.concurrencyControl.startBulkMode();
-    if (this.db.concurrencyControl.hasPendingRequests)
-      throw new Error("has pending requests");
-    if (this.db.concurrencyControl.locks.hasSchemaLock)
-      throw new Error("has schema lock");
-    if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
-      throw new Error("has code spec lock");
-    if (this.db.concurrencyControl.channel.isChannelRootLocked)
-      throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
+    this._db = this.db as BriefcaseDb;
+    // all of these arguments are no longer present, not sure if i just dont know where they are though, doing the checks that were added instead
+    // if (!this.db.locks.isBulkMode)
+    //   this.db.concurrencyControl.startBulkMode();
+    // if (this.db.concurrencyControl.hasPendingRequests)
+    //   throw new Error("has pending requests");
+    // if (this.db.concurrencyControl.locks.hasSchemaLock)
+    //   throw new Error("has schema lock");
+    // if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
+    //   throw new Error("has code spec lock");
+    // if (this.db.concurrencyControl.channel.isChannelRootLocked)
+    //   throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
+    if(this.db.locks.holdsExclusiveLock(IModel.dictionaryId)) // I believe will check for whole model?
+      throw new Error("holds exclusive lock");
+    if(this.db.locks.holdsSharedLock(IModel.dictionaryId))
+      throw new Error("holds shared lock");
 
-    this.db.concurrencyControl.channel.channelRoot = rootId;
+    // this.db.concurrencyControl.channel.channelRoot = rootId;
 
-    const reqContext = await this.getAuthReqContext();
-    await this.db.concurrencyControl.channel.lockChannelRoot(reqContext);
+    // const reqContext = await this.getAuthReqContext();
+    // await this.db.concurrencyControl.channel.lockChannelRoot(reqContext); // Channel not present anymore either, think its handled with other new locking stuff instead but leaving just in case
   }
 }
 

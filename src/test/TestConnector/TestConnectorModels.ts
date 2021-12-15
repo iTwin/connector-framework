@@ -3,7 +3,7 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import { GroupInformationModel } from "@bentley/imodeljs-backend";
+import { GroupInformationModel } from "@itwin/core-backend";
 
 /** A container for persisting AnalyticalElement instances used to model a specialized analytical perspective.
  * @beta

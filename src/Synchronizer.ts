@@ -5,10 +5,10 @@
 /** @packageDocumentation
  * @module Framework
  */
-import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@bentley/imodeljs-backend";
-import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
-import { Code, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@bentley/imodeljs-common";
+
+import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@itwin/core-backend";
+import { AccessToken, assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
+import { Code, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -84,9 +84,9 @@ export class Synchronizer {
   private _unchangedSources: Id64String[] = new Array<Id64String>();
   private _links = new Map<string, SynchronizationResults>();
 
-  public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AuthorizedClientRequestContext) {
+  public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AccessToken) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
-      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb", Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
   }
 
   /** Insert or update a RepositoryLink element to represent the source document.  Also inserts or updates an ExternalSourceAspect for provenance.
@@ -114,7 +114,7 @@ export class Synchronizer {
     };
 
     if (undefined === results.element) {
-      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`, Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
     }
 
     const itemState = this.detectChanges(scope, kind, sourceItem).state;
@@ -122,7 +122,7 @@ export class Synchronizer {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
       However, no ExternalSourceAspect with scope=${scope} and kind=${kind} was found for this element.
       Maybe RecordDocument was previously called on this file with a different scope or kind.`;
-      throw new IModelError(IModelStatus.NotFound, error, Logger.logError, LoggerCategories.Framework);
+      throw new IModelError(IModelStatus.NotFound, error);
     }
 
     results.itemState = itemState;
@@ -297,7 +297,6 @@ export class Synchronizer {
    * @beta
    */
   public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
-    this.getLocksAndCodes(results.element);
     results.element.insert(); // throws on error
 
     this.onElementSeen(results.element.id);
@@ -360,10 +359,10 @@ export class Synchronizer {
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        const elementChannelRoot = db.concurrencyControl.channel.getChannelOfElement(db.elements.getElement(elementId));
-        const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
+        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
+        // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
         const hasSeenElement = this._seenElements.has(elementId);
-        if (isInChannelRoot && !hasSeenElement) {
+        if (!hasSeenElement) {
           const element = db.elements.getElement(elementId);
           if (element instanceof DefinitionElement)
             defElementsToDelete.push(elementId);
@@ -430,7 +429,6 @@ export class Synchronizer {
       return IModelStatus.WrongClass;
     }
 
-    this.getLocksAndCodes(results.element);
     results.element.update();
 
     return IModelStatus.Success;
@@ -485,15 +483,6 @@ export class Synchronizer {
       this.insertResultsIntoIModel(results.childElements[i]);
     }
     return IModelStatus.Success;
-  }
-
-  private getLocksAndCodes(element: Element) {
-    if (!this.imodel.isBriefcaseDb() || this.imodel.concurrencyControl.isBulkMode) {
-      return;
-    }
-    const briefcase = this.imodel;
-    element.buildConcurrencyControlRequest(Id64.isValid(element.id) ? DbOpcode.Update : DbOpcode.Insert);
-    (async () => briefcase.concurrencyControl.request(this._requestContext!, briefcase.concurrencyControl.pendingRequest));
   }
 
   private makeRepositoryLink(document: string, defaultCode: string, defaultURN: string, preferDefaultCode: boolean = false): Element {

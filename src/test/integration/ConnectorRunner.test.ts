@@ -2,14 +2,13 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { assert, expect } from "chai";
-import { BentleyStatus, ClientRequestContext, Config, Id64String, Logger } from "@bentley/bentleyjs-core";
-import { AuthorizedBackendRequestContext, BriefcaseDb, BriefcaseManager, IModelJsFs } from "@bentley/imodeljs-backend";
-import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
-import { AccessToken } from "@bentley/itwin-client";
-import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration } from "@bentley/oidc-signin-tool";
+import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
+import { BriefcaseDb, BriefcaseManager, IModelJsFs } from "@itwin/core-backend";
+import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
+import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration } from "@itwin/oidc-signin-tool";
+import {  assert, expect  } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
+import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
@@ -21,9 +20,10 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let testProjectId: Id64String;
   let testIModelId: Id64String;
   let testClientConfig: NativeAppAuthorizationConfiguration;
-  let requestContext: AuthorizedBackendRequestContext;
+  let token: AccessToken| undefined;
   // NEEDSWORK - fix integration tests seperately
   const skipIntegrationTests = true;
+
   before(async () => {
     await utils.startBackend();
     utils.setupLogging();
@@ -46,22 +46,40 @@ describe("iTwin Connector Fwk (#integration)", () => {
       if (skipIntegrationTests)
         return;
 
-      const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred, 102);
+      const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred);
       requestContext = new AuthorizedBackendRequestContext(token);
+
     } catch (error) {
       Logger.logError("Error", `Failed with error: ${error}`);
     }
 
-    Config.App.set("imjs_buddi_resolve_url_using_region", "102");
-    testProjectId = process.env.test_project_id!;
-    const imodelName = process.env.test_imodel_name!;
-    testIModelId = await HubUtility.recreateIModel(requestContext, testProjectId, imodelName);
-    await HubUtility.purgeAcquiredBriefcases(requestContext, testProjectId, imodelName);
+    if (typeof token === "string")
+    {
+      process.env.imjs_buddi_resolve_url_using_region = "102";
+      testProjectId = process.env.test_project_id!;
+      const imodelName = process.env.test_imodel_name!;
+      testIModelId = await HubUtility.recreateIModel(token, testProjectId, imodelName);
+      await HubUtility.purgeAcquiredBriefcases(token, testProjectId, imodelName);
+    }
+    else
+    {
+      Logger.logError("Error", `Failed to get access token`);
+      return; 
+    }
+
   });
 
   after(async () => {
     try {
-      await HubUtility.purgeAcquiredBriefcasesById(requestContext, testIModelId, () => {});
+      if (typeof token === "string")
+      {
+      await HubUtility.purgeAcquiredBriefcasesById(token, testIModelId, () => {});
+      }
+      else
+      {
+        Logger.logError("Error", `Failed to get access token`);  
+        return;
+      }
     } catch (err) {}
 
     await utils.shutdownBackend();
@@ -96,7 +114,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
-    const db = await BriefcaseDb.open(new ClientRequestContext(), { fileName: briefcases[0].fileName, readonly: true });
+    const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
     utils.verifyIModel(db, jobArgs, isUpdate);
     db.close();
   }
@@ -116,7 +134,18 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
-      return requestContext.accessToken;
+      if (typeof token === "string")
+      {
+        return token;
+      }
+      else
+      {
+        Logger.logError("Error", `Failed to get access token`);  
+        // NEEDSWORK
+        return "notoken";
+      }
+      
+      
     };
 
     await runConnector(jobArgs, hubArgs);

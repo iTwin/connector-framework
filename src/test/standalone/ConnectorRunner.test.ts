@@ -2,14 +2,14 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@bentley/imodeljs-backend";
-import { BentleyStatus } from "@bentley/bentleyjs-core";
+import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@itwin/core-backend";
+import { BentleyStatus } from "@itwin/core-bentley";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorRunner } from "../../ConnectorRunner";
 import { SqliteIssueReporter } from "../../SqliteIssueReporter";
 import { JobArgs } from "../../Args";
 import * as utils from "../ConnectorTestUtils";
-import { assert, expect } from "chai";
+import { expect, assert } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -32,9 +32,6 @@ describe("iTwin Connector Fwk StandAlone", () => {
   it("Should parse args correctly", () => {
     const argfile = path.join(KnownTestLocations.assetsDir, "TestArgs.json");
     ConnectorRunner.fromFile(argfile); // throws
-
-    const json = JSON.parse(fs.readFileSync(argfile, "utf8"));
-    ConnectorRunner.fromJSON(json); // throws
   });
 
   it("Should create empty snapshot and synchronize source data", async () => {
@@ -55,6 +52,11 @@ describe("iTwin Connector Fwk StandAlone", () => {
     db.close();
   });
 
+  function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
+    if ('code' in (e as any)) return true;
+    else return false;
+  }
+
   it("Should fail and create a error file", async () => {
     const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
@@ -71,7 +73,10 @@ describe("iTwin Connector Fwk StandAlone", () => {
       runner.issueReporter = issueReporter;
       await runner.run(failConnectorFile);
     } catch (error) {
-      expect(error.message).to.eql("Connector has not been loaded.");
+      if (isErrnoException(error))
+        expect(error.message).to.eql("Connector has not been loaded.");
+      else
+        throw error;
     }
 
     // disable for now

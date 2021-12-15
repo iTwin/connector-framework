@@ -15,9 +15,6 @@
               "run",
               "test:standalone"
             ],
-            "outFiles": [
-              "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
-            ]
         },
         {
           "name": "iTwinConnectorFwk Tests (integration)",
@@ -28,10 +25,19 @@
           "runtimeArgs": [
             "run",
             "test:integration"
-          ],
+            ],
           "outFiles": [
             "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
           ]
-      },        
+      },     
+      {
+        "name": "pretest",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "pretest"
     ]
 }
