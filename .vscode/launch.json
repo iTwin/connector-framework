@@ -5,7 +5,6 @@
     "version": "0.2.0",
     "configurations": [
 
-
         {
             "name": "iTwinConnectorFwk Tests (standalone)",
             "cwd": "${workspaceFolder}",
@@ -26,8 +25,11 @@
           "runtimeArgs": [
             "run",
             "test:integration"
+            ],
+          "outFiles": [
+            "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
           ]
-      },
+      },     
       {
         "name": "pretest",
         "cwd": "${workspaceFolder}",
@@ -37,7 +39,5 @@
         "runtimeArgs": [
           "run",
           "pretest"
-        ],
-    },      
     ]
 }
