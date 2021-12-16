@@ -47,7 +47,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
         return;
 
       const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred);
-      requestContext = new AuthorizedBackendRequestContext(token);
 
     } catch (error) {
       Logger.logError("Error", `Failed with error: ${error}`);
