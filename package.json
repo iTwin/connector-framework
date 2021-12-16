@@ -36,23 +36,16 @@
     "url": "http://www.bentley.com"
   },
   "peerDependencies": {
-    "@bentley/backend-itwin-client": "rc",
-    "@bentley/context-registry-client": "rc",
     "@bentley/imodelhub-client": "rc",
-    "@bentley/itwin-client": "rc",
-    "@bentley/product-settings-client": "rc",
+    "@itwin/projects-client": "latest",
     "@itwin/core-backend": "rc",
     "@itwin/core-bentley": "rc",
     "@itwin/core-common": "rc",
     "@itwin/core-geometry": "rc"
   },
   "devDependencies": {
-    "@bentley/backend-itwin-client": "rc",
-    "@bentley/config-loader": "rc",
-    "@bentley/context-registry-client": "rc",
     "@bentley/imodelhub-client": "rc",
-    "@bentley/itwin-client": "rc",
-    "@bentley/itwin-registry-client": "rc",
+    "@itwin/projects-client": "latest",
     "@itwin/build-tools": "rc",
     "@itwin/core-backend": "rc",
     "@itwin/core-bentley": "rc",
