@@ -41,7 +41,7 @@ export class ConnectorRunner {
 
     Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
-    if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === "json" && fs.existsSync(loggerConfigJSONFile))
+    if (loggerConfigJSONFile && path.extname(loggerConfigJSONFile) === ".json" && fs.existsSync(loggerConfigJSONFile))
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       Logger.configureLevels(require(loggerConfigJSONFile));
     else
