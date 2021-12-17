@@ -126,6 +126,12 @@ stages:
         displayName: 'Copy @itwin/connector-framework'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
+      - script: |
+          path=$(Build.ArtifactStagingDirectory)/connector-framework
+          npm publish $path --tag beta --access public
+        displayName: Publish npm package
+        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+
       - task: PublishBuildArtifacts@1
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)/connector-framework'
