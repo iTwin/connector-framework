@@ -1,6 +1,10 @@
-import { Logger } from "@bentley/bentleyjs-core";
-import { AccessToken } from "@bentley/itwin-client";
-import { NativeAppAuthorizationConfiguration } from "@bentley/imodeljs-common";
+/*---------------------------------------------------------------------------------------------
+* Copyright (c) Bentley Systems, Incorporated. All rights reserved.
+* See LICENSE.md in the project root for license terms and full copyright notice.
+*--------------------------------------------------------------------------------------------*/
+import { AccessToken, Logger } from "@itwin/core-bentley";
+//import { AccessToken } from "@bentley/itwin-client";
+import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory"
 import * as fs from "fs";
 import * as path from "path";

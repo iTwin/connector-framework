@@ -4,19 +4,40 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "iTwinConnectorFwk Tests (standalone)",
             "cwd": "${workspaceFolder}",
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
             "runtimeExecutable": "npm",
             "runtimeArgs": [
               "run",
               "test:standalone"
             ],
-            "outFiles": [
-              "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
-            ]
         },
+        {
+          "name": "iTwinConnectorFwk Tests (integration)",
+          "cwd": "${workspaceFolder}",
+          "type": "node",
+          "request": "launch",
+          "runtimeExecutable": "npm",
+          "runtimeArgs": [
+            "run",
+            "test:integration"
+            ],
+          "outFiles": [
+            "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
+          ]
+      },     
+      {
+        "name": "pretest",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "pretest"
     ]
 }

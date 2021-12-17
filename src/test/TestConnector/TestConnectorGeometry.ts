@@ -3,11 +3,11 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { Angle, AxisIndex, AxisOrder, Matrix3d, Point3d, Transform, Vector3d, YawPitchRollAngles } from "@bentley/geometry-core";
+import { Angle, AxisIndex, AxisOrder, Matrix3d, Point3d, Transform, Vector3d, YawPitchRollAngles } from "@itwin/core-geometry";
 import { Categories, GeometryParts, Materials } from "./TestConnectorElements";
-import { GeometryPart, IModelDb, RenderMaterialElement, SubCategory } from "@bentley/imodeljs-backend";
-import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, GeometryStreamProps, IModelError } from "@bentley/imodeljs-common";
-import { Id64String, IModelStatus, Logger } from "@bentley/bentleyjs-core";
+import { GeometryPart, IModelDb, RenderMaterialElement, SubCategory } from "@itwin/core-backend";
+import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, GeometryStreamProps, IModelError } from "@itwin/core-common";
+import { Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Geometry;
@@ -159,7 +159,7 @@ export abstract class TileBuilder {
   protected getCasingSubCategoryId(categoryId: Id64String): Id64String {
     const casingId = this._imodel.elements.queryElementIdByCode(SubCategory.createCode(this._imodel, categoryId, Categories.Casing));
     if (undefined === casingId) {
-      throw new IModelError(IModelStatus.BadElement, "Unable to find subcategory id for Casing subcategory", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, "Unable to find subcategory id for Casing subcategory");
     }
     return casingId;
   }
@@ -167,7 +167,7 @@ export abstract class TileBuilder {
   protected getMagnetSubCategoryId(categoryId: Id64String): Id64String {
     const casingId = this._imodel.elements.queryElementIdByCode(SubCategory.createCode(this._imodel, categoryId, Categories.Magnet));
     if (undefined === casingId) {
-      throw new IModelError(IModelStatus.BadElement, "Unable to find subcategory id for Magnet subcategory", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, "Unable to find subcategory id for Magnet subcategory");
     }
     return casingId;
   }
@@ -211,7 +211,7 @@ export abstract class TileBuilder {
   protected partId(): Id64String {
     const geomPartId = this._imodel.elements.queryElementIdByCode(GeometryPart.createCode(this._imodel, this._definitionModelId, this.casingName));
     if (undefined === geomPartId) {
-      throw new IModelError(IModelStatus.BadElement, `Unable to find geometry part id for ${this.casingName}`, Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, `Unable to find geometry part id for ${this.casingName}`);
     }
     return geomPartId;
   }
@@ -223,12 +223,12 @@ export abstract class TileBuilder {
     this._builder = new GeometryStreamBuilder();
     const circularMagnetGeomPartId = this._imodel.elements.queryElementIdByCode(GeometryPart.createCode(this._imodel, this._definitionModelId, GeometryParts.CircularMagnet));
     if (undefined === circularMagnetGeomPartId) {
-      throw new IModelError(IModelStatus.BadElement, "Unable to find geometry part id for CircularMagnetCasing", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, "Unable to find geometry part id for CircularMagnetCasing");
     }
 
     const rectangularMagnetGeomPartId = this._imodel.elements.queryElementIdByCode(GeometryPart.createCode(this._imodel, this._definitionModelId, GeometryParts.RectangularMagnet));
     if (undefined === rectangularMagnetGeomPartId) {
-      throw new IModelError(IModelStatus.BadElement, "Unable to find geometry part id for RectangularMagnet", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadElement, "Unable to find geometry part id for RectangularMagnet");
     }
 
     const casingId = this.getCasingSubCategoryId(categoryId);
@@ -442,13 +442,13 @@ export class IsoscelesTriangleTileBuilder extends TileBuilder {
 
     let yawp = YawPitchRollAngles.tryFromTransform(Transform.createRefs(transPoints[0], rotation));
     if (yawp.angles === undefined) {
-      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for IsocelesTriangleTile", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for IsocelesTriangleTile");
     }
     this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, yawp.origin, yawp.angles);
 
     yawp = YawPitchRollAngles.tryFromTransform(Transform.createRefs(transPoints[1], rotation));
     if (yawp.angles === undefined) {
-      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for IsocelesTriangleTile", Logger.logError, loggerCategory);
+      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for IsocelesTriangleTile");
     }
     this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, yawp.origin, yawp.angles);
   }

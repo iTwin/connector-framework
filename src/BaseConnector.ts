@@ -2,12 +2,10 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { assert, BentleyStatus, ClientRequestContext, Logger } from "@bentley/bentleyjs-core";
-import { Subject } from "@bentley/imodeljs-backend";
-import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
+import { AccessToken, assert, BentleyStatus, Logger } from "@itwin/core-bentley";
+import { Subject } from "@itwin/core-backend";
 import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import { Synchronizer } from "./Synchronizer";
-import { JobArgs } from "./Args";
 import * as fs from "fs";
 
 /** Abstract implementation of the iTwin Connector.
@@ -21,7 +19,7 @@ export abstract class BaseConnector {
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
-  };
+  }
 
   /** If the connector needs to perform any steps once the iModel has been opened */
   public async onOpenIModel(): Promise<BentleyStatus> {
@@ -44,10 +42,10 @@ export abstract class BaseConnector {
   public abstract importDefinitions(): Promise<any>;
 
   /** Import schema(s) that every iModel synchronized by this connector will use. Called in the [Repository channel]($docs/learning/backend/Channel). */
-  public abstract importDynamicSchema(requestContext?: AuthorizedClientRequestContext | ClientRequestContext): Promise<any>;
+  public abstract importDynamicSchema(requestContext?: AccessToken): Promise<any>;
 
   /** Import schema(s) that are specific to this particular source, in addition to the previously imported domain schema(s). Called in the [Repository channel]($docs/learning/backend/Channel). */
-  public abstract importDomainSchema(requestContext?: AuthorizedClientRequestContext | ClientRequestContext): Promise<any>;
+  public abstract importDomainSchema(requestContext?: AccessToken): Promise<any>;
 
   /** Convert the source data to BIS and insert into the iModel.  Use the Synchronizer to determine whether an item is new, changed, or unchanged. Called in the [connector's private channel]($docs/learning/backend/Channel). */
   public abstract updateExistingData(): Promise<any>;
