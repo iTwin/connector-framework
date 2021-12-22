@@ -142,4 +142,5 @@ stages:
 #      parameters:
 #        path: '*.tgz'
 #        artifactName: connector-framework
+#        releaseTag: 'beta'
 
