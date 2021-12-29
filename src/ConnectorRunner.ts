@@ -505,8 +505,7 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    //const reqContext = await this.getReqContext();
-    const synchronizer = new Synchronizer(this.db, false);
+    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
     this.connector.synchronizer = synchronizer;
   }
 

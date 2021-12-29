@@ -22,7 +22,7 @@
     "pretest": "cpx ./src/test/logging.config.json ./lib/test",
     "test": "npm run test:standalone",
     "test:standalone": "npm run pretest && mocha './lib/test/standalone/**/*.js'",
-    "test:integration": "npm run pretest && mocha --timeout 10000 './lib/test/integration/**/*.js'",
+    "test:integration": "npm run pretest && mocha --timeout 100000 './lib/test/integration/**/*.js'",
     "copy:itsyn-assets": "cpx \"./manifest.itsyn.yml\" \"lib/test/TestConnector/\" && cpx \"./node.exe\" \"lib/test/TestConnector/\"",
     "test:connector": "node lib/test/TestConnector/Main.js lib/test/assets/TestArgs.json"
   },
@@ -63,6 +63,7 @@
     "chai": "^4.1.2",
     "cpx2": "^3.0.0",
     "eslint": "^7.11.0",
+    "dotenv": "10.0.0",
     "mocha": "^8.3.2",
     "nyc": "^15.1.0",
     "rimraf": "^3.0.2",
