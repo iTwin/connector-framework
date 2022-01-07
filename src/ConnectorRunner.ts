@@ -232,7 +232,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
     await this.enterChannel();
 
-    const jobSubject = this.updateJobSubject();
+    const jobSubject = await this.updateJobSubject();
 
     await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
@@ -338,7 +338,7 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-      await this.db.locks.acquireSharedLock(IModel.dictionaryId);
+      await this.db.locks.acquireSharedLock(IModel.repositoryModelId);
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
       await this.db.locks.releaseAllLocks();

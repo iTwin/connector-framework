@@ -45,9 +45,36 @@ export default class TestConnector extends BaseConnector {
 
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
-      this.createGroupModel();
-      this.createPhysicalModel();
-      this.createDefinitionModel();
+      await this.synchronizer.imodel.locks.acquireSharedLock(this.jobSubject.id);
+      try {
+        this.createGroupModel();
+      }
+      catch (e)
+      {
+        Logger.logError(loggerCategory, "exception thrown from createGroupModel()");
+        throw (e);
+      }
+try{
+  this.createPhysicalModel();
+}
+catch (e)
+{
+  Logger.logError(loggerCategory, "exception thrown from createPhysicalModel()");
+  throw (e);
+}
+
+try{
+  this.createDefinitionModel();
+}
+catch (e)
+{
+  Logger.logError(loggerCategory, "exception thrown from createDefinitionModel()");
+  throw (e);
+}
+
+      
+      
+      await this.synchronizer.imodel.locks.releaseAllLocks(); 
     }
   }
 
@@ -58,8 +85,8 @@ export default class TestConnector extends BaseConnector {
     this._sourceData = sourcePath;
 
     const documentStatus = this.getDocumentStatus(); // make sure the repository link is created now, while we are in the repository channel
-    this._sourceDataState = documentStatus.itemState;
-    this._repositoryLink = documentStatus.element;
+    this._sourceDataState = (await documentStatus).itemState;
+    this._repositoryLink = (await documentStatus).element;
   }
 
   public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
@@ -101,9 +128,12 @@ export default class TestConnector extends BaseConnector {
     }
 
     if (this._sourceDataState === ItemState.New) {
+      await this.synchronizer.imodel.locks.acquireSharedLock(this.createDefinitionModel());
       this.insertCategories();
       this.insertMaterials();
+      await this.synchronizer.imodel.locks.acquireSharedLock(this.createPhysicalModel());
       this.insertGeometryParts();
+      await this.synchronizer.imodel.locks.releaseAllLocks();
     }
 
     this.convertGroupElements(groupModelId);
@@ -120,7 +150,7 @@ export default class TestConnector extends BaseConnector {
     return "TestConnector";
   }
 
-  private getDocumentStatus(): SynchronizationResults {
+  private async getDocumentStatus(): Promise<SynchronizationResults> {
     let timeStamp = Date.now();
     assert(this._sourceData !== undefined, "we should not be in this method if the source file has not yet been opened");
     const stat = IModelJsFs.lstatSync(this._sourceData); // will throw if this._sourceData names a file that does not exist. That would be a bug. Let it abort the job.
@@ -151,7 +181,12 @@ export default class TestConnector extends BaseConnector {
       parent: new SubjectOwnsPartitionElements(this.jobSubject.id),
       code: GroupInformationPartition.createCode(this.synchronizer.imodel, this.jobSubject.id, ModelNames.Group),
     };
+
+   
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
+
+  
+
 
     return this.synchronizer.imodel.models.insertModel({ classFullName: TestConnectorGroupModel.classFullName, modeledElement: { id: partitionId } });
   }
@@ -175,6 +210,7 @@ export default class TestConnector extends BaseConnector {
       classFullName: "BisCore.ElementHasLinks",
     };
     this.synchronizer.imodel.relationships.insertInstance(relationshipProps);
+
     return modelid;
   }
 
@@ -195,9 +231,12 @@ export default class TestConnector extends BaseConnector {
       parent: new SubjectOwnsPartitionElements(this.jobSubject.id),
       code: DefinitionPartition.createCode(this.synchronizer.imodel, this.jobSubject.id, ModelNames.Definition),
     };
+    
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
 
-    return this.synchronizer.imodel.models.insertModel({ classFullName: DefinitionModel.classFullName, modeledElement: { id: partitionId } });
+    const defModelID = this.synchronizer.imodel.models.insertModel({ classFullName: DefinitionModel.classFullName, modeledElement: { id: partitionId } });
+
+    return defModelID;
   }
 
   private queryDefinitionModel(): Id64String | undefined {
