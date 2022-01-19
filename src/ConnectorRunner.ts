@@ -296,11 +296,6 @@ export class ConnectorRunner {
       await this.connector.issueReporter.publishReport();
   }
 
-  private updateDeletedElements() {
-    if (this.jobArgs.doDetectDeletedElements)
-      this.connector.synchronizer.detectDeletedElements();
-  }
-
   private updateProjectExtent() {
     const res = this.db.computeProjectExtents({
       reportExtentsWithOutliers: false,
