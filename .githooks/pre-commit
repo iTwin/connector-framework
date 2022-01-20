@@ -8,4 +8,5 @@
 # Verify that all staged files have the correct copyright header
 # if not, then the correct header will be added or replace the old
 
+rush change -b origin/main
 node ./.githooks/copyright-linter.js || exit $?
