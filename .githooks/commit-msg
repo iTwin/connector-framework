@@ -7,7 +7,6 @@
 
 # run rush change after supplying commit message to generage a change log
 
+exec < /dev/tty
+
 rush change -b origin/main
-echo blah
-echo 1
-echo y
