@@ -8,4 +8,6 @@
 # run rush change after supplying commit message to generage a change log
 
 rush change -b origin/main
-echo bfldalfdjkl
+echo blah
+echo 1
+echo y
