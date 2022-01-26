@@ -177,4 +177,3 @@ export default class TestConnector extends BaseConnector {
 export function getConnectorInstance() {
   return new TestConnector();
 }
-
