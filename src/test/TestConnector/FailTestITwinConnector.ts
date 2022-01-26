@@ -79,8 +79,8 @@ export default class TestConnector extends BaseConnector {
     this._sourceData = sourcePath;
 
     const documentStatus = this.getDocumentStatus(); // make sure the repository link is created now, while we are in the repository channel
-    this._sourceDataState = (await documentStatus).itemState;
-    this._repositoryLink = (await documentStatus).element;
+    this._sourceDataState = documentStatus.itemState;
+    this._repositoryLink = documentStatus.element;
   }
   public override async onOpenIModel(): Promise<BentleyStatus> {
     throw new IModelError(IModelStatus.BadArg, "Expected Fail for test");
@@ -93,7 +93,7 @@ export default class TestConnector extends BaseConnector {
     const fileName = TestConnectorSchema.schemaFilePath;
     await this.synchronizer.imodel.importSchemas([fileName]);
   }
-  private async getDocumentStatus(): Promise<SynchronizationResults> {
+  private getDocumentStatus(): SynchronizationResults {
     let timeStamp = Date.now();
     assert(this._sourceData !== undefined, "we should not be in this method if the source file has not yet been opened");
     const stat = IModelJsFs.lstatSync(this._sourceData); // will throw if this._sourceData names a file that does not exist. That would be a bug. Let it abort the job.
@@ -177,4 +177,3 @@ export default class TestConnector extends BaseConnector {
 export function getConnectorInstance() {
   return new TestConnector();
 }
-
