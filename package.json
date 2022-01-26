@@ -54,7 +54,7 @@
     "@itwin/core-geometry": "rc",
     "@itwin/ecschema-metadata": "rc",
     "@itwin/eslint-plugin": "rc",
-    "@itwin/oidc-signin-tool": "rc",
+    "@itwin/oidc-signin-tool": "latest",
     "@itwin/presentation-common": "rc",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^8.2.2",

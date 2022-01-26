@@ -31,7 +31,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
 
-    process.env["IMJS_URL_PREFIX"] = "qa-";
     testClientConfig = {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,

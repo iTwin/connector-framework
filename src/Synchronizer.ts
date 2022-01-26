@@ -96,7 +96,7 @@ export class Synchronizer {
    * @param knownUrn Optional. The URN of the master document. Defaults to "".
    * @throws [[IModelError]] if a RepositoryLink for this document already exists, but there is no matching ExternalSourceAspect.
    */
-  public async recordDocument(scope: Id64String, sourceItem: SourceItem, kind: string = "DocumentWithBeGuid", knownUrn: string = ""): Promise<SynchronizationResults> {
+  public recordDocument(scope: Id64String, sourceItem: SourceItem, kind: string = "DocumentWithBeGuid", knownUrn: string = ""): SynchronizationResults {
     const key = scope + sourceItem.id.toLowerCase();
     const existing = this._links.get(key);
     if (existing !== undefined) {
@@ -135,17 +135,7 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    try {
-      await this.imodel.locks.acquireSharedLock(IModel.dictionaryId);
-      this.imodel.elements.insertElement(xseProps); // throws on error
-   
-    }
-    finally {
-      await this.imodel.locks.releaseAllLocks();
-    }
-
-
-    
+    this.imodel.elements.insertElement(xseProps);
 
     this._links.set(key, results);
 
@@ -212,7 +202,7 @@ export class Synchronizer {
    * @param externalSourceElement External source pointing to the Repository Link. Use getExternalSourceElement for this parameter
    * @beta
    */
-  public async updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): Promise<IModelStatus> {
+  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
     if (ItemState.Unchanged === results.itemState) {
       this.onElementSeen(results.element.id);
@@ -240,7 +230,7 @@ export class Synchronizer {
         return status;
       }
     } else {
-      if (IModelStatus.Success !== (status = await this.insertResultsIntoIModel(results))) {
+      if (IModelStatus.Success !== (status = this.insertResultsIntoIModel(results))) {
         return status;
       }
     }
@@ -306,46 +296,23 @@ export class Synchronizer {
    * @param results The result set to insert
    * @beta
    */
-   public async insertResultsIntoIModel(results: SynchronizationResults): Promise<IModelStatus> {
-  // if (undefined === results.element || undefined === results.element.parent)
-  //   return IModelStatus.BadElement;
-
-    await results.element.iModel.locks.acquireSharedLock(results.element.model);
-
+  public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
     results.element.insert(); // throws on error
 
-    await results.element.iModel.locks.releaseAllLocks();
-
-
-
     this.onElementSeen(results.element.id);
-
     if (undefined === results.childElements) {
-
       return IModelStatus.Success;
-
     }
-
-
 
     for (const child of results.childElements) {
-
       const parent = new RelatedElement({ id: results.element.id, relClassName: ElementOwnsChildElements.classFullName });
-
       child.element.parent = parent;
-
-      const status = await this.insertResultsIntoIModel(child);
-
+      const status = this.insertResultsIntoIModel(child);
       if (status !== IModelStatus.Success) {
-
         return status;
-
       }
-
     }
-
     return IModelStatus.Success;
-
   }
 
   /** Given synchronizations results for an element (and possibly its children), updates element in the bim
