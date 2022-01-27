@@ -196,7 +196,6 @@ export class ConnectorRunner {
     // source data
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
-    await this.enterChannel();
 
     const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
@@ -208,7 +207,6 @@ export class ConnectorRunner {
     // domain schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
-    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDomainSchema(reqContext);
@@ -219,7 +217,6 @@ export class ConnectorRunner {
     // dynamic schema
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
-    await this.enterChannel();
 
     reqContext = await this.getReqContext();
     await this.connector.importDynamicSchema(reqContext);
@@ -230,9 +227,8 @@ export class ConnectorRunner {
     // initialize job subject
 
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
-    await this.enterChannel();
 
-    const jobSubject = this.updateJobSubject();
+    const jobSubject = await this.updateJobSubject();
 
     await this.persistChanges(`Job Subject Update`);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
@@ -240,7 +236,8 @@ export class ConnectorRunner {
     // definitions changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-    await this.enterChannel();
+    
+    await this.db.locks.acquireExclusiveLock(jobSubject.id);
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
@@ -251,8 +248,9 @@ export class ConnectorRunner {
     // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
-    await this.enterChannel();
-
+    
+    await this.db.locks.acquireExclusiveLock(IModel.repositoryModelId);
+    
     await this.connector.updateExistingData();
     this.updateDeletedElements();
     this.updateProjectExtent();
@@ -260,16 +258,16 @@ export class ConnectorRunner {
     await this.persistChanges("Data Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
-    await this.enterChannel();
     this.updateSynchronizationConfigLink(synchConfig);
     await this.persistChanges("Synch Config Update");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
+    await this.db.locks.releaseAllLocks();
   }
 
   private async onFailure(err: any) {
     if (this._db && this._db.isBriefcaseDb()) {
-      (this._db ).abandonChanges();
+      this._db.abandonChanges();
     }
     this.recordError(err);
   }
@@ -338,10 +336,10 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-      await this.db.locks.acquireSharedLock(IModel.dictionaryId);
+      await this.db.locks.acquireSharedLock(IModel.repositoryModelId);
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
-      await this.db.locks.releaseAllLocks();
+      // await this.db.locks.releaseAllLocks();
     }
 
     this.connector.jobSubject = subject;
@@ -375,7 +373,6 @@ export class ConnectorRunner {
       this.updateSynchronizationConfigLink(prevSynchConfigId);
       idToReturn = prevSynchConfigId;
       }
-    await this._db.locks.releaseAllLocks();
     return idToReturn;
   }
   private async updateSynchronizationConfigLink(synchConfigId: string){
@@ -389,7 +386,6 @@ export class ConnectorRunner {
     };
     await this._db.locks.acquireExclusiveLock(synchConfigData.id);
     this._db.elements.updateElement(synchConfigData);
-    await this._db.locks.releaseAllLocks();
   }
 
   private async loadReqContext() {
@@ -505,8 +501,7 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    //const reqContext = await this.getReqContext();
-    const synchronizer = new Synchronizer(this.db, false);
+    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
     this.connector.synchronizer = synchronizer;
   }
 
@@ -516,40 +511,12 @@ export class ConnectorRunner {
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
       this._db = this.db as BriefcaseDb;
-      // await this.db.concurrencyControl.request(authReqContext); // pr changes say that you acquire locks before update or insert instead of what is happening here, not sure if he means actually before the insert or if it should be done when we SAVE a update/insert
       await this.db.pullChanges();
       this.db.saveChanges(comment);
       await this.db.pushChanges({description: comment});
     } else {
       this.db.saveChanges(comment);
     }
-  }
-
-  private async enterChannel() {
-    if (!this.db.isBriefcaseDb())
-      return;
-
-    this._db = this.db as BriefcaseDb;
-    // all of these arguments are no longer present, not sure if i just dont know where they are though, doing the checks that were added instead
-    // if (!this.db.locks.isBulkMode)
-    //   this.db.concurrencyControl.startBulkMode();
-    // if (this.db.concurrencyControl.hasPendingRequests)
-    //   throw new Error("has pending requests");
-    // if (this.db.concurrencyControl.locks.hasSchemaLock)
-    //   throw new Error("has schema lock");
-    // if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
-    //   throw new Error("has code spec lock");
-    // if (this.db.concurrencyControl.channel.isChannelRootLocked)
-    //   throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
-    if(this.db.locks.holdsExclusiveLock(IModel.dictionaryId)) // I believe will check for whole model?
-      throw new Error("holds exclusive lock");
-    if(this.db.locks.holdsSharedLock(IModel.dictionaryId))
-      throw new Error("holds shared lock");
-
-    // this.db.concurrencyControl.channel.channelRoot = rootId;
-
-    // const reqContext = await this.getAuthReqContext();
-    // await this.db.concurrencyControl.channel.lockChannelRoot(reqContext); // Channel not present anymore either, think its handled with other new locking stuff instead but leaving just in case
   }
 }
 

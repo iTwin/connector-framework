@@ -25,11 +25,8 @@
           "runtimeArgs": [
             "run",
             "test:integration"
-            ],
-          "outFiles": [
-            "${workspaceFolder}/{core,clients}/*/lib/**/*.js"
           ]
-      },     
+      },
       {
         "name": "pretest",
         "cwd": "${workspaceFolder}",
@@ -39,5 +36,7 @@
         "runtimeArgs": [
           "run",
           "pretest"
+        ],
+    },      
     ]
 }
