@@ -139,13 +139,15 @@ stages:
         displayName: 'Publish Connector Framework Artifact'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
-#- stage: Publish
-#  displayName: Publish
-#  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.info.shouldPublish'], 'true'))
-#  dependsOn: Build
-#  jobs:
-#    - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
-#      parameters:
-#        path: '*.tgz'
-#        artifactName: connector-framework
+- stage: Publish
+ displayName: Publish
+ condition: and(succeeded(), eq(dependencies.Build.outputs['Build.info.shouldPublish'], 'true'))
+ dependsOn: Build
+ jobs:
+   - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
+     parameters:
+       path: '*.tgz'
+       artifactName: connector-framework
+       releaseTag: 'beta'
+       dryrun: true
 
