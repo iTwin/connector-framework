@@ -48,7 +48,7 @@ stages:
         displayName: 'Install Node.js'
 
       - script: |
-          npm install npm@8.1.0 --no-optional
+          npm install npm@8.1.0 -f
         displayName: 'install latest npm'
 
       - script: |
