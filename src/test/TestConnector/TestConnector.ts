@@ -377,7 +377,7 @@ export default class TestConnector extends BaseConnector {
         itemState: results.state,
       };
       if (results.id !== undefined) // in case this is an update
-        sync.element.id = results.id;
+        sync.elementProps.id = results.id;
       const xse = this.synchronizer.getExternalSourceElement(this._repositoryLink!);
       this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group", xse);
     }
@@ -447,8 +447,8 @@ export default class TestConnector extends BaseConnector {
     }
 
     // for testing purposes only: double check that what I calculated is what was saved in the briefcase
-    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.element.id);
-    assert(persistentTile.placement.origin.isExactEqual((sync.element as TestConnectorPhysicalElement).placement.origin));
+    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.elementProps.id);
+    assert(persistentTile.placement.origin.isExactEqual((sync.elementProps as TestConnectorPhysicalElement).placement.origin));
 
     const groupCode = TestConnectorGroup.createCode(this.synchronizer.imodel, groupModelId, tile.Group);
     const groupElement = this.synchronizer.imodel.elements.queryElementIdByCode(groupCode);
@@ -463,7 +463,7 @@ export default class TestConnector extends BaseConnector {
       }
     }
     if (doCreate) {
-      const rel = ElementGroupsMembers.create(this.synchronizer.imodel, groupElement, sync.element.id);
+      const rel = ElementGroupsMembers.create(this.synchronizer.imodel, groupElement, sync.elementProps.id);
       rel.insert();
     }
 
