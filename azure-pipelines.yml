@@ -111,7 +111,7 @@ stages:
 
         displayName: 'Store Build Info'
         name: info
-        condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+        condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
       - script: |
           npm pack
