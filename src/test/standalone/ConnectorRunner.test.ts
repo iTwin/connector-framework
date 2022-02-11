@@ -64,7 +64,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });
-    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
+    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
     const fileName = `SyncError.json`;
     try{
       const runner = new ConnectorRunner(jobArgs);
