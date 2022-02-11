@@ -90,7 +90,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       dbType: "snapshot",
       synchConfigFile: path.join(__dirname, "..\\..\\..\\src\\test\\synchConfigTest.json"),
     });
-    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
+    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
     // const connectorJobDef = new ConnectorJobDefArgs();
     // connectorJobDef.sourcePath = assetFile;
     // connectorJobDef.connectorModule = ;
