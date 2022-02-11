@@ -123,6 +123,13 @@ stages:
         name: info
         condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
+      - bash: |
+          echo "shouldPublish: $(info.shouldPublish)"
+          ls
+          ls connector-framework
+        displayName: 'Show Build Info'
+        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+
       # - script: |
       #     npm pack
       #   displayName: 'npm pack @itwin/connector-framework'
