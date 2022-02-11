@@ -125,6 +125,7 @@ stages:
 
       - bash: |
           echo "shouldPublish: $(info.shouldPublish)"
+          pwd
           ls
         displayName: 'Show Build Info'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
@@ -148,12 +149,12 @@ stages:
       #   displayName: Publish npm package
       #   condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
-      - task: PublishBuildArtifacts@1
-        inputs:
-          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-          artifactName: connector-framework
-        displayName: 'Publish Connector Framework Artifact'
-        condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
+      # - task: PublishBuildArtifacts@1
+      #   inputs:
+      #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      #     artifactName: connector-framework
+      #   displayName: 'Publish Connector Framework Artifact'
+      #   condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
 - stage: Publish
   displayName: Publish
