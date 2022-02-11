@@ -152,7 +152,7 @@ stages:
 
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)/connector-framework'
           artifactName: connector-framework
         displayName: 'Publish Connector Framework Artifact'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
