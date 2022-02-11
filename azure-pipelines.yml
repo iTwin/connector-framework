@@ -125,20 +125,23 @@ stages:
 
       - bash: |
           echo "shouldPublish: $(info.shouldPublish)"
+          echo $(System.DefaultWorkingDirectory)
           pwd
           ls
         displayName: 'Show Build Info'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
       - script: |
+          pwd
+          ls
           npm pack
+          ls
         displayName: 'npm pack @itwin/connector-framework'
-        workingDirectory: connector-framework
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
       - task: CopyFiles@2
         inputs:
-          sourceFolder: connector-framework
+          sourceFolder: $(System.DefaultWorkingDirectory)
           contents: '*.tgz'
           targetFolder: $(Build.ArtifactStagingDirectory)/connector-framework
         displayName: 'Copy @itwin/connector-framework'
