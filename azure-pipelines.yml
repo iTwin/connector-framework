@@ -70,6 +70,7 @@ stages:
       - script: |
           npm run test:standalone
         displayName: 'npm run test:standalone'
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
       - script: |
           npm run test:integration
@@ -82,6 +83,7 @@ stages:
           test_client_id: $(test_client_id)
           test_redirect_uri: $(test_redirect_uri)
           test_scopes: $(test_scopes)
+        condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
       - bash: |
           checkVersion() {
