@@ -32,17 +32,17 @@ stages:
   displayName: Build
   jobs:
     - job: Build
-      # strategy:
-      #   matrix:
-      #     linux:
-      #       imageName: 'ubuntu-latest'
-      #     # mac:
-      #       # imageName: 'macos-latest'
-      #     windows:
-      #       imageName: 'windows-latest'
+      strategy:
+        matrix:
+          linux:
+            imageName: 'ubuntu-latest'
+          # mac:
+            # imageName: 'macos-latest'
+          windows:
+            imageName: 'windows-latest'
 
       pool:
-        vmImage: 'windows-latest'
+        vmImage: '$(imageName)'
 
       steps:
 
@@ -119,7 +119,7 @@ stages:
 
         displayName: 'Store Build Info'
         name: info
-        condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+        condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
       # - script: |
       #     npm pack
