@@ -126,7 +126,6 @@ stages:
       - bash: |
           echo "shouldPublish: $(info.shouldPublish)"
           ls
-          ls connector-framework
         displayName: 'Show Build Info'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
@@ -151,7 +150,7 @@ stages:
 
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '$(Build.ArtifactStagingDirectory)/connector-framework'
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
           artifactName: connector-framework
         displayName: 'Publish Connector Framework Artifact'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
