@@ -70,7 +70,7 @@ stages:
       - script: |
           npm run test:standalone
         displayName: 'npm run test:standalone'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+        condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
       - script: |
           npm run test:integration
