@@ -46,9 +46,13 @@ stages:
         inputs:
           versionSpec: '14.17.6'
         displayName: 'Install Node.js'
+        
+      - script: |
+          npm cache clean --force
+        displayName: 'clean npm cache'
 
       - script: |
-          npm install -g npm@latest --force
+          npm install npm@latest -g
         displayName: 'install latest npm'
 
       - script: |
