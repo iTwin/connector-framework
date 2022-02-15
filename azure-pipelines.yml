@@ -48,7 +48,7 @@ stages:
         displayName: 'Install Node.js'
 
       - script: |
-          npm install npm@latest -g
+          npm install -g npm@latest --force
         displayName: 'install latest npm'
 
       - script: |
