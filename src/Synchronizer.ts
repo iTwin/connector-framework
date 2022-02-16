@@ -287,21 +287,32 @@ export class Synchronizer {
    * @beta
    */
   public getExternalSourceElement(repositoryLink: Element): Element | undefined {
-    let sourceId;
-    this.imodel.withStatement(
-      "select * from BisCore.ExternalSource where repository.id=?",
-      (stmt) => {
-        stmt.bindValues([repositoryLink.id]);
-        stmt.step();
-        const row = stmt.getRow();
-        sourceId = row.id;
-      }
-    );
-    if (sourceId)
-      return this.imodel.elements.getElement(sourceId);
-    return;
+    return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
 
+  /** Returns the External Source Element associated with a repository link
+   * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
+   * @beta
+   */
+     public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): Element | undefined {
+      if (repositoryLinkId === undefined || !Id64.isValidId64(repositoryLinkId))
+        throw new IModelError(IModelStatus.BadArg, "invalid or missing repositoryLinkId");
+
+      let sourceId;
+      this.imodel.withStatement(
+        "select * from BisCore.ExternalSource where repository.id=?",
+        (stmt) => {
+          stmt.bindValues([repositoryLinkId]);
+          stmt.step();
+          const row = stmt.getRow();
+          sourceId = row.id;
+        }
+      );
+      if (sourceId)
+        return this.imodel.elements.getElement(sourceId);
+      return;
+    }
+  
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim
    * @param results The result set to insert
    * @beta
