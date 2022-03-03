@@ -64,8 +64,8 @@ describe("iTwin Connector Fwk StandAlone", () => {
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });
-    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
-    const fileName = `SyncError.json`;
+    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
+    const fileName = `error.json`;
     try{
       const runner = new ConnectorRunner(jobArgs);
       const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
@@ -90,7 +90,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       dbType: "snapshot",
       synchConfigFile: path.join(__dirname, "..\\..\\..\\src\\test\\synchConfigTest.json"),
     });
-    const failConnectorFile = "./test/TestConnector/FailTestiTwinConnector.js";
+    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
     // const connectorJobDef = new ConnectorJobDefArgs();
     // connectorJobDef.sourcePath = assetFile;
     // connectorJobDef.connectorModule = ;
@@ -98,7 +98,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     // connectorJobDef.isSnapshot = true;
     // connectorJobDef.synchConfigLink = ;
     const runner = new ConnectorRunner(jobArgs);
-    const fileName = `SyncError.json`;
+    const fileName = `error.json`;
     const status = await runner.run(failConnectorFile);
     expect(status === BentleyStatus.ERROR);
     const filePath = path.join(KnownTestLocations.outputDir, `${path.basename(assetFile, path.extname(assetFile))}.bim`);
