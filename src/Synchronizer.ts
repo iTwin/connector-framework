@@ -295,9 +295,6 @@ export class Synchronizer {
    * @beta
    */
      public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): Element | undefined {
-      if (repositoryLinkId === undefined || !Id64.isValidId64(repositoryLinkId))
-        throw new IModelError(IModelStatus.BadArg, "invalid or missing repositoryLinkId");
-
       let sourceId;
       this.imodel.withStatement(
         "select * from BisCore.ExternalSource where repository.id=?",
