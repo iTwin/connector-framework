@@ -38,7 +38,7 @@
   "devDependencies": {
     "@bentley/imodelhub-client": "3.0.0-extension.1",
     "@bentley/itwin-client": "3.0.0-extension.1",
-    "@itwin/build-tools": "^3.0.1",
+    "@itwin/build-tools": "^3.0.2",
     "@itwin/eslint-plugin": "3.0.0-extension.1",
     "@itwin/oidc-signin-tool": "3.0.0-dev.110",
     "@types/chai": "^4.1.4",

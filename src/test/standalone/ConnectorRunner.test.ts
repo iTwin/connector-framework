@@ -45,7 +45,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     const runner = new ConnectorRunner(jobArgs);
     const dbpath = path.join(KnownTestLocations.outputDir, "TestConnector.bim");
     const status = await runner.run(connectorFile);
-    expect(status === BentleyStatus.SUCCESS);
+    expect(status).eq(BentleyStatus.SUCCESS);
     const db = SnapshotDb.openFile(dbpath);
     assert.equal(1, utils.getCount(db, SynchronizationConfigLink.classFullName));
     utils.verifyIModel(db, jobArgs);
@@ -100,7 +100,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     const runner = new ConnectorRunner(jobArgs);
     const fileName = `error.json`;
     const status = await runner.run(failConnectorFile);
-    expect(status === BentleyStatus.ERROR);
+    expect(status).eq(BentleyStatus.ERROR);
     const filePath = path.join(KnownTestLocations.outputDir, `${path.basename(assetFile, path.extname(assetFile))}.bim`);
     const imodel = SnapshotDb.openFile(filePath);
 

@@ -3,26 +3,19 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, assert, Id64String, IModelStatus, Logger, BentleyStatus } from "@itwin/core-bentley";
+import { AccessToken, assert, Id64String, IModelStatus, BentleyStatus } from "@itwin/core-bentley";
 //import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import {
-  CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
-  ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
+  DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelDb, IModelJsFs,
+  PhysicalModel, PhysicalPartition, RelationshipProps, SubjectOwnsPartitionElements,
 } from "@itwin/core-backend";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
-import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
+import { IModel, IModelError, InformationPartitionElementProps } from "@itwin/core-common";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
-import {
-  Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile,
-  TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement,
-} from "./TestConnectorElements";
-import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
 
-import * as hash from "object-hash";
 import * as fs from "fs";
 import { ModelNames } from "./TestConnector";
 import { BaseConnector } from "../../BaseConnector";
@@ -55,15 +48,15 @@ export default class TestConnector extends BaseConnector {
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
-  private _repositoryLink?: RepositoryLink;
+  private _repositoryLinkId?: Id64String;
   public initialize(_params: any) {
     // nothing to do here
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  private get repositoryLink(): RepositoryLink {
-    assert(this._repositoryLink !== undefined);
-    return this._repositoryLink;
+  private get repositoryLinkId(): Id64String {
+    assert(this._repositoryLinkId !== undefined);
+    return this._repositoryLinkId;
   }
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
@@ -80,7 +73,7 @@ export default class TestConnector extends BaseConnector {
 
     const documentStatus = this.getDocumentStatus(); // make sure the repository link is created now, while we are in the repository channel
     this._sourceDataState = documentStatus.itemState;
-    this._repositoryLink = documentStatus.element;
+    this._repositoryLinkId = documentStatus.elementProps.id;
   }
   public override async onOpenIModel(): Promise<BentleyStatus> {
     throw new IModelError(IModelStatus.BadArg, "Expected Fail for test");
@@ -142,7 +135,7 @@ export default class TestConnector extends BaseConnector {
     // relate this model to the source data
     const relationshipProps: RelationshipProps = {
       sourceId: modelid,
-      targetId: this.repositoryLink.id,
+      targetId: this.repositoryLinkId,
       classFullName: "BisCore.ElementHasLinks",
     };
     this.synchronizer.imodel.relationships.insertInstance(relationshipProps);
