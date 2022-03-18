@@ -237,7 +237,7 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
     
-    await this.db.locks.acquireExclusiveLock(jobSubject.id);
+    await this.db.locks.acquireLocks({exclusive: jobSubject.id});
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
@@ -249,7 +249,7 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
     
-    await this.db.locks.acquireExclusiveLock(IModel.repositoryModelId);
+    await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId});
     
     await this.connector.updateExistingData();
     this.updateDeletedElements();
@@ -336,7 +336,7 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-      await this.db.locks.acquireSharedLock(IModel.repositoryModelId);
+      await this.db.locks.acquireLocks({shared: IModel.repositoryModelId});
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
       // await this.db.locks.releaseAllLocks();
@@ -364,7 +364,7 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    await this._db.locks.acquireSharedLock(IModel.dictionaryId);
+    await this._db.locks.acquireLocks({shared: IModel.dictionaryId});
     const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
     var idToReturn : string;
     if(prevSynchConfigId === undefined)
@@ -384,7 +384,7 @@ export class ConnectorRunner {
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    await this._db.locks.acquireExclusiveLock(synchConfigData.id);
+    await this._db.locks.acquireLocks({exclusive: synchConfigData.id});
     this._db.elements.updateElement(synchConfigData);
   }
 

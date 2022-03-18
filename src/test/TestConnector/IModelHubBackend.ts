@@ -12,16 +12,10 @@
 
 import { join } from "path";
 import { ProgressCallback, UserCancelledError } from "@bentley/itwin-client";
-import {
-  AcquireNewBriefcaseIdArg, BackendHubAccess, BriefcaseDbArg, BriefcaseIdArg, BriefcaseLocalValue, BriefcaseManager, ChangesetArg, ChangesetRangeArg, CheckpointArg,
-  CheckpointProps, CreateNewIModelProps, IModelDb, IModelHost, IModelIdArg, IModelJsFs, IModelNameArg, ITwinIdArg, LockMap, LockProps, LockState, SnapshotDb, TokenArg,
-  V2CheckpointAccessProps,
-} from "@itwin/core-backend";
+import { AcquireNewBriefcaseIdArg, BackendHubAccess, BriefcaseDbArg, BriefcaseIdArg, BriefcaseLocalValue, BriefcaseManager, ChangesetArg, ChangesetRangeArg, CheckpointArg, CheckpointProps, CreateNewIModelProps, IModelDb, IModelHost, IModelIdArg, IModelJsFs, IModelNameArg, ITwinIdArg, LockMap, LockProps, LockState, SnapshotDb, TokenArg, V2CheckpointAccessProps } from "@itwin/core-backend";
 import { BentleyError, BriefcaseStatus, GuidString, Id64String, IModelHubStatus, IModelStatus, Logger, OpenMode } from "@itwin/core-bentley";
-import {
-  BriefcaseIdValue, ChangesetFileProps, ChangesetId, ChangesetIndex, ChangesetProps, CodeProps, IModelError, IModelVersion, LocalDirName,
-} from "@itwin/core-common";
-import { IModelClient, IModelBankClient, IModelHubClient, ChangeSet, ChangeSetQuery, VersionQuery, IModelQuery, BriefcaseQuery, ChangesType, CheckpointQuery, CheckpointV2Query, CheckpointV2, LockQuery, CodeQuery, Lock, LockLevel, LockType } from "@bentley/imodelhub-client";
+import { BriefcaseIdValue, ChangesetFileProps, ChangesetId, ChangesetIndex, ChangesetProps, CodeProps, IModelError, IModelVersion, LocalDirName } from "@itwin/core-common";
+import { BriefcaseQuery, ChangeSet, ChangeSetQuery, ChangesType, CheckpointQuery, CheckpointV2, CheckpointV2Query, CodeQuery, IModelBankClient, IModelClient, IModelHubClient, IModelQuery, Lock, LockLevel, LockQuery, LockType, VersionQuery } from "@bentley/imodelhub-client";
 import { AzureFileHandler } from "@bentley/imodelhub-client/lib/cjs/imodelhub-node";
 
 const changeSet0 = { id: "", changesType: 0, description: "revision0", parentId: "", briefcaseId: 0, pushDate: "", userCreated: "", index: 0 };
@@ -48,7 +42,7 @@ export class IModelHubBackend implements BackendHubAccess {
   }
 
   private async getAccessToken(arg: TokenArg) {
-    return arg.accessToken ?? await IModelHost.getAccessToken();
+    return arg.accessToken ?? (await IModelHost.getAccessToken());
   }
   public async getLatestChangeset(arg: IModelIdArg): Promise<ChangesetProps> {
     const accessToken = await this.getAccessToken(arg);

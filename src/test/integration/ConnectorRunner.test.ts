@@ -8,7 +8,7 @@ import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
 import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
+import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelHubBackend } from "@bentley/imodelhub-client/lib/cjs/IModelHubBackend";
 import { HubUtility } from "../TestConnector/HubUtility";

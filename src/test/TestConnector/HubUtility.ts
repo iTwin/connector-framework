@@ -2,9 +2,9 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import {AccessToken, GuidString, Logger } from "@itwin/core-bentley";
+import { AccessToken, GuidString, Logger } from "@itwin/core-bentley";
 import { BriefcaseQuery, HubIModel, IModelQuery } from "@bentley/imodelhub-client";
-import { IModelHubBackend} from "./IModelHubBackend";
+import { IModelHubBackend } from "./IModelHubBackend";
 import { CreateNewIModelProps, IModelHost, IModelHostConfiguration } from "@itwin/core-backend";
 export class HubUtility {
   m_config:IModelHostConfiguration;
