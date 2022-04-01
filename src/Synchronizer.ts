@@ -276,7 +276,7 @@ export class Synchronizer {
    * @param repositoryLink The repository link associated with the External Source Element
    * @beta
    */
-  public getExternalSourceElement(repositoryLink: Element): Element | undefined {
+  public getExternalSourceElement(repositoryLink: Element): ExternalSourceProps | undefined {
     let sourceId;
     this.imodel.withStatement(
       "select * from BisCore.ExternalSource where repository.id=?",
@@ -288,7 +288,7 @@ export class Synchronizer {
       }
     );
     if(sourceId)
-      return this.imodel.elements.getElement(sourceId);
+      return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
     return;
   }
 

@@ -5,7 +5,7 @@
 import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { AccessToken, assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import { ElectronAuthorizationBackend } from "@itwin/core-electron/lib/cjs/ElectronBackend";
+import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import { AllArgsProps, HubArgs, JobArgs } from "./Args";
@@ -420,17 +420,19 @@ export class ConnectorRunner {
   }
 
   private async getTokenInteractive() {
-    const client = new ElectronAuthorizationBackend();
-    await client.initialize(this.hubArgs.clientConfig);
-    return new Promise<string>(async (resolve, reject) => {
-      NativeHost.onAccessTokenChanged.addListener((token) => {
-        if (token !== undefined)
-          resolve(token);
-        else
-          reject(new Error("Failed to sign in"));
-      });
-      await client.signIn();
-    });
+    const client = new ElectronMainAuthorization(this.hubArgs.clientConfig!);
+    // await client.initialize(this.hubArgs.clientConfig);
+    // return new Promise<string>(async (resolve, reject) => {
+    //   NativeHost.onAccessTokenChanged.addListener((token) => {
+    //     if (token !== undefined)
+    //       resolve(token);
+    //     else
+    //       reject(new Error("Failed to sign in"));
+    //   });
+    //   await client.signIn();
+    // });
+    await client.signIn();
+    return await client.getAccessToken();
   }
 
   private async loadDb() {

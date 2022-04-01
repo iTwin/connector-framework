@@ -3,28 +3,35 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, GuidString, Logger } from "@itwin/core-bentley";
-import { BriefcaseQuery, HubIModel, IModelQuery } from "@bentley/imodelhub-client";
-import { IModelHubBackend } from "./IModelHubBackend";
+import { BriefcaseQuery, HubIModel, IModelQuery, Briefcase } from "@bentley/imodelhub-client";
+// import { IModelHubBackend } from "./IModelHubBackend";
 import { CreateNewIModelProps, IModelHost, IModelHostConfiguration } from "@itwin/core-backend";
+import { IModelsClient, AuthorizationCallback, Authorization } from "@itwin/imodels-client-authoring";
+import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
+import {IModel} from "@itwin/imodels-client-management";
 export class HubUtility {
   m_config:IModelHostConfiguration;
+  static iModelClient: IModelsClient = new IModelsClient({ api: { baseUrl: `https://${process.env.IMJS_URL_PREFIX ?? ""}api.bentley.com/imodels`}});
 
 constructor (){
   this.m_config = new IModelHostConfiguration();
-  this.m_config.hubAccess = new IModelHubBackend();
+  const iModelClient = new IModelsClient({ api: { baseUrl: `https://${process.env.IMJS_URL_PREFIX ?? ""}api.bentley.com/imodels`}});
+  this.m_config.hubAccess = new BackendIModelsAccess(iModelClient)
 
   IModelHost.startup(this.m_config);
 }
 
   public static logCategory = "HubUtility";
 
-  public static async queryIModelByName(requestContext: AccessToken, projectId: string, iModelName: string): Promise<HubIModel | undefined> {
-    const iModels = await IModelHubBackend.prototype.iModelClient.iModels.get(requestContext, projectId, new IModelQuery().byName(iModelName));
-    if (iModels.length === 0)
-      return undefined;
-    if (iModels.length > 1)
-      throw new Error(`Too many iModels with name ${iModelName} found`);
-    return iModels[0];
+  public static async queryIModelByName(requestContext: AccessToken, projectId: string, iModelName: string): Promise<IModel | undefined> {
+    const authCallback: AuthorizationCallback = () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: requestContext}});
+    const iModels = await this.iModelClient.iModels.getRepresentationList({urlParams:{projectId: projectId, name: iModelName}, authorization: authCallback});
+    // if (iModels.length === 0)
+    //   return undefined;
+    // if (iModels.length > 1)
+    //   throw new Error(`Too many iModels with name ${iModelName} found`);
+    const imodel = await iModels.next();
+    return imodel.value;
   }
 
   /**
@@ -35,7 +42,7 @@ constructor (){
    * @throws If the iModel is not found, or if there is more than one iModel with the supplied name
    */
   public static async queryIModelIdByName(requestContext: AccessToken, projectId: string, iModelName: string): Promise<GuidString> {
-    const iModel: HubIModel | undefined = await HubUtility.queryIModelByName(requestContext, projectId, iModelName);
+    const iModel: IModel | undefined = await HubUtility.queryIModelByName(requestContext, projectId, iModelName);
     if (!iModel || !iModel.id)
       throw new Error(`IModel ${iModelName} not found`);
     return iModel.id;
@@ -44,44 +51,48 @@ constructor (){
   /**
    * Purges all acquired briefcases for the specified iModel (and user), if the specified threshold of acquired briefcases is exceeded
    */
-  public static async purgeAcquiredBriefcasesById(accessToken: AccessToken, iModelId: GuidString, onReachThreshold: () => void, acquireThreshold: number = 16): Promise<void> {
-    const briefcases = await IModelHubBackend.prototype.iModelClient.briefcases.get(accessToken, iModelId, new BriefcaseQuery().ownedByMe());
+  public static async purgeAcquiredBriefcasesById(accessToken: AccessToken, iModelId: GuidString): Promise<void> {
+    const authCallback: AuthorizationCallback = () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: accessToken}});
+    const briefcases = await this.iModelClient.briefcases.getRepresentationList({iModelId: iModelId, urlParams: {ownerId: "me"}, authorization: authCallback});
 
-      if (briefcases.length > acquireThreshold) {
-      onReachThreshold();
+      // if (briefcases.length > acquireThreshold) {
+      // onReachThreshold();
 
       const promises = new Array<Promise<void>>();
-      briefcases.forEach((briefcase) => {
-        promises.push(IModelHubBackend.prototype.iModelClient.briefcases.delete(accessToken, iModelId, briefcase.briefcaseId!));
-      });
+      for await(const b of briefcases)
+      {
+        promises.push(this.iModelClient.briefcases.release({iModelId: iModelId, briefcaseId: b.briefcaseId, authorization: authCallback}));
+      }
+      // briefcases.forEach((briefcase) => {
+      //   promises.push(this.iModelClient.briefcases.release({iModelId: iModelId, briefcaseId: briefcase.briefcaseId, authorization: authCallback}));
+      // });
       await Promise.all(promises);
-    }
+    
   }
 
   /**
    * Purges all acquired briefcases for the specified iModel (and user), if the specified threshold of acquired briefcases is exceeded
    */
-  public static async purgeAcquiredBriefcases(accessToken: AccessToken, projectId: string, iModelName: string, acquireThreshold: number = 16): Promise<void> {
+  public static async purgeAcquiredBriefcases(accessToken: AccessToken, projectId: string, iModelName: string): Promise<void> {
     const iModelId: GuidString = await HubUtility.queryIModelIdByName(accessToken, projectId, iModelName);
 
-    return this.purgeAcquiredBriefcasesById(accessToken, iModelId, () => {
-      Logger.logInfo(HubUtility.logCategory, `Reached limit of maximum number of briefcases for ${projectId}:${iModelName}. Purging all briefcases.`);
-    }, acquireThreshold);
+    return this.purgeAcquiredBriefcasesById(accessToken, iModelId);
   }
 
   /** Create  */
   public static async recreateIModel(accessToken: AccessToken, projectId: GuidString, iModelName: string): Promise<GuidString> {
     // Delete any existing iModel
+    const authCallback: AuthorizationCallback = () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: accessToken}});
     try {
       const deleteIModelId: GuidString = await HubUtility.queryIModelIdByName(accessToken, projectId, iModelName);
-      await IModelHubBackend.prototype.iModelClient.iModels.delete(accessToken, projectId, deleteIModelId);
+      await this.iModelClient.iModels.delete({iModelId: deleteIModelId, authorization: authCallback});
     } catch (err) {
       Logger.logError(HubUtility.logCategory, "Failed to recreate an IModel");
     }
 
     // Create a new iModel
-    const iModel: HubIModel = await IModelHubBackend.prototype.iModelClient.iModels.create(accessToken, projectId, iModelName, { description: `Description for ${iModelName}` });
-    return iModel.wsgId;
+    const iModel: IModel = await this.iModelClient.iModels.createEmpty({iModelProperties: {projectId: projectId, name: iModelName, description: `Description for ${iModelName}`}, authorization: authCallback});
+    return iModel.id;
   }
 }
 
