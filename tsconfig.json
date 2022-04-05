@@ -1,15 +1,13 @@
 {
   "extends": "./node_modules/@itwin/build-tools/tsconfig-base.json",
   "compilerOptions": {
-    "target": "es2017",
-    "module": "commonjs",
-    "outDir": "./lib"
+    "declaration": false,
+    "declarationMap": false,
+    "resolveJsonModule": true,
+    "outDir": "./lib",
+    "noUnusedParameters": false
   },
   "include": [
-    "./src/**/*.ts"
-  ],
-  "exclude": [
-    "lib",
-    "node_modules"
+    "./src/*.ts*"
   ]
 }

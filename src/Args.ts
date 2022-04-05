@@ -3,9 +3,9 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, Logger } from "@itwin/core-bentley";
-//import { AccessToken } from "@bentley/itwin-client";
+// import { AccessToken } from "@bentley/itwin-client";
 import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
-import { LoggerCategories } from "./LoggerCategory"
+import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -17,7 +17,7 @@ interface Validatable {
  * Defines the schema of the .json argument file used to initialize ConnectorRunner
  */
 export interface AllArgsProps {
-  version: "0.0.1",
+  version: "0.0.1";
   jobArgs: JobArgsProps;
   hubArgs?: HubArgsProps;
 }
@@ -27,7 +27,7 @@ export interface JobArgsProps {
   stagingDir?: string;
   revisionHeader?: string;
   dbType?: "briefcase" | "snapshot" | "standalone";
-  issuesDbFile?: string
+  issuesDbFile?: string;
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
   errorFile?: string;
@@ -43,7 +43,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public stagingDir: string = path.join(__dirname, "staging");
   public revisionHeader: string = "JSFWK";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-  public issuesDbFile?: string
+  public issuesDbFile?: string;
   public loggerConfigJSONFile?: string;
   public errorFile: string;
   public doDetectDeletedElements: boolean = true;
@@ -90,7 +90,7 @@ export interface HubArgsProps {
 }
 
 /**
- * Arguments specific to iModelHub used in a connector job 
+ * Arguments specific to iModelHub used in a connector job
  */
 export class HubArgs implements HubArgsProps, Validatable {
 
@@ -145,7 +145,7 @@ export class HubArgs implements HubArgsProps, Validatable {
 interface BankArgsProps {}
 
 /**
- * Arguments specific to iModel Bank used in a connector job 
+ * Arguments specific to iModel Bank used in a connector job
  */
 class BankArgs {}
 
