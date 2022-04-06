@@ -421,16 +421,6 @@ export class ConnectorRunner {
 
   private async getTokenInteractive() {
     const client = new ElectronMainAuthorization(this.hubArgs.clientConfig!);
-    // await client.initialize(this.hubArgs.clientConfig);
-    // return new Promise<string>(async (resolve, reject) => {
-    //   NativeHost.onAccessTokenChanged.addListener((token) => {
-    //     if (token !== undefined)
-    //       resolve(token);
-    //     else
-    //       reject(new Error("Failed to sign in"));
-    //   });
-    //   await client.signIn();
-    // });
     await client.signIn();
     return await client.getAccessToken();
   }

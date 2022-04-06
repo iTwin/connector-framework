@@ -4,7 +4,6 @@
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, GuidString, Logger } from "@itwin/core-bentley";
 import { BriefcaseQuery, HubIModel, IModelQuery, Briefcase } from "@bentley/imodelhub-client";
-// import { IModelHubBackend } from "./IModelHubBackend";
 import { CreateNewIModelProps, IModelHost, IModelHostConfiguration } from "@itwin/core-backend";
 import { IModelsClient, AuthorizationCallback, Authorization } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
@@ -26,10 +25,6 @@ constructor (){
   public static async queryIModelByName(requestContext: AccessToken, projectId: string, iModelName: string): Promise<IModel | undefined> {
     const authCallback: AuthorizationCallback = () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: requestContext}});
     const iModels = await this.iModelClient.iModels.getRepresentationList({urlParams:{projectId: projectId, name: iModelName}, authorization: authCallback});
-    // if (iModels.length === 0)
-    //   return undefined;
-    // if (iModels.length > 1)
-    //   throw new Error(`Too many iModels with name ${iModelName} found`);
     const imodel = await iModels.next();
     return imodel.value;
   }
