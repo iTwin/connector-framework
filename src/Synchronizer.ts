@@ -8,7 +8,7 @@
 
 import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@itwin/core-backend";
 import { AccessToken, assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
-import { Code, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@itwin/core-common";
+import { Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -68,8 +68,8 @@ export interface DocumentProperties {
 
 /** @beta */
 export interface SynchronizationResults {
-  /** The element being synchronized */
-  element: Element;
+  /** The props of the element being synchronized */
+  elementProps: ElementProps;
   /**  Children of element that have been synchronized */
   childElements?: SynchronizationResults[];
   /** The state of the element */
@@ -108,14 +108,14 @@ export class Synchronizer {
     }
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
 
-    const results: SynchronizationResults = {
-      element: repositoryLink,
-      itemState: ItemState.New,
-    };
-
-    if (undefined === results.element) {
+    if (undefined === repositoryLink) {
       throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
     }
+
+    const results: SynchronizationResults = {
+      elementProps: repositoryLink.toJSON(),
+      itemState: ItemState.New,
+    };
 
     const itemState = this.detectChanges(scope, kind, sourceItem).state;
     if (Id64.isValidId64(repositoryLink.id) && itemState === ItemState.New) {
@@ -126,16 +126,20 @@ export class Synchronizer {
     }
 
     results.itemState = itemState;
-    this.updateIModel(results, scope, sourceItem, kind);
+    const status = this.updateIModel(results, scope, sourceItem, kind);
+
+    if (results.elementProps.id === undefined)
+      throw new IModelError(status, `Failed to insert repositoryLink ${JSON.stringify(results.elementProps)}`);
 
     const xseProps: ExternalSourceProps = {
       model: scope,
       classFullName: ExternalSource.classFullName,
-      repository: {id: results.element.id, relClassName: RepositoryLink.classFullName },
+      repository: { id: results.elementProps.id, relClassName: RepositoryLink.classFullName },
       code: Code.createEmpty(),
     };
 
-    this.imodel.elements.insertElement(xseProps);
+    if (this.getExternalSourceElement(repositoryLink) === undefined)
+      this.imodel.elements.insertElement(xseProps);
 
     this._links.set(key, results);
 
@@ -205,7 +209,10 @@ export class Synchronizer {
   public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
     if (ItemState.Unchanged === results.itemState) {
-      this.onElementSeen(results.element.id);
+      if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id))
+        throw new IModelError(IModelStatus.BadArg, "missing id");
+
+      this.onElementSeen(results.elementProps.id);
       return status;
     }
 
@@ -235,11 +242,13 @@ export class Synchronizer {
       }
     }
 
+    assert(results.elementProps.id !== undefined && Id64.isValidId64(results.elementProps.id));
+
     let sourceId;
     if (externalSourceElement && externalSourceElement.id)
       sourceId = externalSourceElement.id;
 
-    status = this.setExternalSourceAspect(results.element, results.itemState, scope, sourceItem, kind, sourceId);
+    status = this.setExternalSourceAspect(results.elementProps, results.itemState, scope, sourceItem, kind, sourceId);
     return status;
   }
 
@@ -252,7 +261,8 @@ export class Synchronizer {
    * @param source The id of the external source element
    * @beta
    */
-  public setExternalSourceAspect(element: Element, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string, sourceId?: Id64String): IModelStatus {
+  public setExternalSourceAspect(element: ElementProps, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string, sourceId?: Id64String): IModelStatus {
+    assert(element.id !== undefined && Id64.isValidId64(element.id));
     const source = sourceId ? { id: sourceId } : undefined;
     const aspectProps: ExternalSourceAspectProps = {
       classFullName: ExternalSourceAspect.classFullName,
@@ -277,11 +287,19 @@ export class Synchronizer {
    * @beta
    */
   public getExternalSourceElement(repositoryLink: Element): ExternalSourceProps | undefined {
-    let sourceId;
+    return this.getExternalSourceElementByLinkId(repositoryLink.id);
+  }
+
+  /** Returns the External Source Element associated with a repository link
+   * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
+   * @beta
+   */
+     public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): ExternalSourceProps | undefined {
+      let sourceId;
     this.imodel.withStatement(
       "select * from BisCore.ExternalSource where repository.id=?",
       (stmt) => {
-        stmt.bindValues([repositoryLink.id]);
+        stmt.bindValues([repositoryLinkId]);
         stmt.step();
         const row = stmt.getRow();
         sourceId = row.id;
@@ -290,23 +308,26 @@ export class Synchronizer {
     if(sourceId)
       return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
     return;
-  }
-
+    }
+  
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim
    * @param results The result set to insert
    * @beta
    */
   public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
-    results.element.insert(); // throws on error
+    const elementProps = results.elementProps;
+    const elid = this.imodel.elements.insertElement(elementProps); // throws on error
 
-    this.onElementSeen(results.element.id);
+    results.elementProps.id = elid;
+
+    this.onElementSeen(elid);
     if (undefined === results.childElements) {
       return IModelStatus.Success;
     }
 
     for (const child of results.childElements) {
-      const parent = new RelatedElement({ id: results.element.id, relClassName: ElementOwnsChildElements.classFullName });
-      child.element.parent = parent;
+      const parent = new RelatedElement({ id: elid, relClassName: ElementOwnsChildElements.classFullName });
+      child.elementProps.parent = parent;
       const status = this.insertResultsIntoIModel(child);
       if (status !== IModelStatus.Success) {
         return status;
@@ -378,7 +399,8 @@ export class Synchronizer {
     for (const value of this._links.values()) {
       if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
         continue;
-      this.detectDeletedElementsInScope(value.element.id);
+      assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
+      this.detectDeletedElementsInScope(value.elementProps.id);
     }
   }
 
@@ -416,20 +438,25 @@ export class Synchronizer {
   }
 
   private updateResultInIModelForOneElement(results: SynchronizationResults): IModelStatus {
-    assert(results.element !== undefined, "don't call this function if you don't have an element");
-    this.onElementSeen(results.element.id);
-    const existing = this.imodel.elements.tryGetElement(results.element.id);
+    assert(results.elementProps !== undefined, "don't call this function if you don't have a persistent element");
+    const elementProps = results.elementProps;
+    if (elementProps.id === undefined || !Id64.isValidId64(elementProps.id))
+      throw new IModelError(IModelStatus.BadArg, "don't call this function if you don't have a persistent element");
+    this.onElementSeen(elementProps.id);
+    const existing = this.imodel.elements.tryGetElement(elementProps.id);
     if (undefined === existing) {
       return IModelStatus.BadArg;
     }
-    if (existing.classFullName !== results.element.classFullName) {
-      const error = `Attempt to change element's class in an update operation. Do delete + add instead. ElementId ${results.element.id},
-      old class=${existing.classFullName}, new class=${results.element.classFullName}`;
+    if (existing.classFullName !== elementProps.classFullName) {
+      const error = `Attempt to change element's class in an update operation. Do delete + add instead. ElementId ${elementProps.id},
+      old class=${existing.classFullName}, new class=${elementProps.classFullName}`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.WrongClass;
     }
 
-    results.element.update();
+    this.imodel.elements.updateElement(elementProps);
+
+    assert(elementProps.id !== undefined && Id64.isValidId64(elementProps.id));
 
     return IModelStatus.Success;
   }
@@ -438,17 +465,17 @@ export class Synchronizer {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
-    if (!Id64.isValidId64(results.element.id)) {
+    if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
-      const parent = new RelatedElement({ id: results.element.id, relClassName: ElementOwnsChildElements.classFullName });
-      child.element.parent = parent;
+      const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
+      child.elementProps.parent = parent;
     });
 
-    const existingChildren = this.imodel.elements.queryChildren(results.element.id);
+    const existingChildren = this.imodel.elements.queryChildren(results.elementProps.id);
     // While we could just delete all existing children and insert all new ones, we try to do better.
     // If we can figure out how the new children map to existing children, we can update them.
 
@@ -457,12 +484,12 @@ export class Synchronizer {
     // That will allow the updater in its final phase to infer that they should be deleted.
 
     // The best way is if an extension sets up the DgnElementId of the child elements in parentConversionResults.
-    if (undefined !== results.childElements[0].element && Id64.isValidId64(results.childElements[0].element.id)) {
+    if (undefined !== results.childElements[0].elementProps && results.childElements[0].elementProps.id !== undefined && Id64.isValidId64(results.childElements[0].elementProps.id)) {
       for (const childRes of results.childElements) {
-        if (undefined === childRes.element) {
+        if (undefined === childRes.elementProps) {
           continue;
         }
-        const index = existingChildren.findIndex((c) => c === childRes.element.id);
+        const index = existingChildren.findIndex((c) => c === childRes.elementProps.id);
         if (-1 !== index) {
           const stat = this.updateResultsInIModel(childRes);
           if (stat !== IModelStatus.Success) {

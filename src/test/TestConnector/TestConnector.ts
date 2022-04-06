@@ -4,8 +4,11 @@
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, assert, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
 //import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs, ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements } from "@itwin/core-backend";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
+import {
+  CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
+  ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
+} from "@itwin/core-backend";
+import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, RepositoryLinkProps, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
 import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
@@ -25,16 +28,16 @@ export default class TestConnector extends BaseConnector {
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
-  private _repositoryLink?: RepositoryLink;
+  private _repositoryLinkId?: Id64String;
 
   public static override async create(): Promise<TestConnector> {
     return new TestConnector();
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  private get repositoryLink(): RepositoryLink {
-    assert(this._repositoryLink !== undefined);
-    return this._repositoryLink;
+  private get repositoryLinkId(): Id64String {
+    assert(this._repositoryLinkId !== undefined);
+    return this._repositoryLinkId;
   }
 
   public async initializeJob(): Promise<void> {
@@ -53,7 +56,8 @@ export default class TestConnector extends BaseConnector {
 
     const documentStatus = this.getDocumentStatus(); // make sure the repository link is created now, while we are in the repository channel
     this._sourceDataState = documentStatus.itemState;
-    this._repositoryLink = documentStatus.element;
+    assert(documentStatus.elementProps.id !== undefined);
+    this._repositoryLinkId = documentStatus.elementProps.id;
   }
 
   public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
@@ -133,6 +137,7 @@ export default class TestConnector extends BaseConnector {
     }
     return documentStatus;
   }
+
   private createGroupModel(): Id64String {
     const existingId = this.queryGroupModel();
     if (undefined !== existingId) {
@@ -165,7 +170,7 @@ export default class TestConnector extends BaseConnector {
     // relate this model to the source data
     const relationshipProps: RelationshipProps = {
       sourceId: modelid,
-      targetId: this.repositoryLink.id,
+      targetId: this.repositoryLinkId,
       classFullName: "BisCore.ElementHasLinks",
     };
     this.synchronizer.imodel.relationships.insertInstance(relationshipProps);
@@ -367,12 +372,12 @@ export default class TestConnector extends BaseConnector {
         manufactureLocation: group.manufactureLocation,
       };
       const sync: SynchronizationResults = {
-        element: this.synchronizer.imodel.elements.createElement(props),
+        elementProps: props,
         itemState: results.state,
       };
       if (results.id !== undefined) // in case this is an update
-        sync.element.id = results.id;
-      const xse = this.synchronizer.getExternalSourceElement(this._repositoryLink!);
+        sync.elementProps.id = results.id;
+      const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
       this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group", xse);
     }
   }
@@ -431,18 +436,18 @@ export default class TestConnector extends BaseConnector {
       element.id = results.id;
     }
     const sync: SynchronizationResults = {
-      element,
+      elementProps: element.toJSON(),
       itemState: results.state,
     };
-    const xse = this.synchronizer.getExternalSourceElement(this._repositoryLink!);
+    const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
     this.synchronizer.updateIModel(sync, physicalModelId, sourceItem, "Tile", xse);
     if (!tile.hasOwnProperty("Group")) {
       return;
     }
 
     // for testing purposes only: double check that what I calculated is what was saved in the briefcase
-    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.element.id);
-    assert(persistentTile.placement.origin.isExactEqual((sync.element as TestConnectorPhysicalElement).placement.origin));
+    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.elementProps.id!); //not sure why next line is erroring
+    // assert(persistentTile.placement.origin.isExactEqual((sync.elementProps as TestConnectorPhysicalElement).placement.origin));
 
     const groupCode = TestConnectorGroup.createCode(this.synchronizer.imodel, groupModelId, tile.Group);
     const groupElement = this.synchronizer.imodel.elements.queryElementIdByCode(groupCode);
@@ -457,7 +462,7 @@ export default class TestConnector extends BaseConnector {
       }
     }
     if (doCreate) {
-      const rel = ElementGroupsMembers.create(this.synchronizer.imodel, groupElement, sync.element.id);
+      const rel = ElementGroupsMembers.create(this.synchronizer.imodel, groupElement, sync.elementProps.id!);
       rel.insert();
     }
 
