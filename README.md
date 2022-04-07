@@ -1,6 +1,6 @@
-[![Build Status](https://bentleycs.visualstudio.com/iModelTechnologies/_apis/build/status/iTwin%20Connector%20Frameworks/iTwin.connector-framework?repoName=iTwin%2Fconnector-framework&branchName=main)](https://bentleycs.visualstudio.com/iModelTechnologies/_build/latest?definitionId=5669&repoName=iTwin%2Fconnector-framework&branchName=main)
+# iTwin Connector Framework
 
-## iTwin Connector Framework
+[![Build Status](https://bentleycs.visualstudio.com/iModelTechnologies/_apis/build/status/iTwin%20Connector%20Frameworks/iTwin.connector-framework?repoName=iTwin%2Fconnector-framework&branchName=main)](https://bentleycs.visualstudio.com/iModelTechnologies/_build/latest?definitionId=5669&repoName=iTwin%2Fconnector-framework&branchName=main)
 
 The **@itwin/connector-framework** package contains the classes which comprise the framework necessary to author [iModel Connectors](https://www.itwinjs.org/learning/imodel-connectors/#imodel-connectors).
     In previous versions <= 2.x of the itwin.js (imodel.js) SDK, it was included as part of the monorepo under IModelBridge.  Going forward it will be a separate repository.
