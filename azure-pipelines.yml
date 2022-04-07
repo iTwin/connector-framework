@@ -60,6 +60,10 @@ stages:
         displayName: 'install latest npm'
 
       - script: |
+          npm install
+        displayName: 'remake package lock'
+
+      - script: |
           npm ci
         displayName: 'npm ci'
 
