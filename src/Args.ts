@@ -3,8 +3,7 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, Logger } from "@itwin/core-bentley";
-//import { AccessToken } from "@bentley/itwin-client";
-import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
+import { ElectronMainAuthorization, ElectronMainAuthorizationConfiguration } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import { LoggerCategories } from "./LoggerCategory"
 import * as fs from "fs";
 import * as path from "path";
@@ -99,7 +98,7 @@ export class HubArgs implements HubArgsProps, Validatable {
   public projectGuid: string;
   public iModelGuid: string;
   public region: ConnectRegion = "0";
-  public clientConfig?: NativeAppAuthorizationConfiguration;
+  public clientConfig?: ElectronMainAuthorizationConfiguration;
 
   public tokenCallbackUrl?: string;
   public tokenCallback?: () => Promise<AccessToken>;

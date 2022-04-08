@@ -286,7 +286,7 @@ export class Synchronizer {
    * @param repositoryLink The repository link associated with the External Source Element
    * @beta
    */
-  public getExternalSourceElement(repositoryLink: Element): Element | undefined {
+  public getExternalSourceElement(repositoryLink: Element): ExternalSourceProps | undefined {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
 
@@ -294,20 +294,20 @@ export class Synchronizer {
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
    * @beta
    */
-     public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): Element | undefined {
+     public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): ExternalSourceProps | undefined {
       let sourceId;
-      this.imodel.withStatement(
-        "select * from BisCore.ExternalSource where repository.id=?",
-        (stmt) => {
-          stmt.bindValues([repositoryLinkId]);
-          stmt.step();
-          const row = stmt.getRow();
-          sourceId = row.id;
-        }
-      );
-      if (sourceId)
-        return this.imodel.elements.getElement(sourceId);
-      return;
+    this.imodel.withStatement(
+      "select * from BisCore.ExternalSource where repository.id=?",
+      (stmt) => {
+        stmt.bindValues([repositoryLinkId]);
+        stmt.step();
+        const row = stmt.getRow();
+        sourceId = row.id;
+      }
+    );
+    if(sourceId)
+      return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
+    return;
     }
   
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim

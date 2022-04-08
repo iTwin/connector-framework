@@ -48,7 +48,7 @@ function toNumber(val: any): number {
   throw new IModelError(IModelStatus.BadRequest, `expected number. got ${val}`);
 }
 
-export class TestConnectorPhysicalElement extends PhysicalElement implements TestConnectorPhysicalProps {
+export class TestConnectorPhysicalElement extends PhysicalElement {
   /** @internal */
   public static override get className(): string { return "TestConnectorPhysicalElement"; }
 
@@ -187,7 +187,7 @@ export class IsoscelesTriangleTile extends TestConnectorPhysicalElement {
   }
 }
 
-export class TestConnectorGroup extends GroupInformationElement implements TestConnectorGroupProps {
+export class TestConnectorGroup extends GroupInformationElement {
   public static override get className(): string { return "TestConnectorGroup"; }
   public groupType?: string;
   public manufactureLocation?: string;

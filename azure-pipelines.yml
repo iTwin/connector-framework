@@ -60,8 +60,12 @@ stages:
         displayName: 'install latest npm'
 
       - script: |
-          npm ci
-        displayName: 'npm ci'
+          npm install
+        displayName: 'install packages'
+
+      # - script: |
+      #     npm ci
+      #   displayName: 'npm ci'
 
       - script: |
            npm run build

@@ -4,13 +4,14 @@
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { NativeAppAuthorizationConfiguration } from "@itwin/core-common";
+import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { JobArgs, HubArgs, HubArgsProps } from "../../Args";
+import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
-import { IModelHubBackend } from "@bentley/imodelhub-client/lib/cjs/IModelHubBackend";
+import { IModelsClient } from "@itwin/imodels-client-authoring";
+import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
@@ -20,13 +21,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
   let testIModelId: Id64String| undefined;
-  let testClientConfig: NativeAppAuthorizationConfiguration;
+  let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
   before(async () => {
     await utils.startBackend();
     utils.setupLogging();
-    IModelHost.setHubAccess(new IModelHubBackend());
+    const iModelClient = new IModelsClient({ api: { baseUrl: `https://${process.env.IMJS_URL_PREFIX ?? ""}api.bentley.com/imodels`}});
+    IModelHost.setHubAccess(new BackendIModelsAccess(iModelClient));
 
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
@@ -35,19 +37,17 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
-    } as NativeAppAuthorizationConfiguration;
+    };
     const userCred = {
       email: process.env.test_user_name!,
       password: process.env.test_user_password!,
     };
-    // const token = await getTestAccessToken(testClientConfig as TestBrowserAuthorizationClientConfiguration, userCred);
-    const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig as TestBrowserAuthorizationClientConfiguration);
+    const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
     token = await client.getAccessToken();
     if (!token) {
       throw new Error("Token not defined");
     }
     IModelHost.authorizationClient = client;
-
     testProjectId = process.env.test_project_id!;
     const imodelName = process.env.test_imodel_name!;
     

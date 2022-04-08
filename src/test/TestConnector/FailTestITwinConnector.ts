@@ -3,18 +3,18 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, assert, Id64String, IModelStatus, BentleyStatus } from "@itwin/core-bentley";
+import { AccessToken, assert, BentleyStatus, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
 //import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import {
-  DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelDb, IModelJsFs,
-  PhysicalModel, PhysicalPartition, RelationshipProps, SubjectOwnsPartitionElements,
-} from "@itwin/core-backend";
-import { IModel, IModelError, InformationPartitionElementProps } from "@itwin/core-common";
+import { CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs, ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements } from "@itwin/core-backend";
+import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
+import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
 import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
+import { Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile, TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement } from "./TestConnectorElements";
+import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
 
 import * as fs from "fs";
 import { ModelNames } from "./TestConnector";
