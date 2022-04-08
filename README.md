@@ -33,7 +33,7 @@ The **@itwin/connector-framework** package contains the classes which comprise t
     }
     ```
 
-4. The following scopes are required: itwinjs imodel:readonly imodel:write
+4. The following scopes are required: organization openid profile itwinjs email imodelaccess:read imodels:modify imodels:read
 
 ### Refer to [write-a-connector](https://www.itwinjs.org/learning/writeaconnector/) documentation for more details
 
