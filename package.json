@@ -13,9 +13,8 @@
     "url": "https://github.com/iTwin/connector-framework"
   },
   "scripts": {
-    "build": "git config --local core.hooksPath .githooks && tsc 1>&2 && npm run copy:assets && npm run copy:test-assets",
+    "build": "git config --local core.hooksPath .githooks && tsc 1>&2 && npm run copy:test-assets",
     "clean": "rimraf lib",
-    "copy:assets": "cpx \"./src/assets/**/*\" ./lib/assets",
     "copy:config": "internal-tools copy-config",
     "copy:test-assets": "cpx \"./src/test/assets/**/*\" ./lib/test/assets",
     "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
@@ -37,8 +36,6 @@
   },
   "devDependencies": {
     "@itwin/build-tools": "^3.0.2",
-    "@itwin/eslint-plugin": "^3.0.0",
-    "@itwin/oidc-signin-tool": "^3.2.0",
     "@types/chai": "^4.1.4",
     "@types/mocha": "^8.2.2",
     "@types/node": "10.14.1",
@@ -61,6 +58,12 @@
     "typescript": "~4.4.0",
     "validator": "13.7.0"
   },
+  "peerDependencies": {
+    "@itwin/core-electron": "^3.0.0",
+    "@itwin/electron-authorization": "^0.8.3",
+    "@itwin/eslint-plugin": "^3.0.0",
+    "@itwin/oidc-signin-tool": "^3.2.0"
+  },
   "dependencies": {
     "@itwin/core-backend": "^3.0.0",
     "@itwin/core-bentley": "^3.0.0",
@@ -69,8 +72,6 @@
     "@itwin/core-quantity": "^3.0.0",
     "@itwin/ecschema-metadata": "^3.0.0",
     "@itwin/presentation-common": "^3.0.0",
-    "@itwin/core-electron": "^3.0.0",
-    "@itwin/electron-authorization": "^0.8.3",
     "@itwin/imodels-client-authoring": "^1.0.1",
     "@itwin/imodels-access-backend": "^1.0.1",
     "axios": "^0.21.4",
@@ -82,7 +83,7 @@
   },
   "eslintConfig": {
     "plugins": [
-      "@bentley"
+      "@itwin"
     ],
     "extends": "plugin:@itwin/imodeljs-recommended"
   }
