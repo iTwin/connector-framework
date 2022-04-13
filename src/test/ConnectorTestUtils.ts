@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /*---------------------------------------------------------------------------------------------
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -7,15 +6,12 @@
 import { assert } from "chai";
 import * as path from "path";
 import { DbResult, Id64, Id64String, Logger, LogLevel } from "@itwin/core-bentley";
-//import { loadEnv } from "@bentley/config-loader";
 import { IModel } from "@itwin/core-common";
 import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
-//import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
 import { CodeSpecs, RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
 import { JobArgs } from "../Args";
-import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
 import * as fs from "fs";
 
 export function setupLogging() {
@@ -31,13 +27,6 @@ export function setupLoggingWithAPIMRateTrap() {
   let hubReqs = 0;
   const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
 
-  const logInfo = (category: string, message: string, getMetaData?: () => any) => {
-    if (category === ITwinClientLoggerCategory.Request && message.includes("api.bentley.com"))
-      hubReqs += 1;
-    if (hubReqs > 100)
-      throw new Error("Reached 100 requests per minute rate limit.");
-    console.log(`Info    |${category}| ${hubReqs}| ${message}${formatMetaData(getMetaData)}`);
-  };
 
   // Logger.initialize(
   //   (category: string, message: string, getMetaData?: () => any): void => console.log(`Error   |${category}| ${message}${formatMetaData(getMetaData)}`),

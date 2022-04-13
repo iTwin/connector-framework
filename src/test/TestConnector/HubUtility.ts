@@ -3,7 +3,6 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, GuidString, Logger } from "@itwin/core-bentley";
-import { BriefcaseQuery, HubIModel, IModelQuery, Briefcase } from "@bentley/imodelhub-client";
 import { CreateNewIModelProps, IModelHost, IModelHostConfiguration } from "@itwin/core-backend";
 import { IModelsClient, AuthorizationCallback, Authorization } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
