@@ -21,6 +21,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
   let testIModelId: Id64String| undefined;
+  let existingIModelId: Id64String | undefined;
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
@@ -49,17 +50,19 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
-    const imodelName = process.env.test_imodel_name!;
+    const existingImodelName = process.env.test_existing_imodel_name!;
+    const newImodelName = process.env.test_new_imodel_name!;
     
-    const existingIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: imodelName });
-    if (existingIModelId) {
-      await IModelHost.hubAccess.deleteIModel({ iTwinId: testProjectId, iModelId: existingIModelId, accessToken: token });
+    existingIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: existingImodelName });
+    if (!existingIModelId) {
+      existingIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: existingImodelName, accessToken: token });
     }
-    testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: imodelName });
+    testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
   });
 
   after(async () => {
     // await HubUtility.purgeAcquiredBriefcasesById(token!, testIModelId!, () => {});
+    IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
     await utils.shutdownBackend();
   });
 
@@ -78,7 +81,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     db.close();
   }
 
-  it("should download and perform updates", async () => {
+  it("should download and perform updates on a new imodel", async () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
@@ -96,6 +99,25 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     await runConnector(jobArgs, hubArgs);
     
-    IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
+    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
+  });
+
+  it("should download and perform updates on an existing imodel", async () => {
+    const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: assetPath,
+    });
+
+    const hubArgs = new HubArgs({
+      projectGuid: testProjectId,
+      iModelGuid: existingIModelId,
+    } as HubArgsProps);
+
+    hubArgs.clientConfig = testClientConfig;
+    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+      return token!;
+    };
+
+    await runConnector(jobArgs, hubArgs);
   });
 });
