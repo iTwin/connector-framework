@@ -4,7 +4,6 @@
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
@@ -16,6 +15,7 @@ import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import * as fs from "fs";
+import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -42,7 +42,10 @@ describe("iTwin Connector Fwk (#integration)", () => {
       email: process.env.test_user_name!,
       password: process.env.test_user_password!,
     };
-    const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
+    // const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
+    // token = await client.getAccessToken();
+    const client = new NodeCliAuthorizationClient(testClientConfig);
+    await client.signIn();
     token = await client.getAccessToken();
     if (!token) {
       throw new Error("Token not defined");

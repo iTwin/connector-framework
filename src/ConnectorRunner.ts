@@ -5,7 +5,8 @@
 import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { AccessToken, assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
+// import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
+import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import { AllArgsProps, HubArgs, JobArgs } from "./Args";
@@ -420,7 +421,7 @@ export class ConnectorRunner {
   }
 
   private async getTokenInteractive() {
-    const client = new ElectronMainAuthorization(this.hubArgs.clientConfig!);
+    const client = new NodeCliAuthorizationClient(this.hubArgs.clientConfig!);
     await client.signIn();
     return await client.getAccessToken();
   }
