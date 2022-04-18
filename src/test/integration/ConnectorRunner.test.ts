@@ -2,12 +2,15 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
+import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import { BentleyStatus, Logger } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
+import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
+import { getTestAccessToken, TestUtility } from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
+import type { HubArgsProps} from "../../Args";
+import { HubArgs, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
@@ -53,7 +56,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
     const imodelName = process.env.test_imodel_name!;
-    
+
     const existingIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: imodelName });
     if (existingIModelId) {
       await IModelHost.hubAccess.deleteIModel({ iTwinId: testProjectId, iModelId: existingIModelId, accessToken: token });
@@ -98,7 +101,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     };
 
     await runConnector(jobArgs, hubArgs);
-    
+
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 });

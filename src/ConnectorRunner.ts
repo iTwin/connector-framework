@@ -2,16 +2,20 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
-import { AccessToken, assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
-import { BriefcaseDb, BriefcaseManager, IModelDb, LinkElement, NativeHost, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
+import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
+import { IModel } from "@itwin/core-common";
+import type { AccessToken} from "@itwin/core-bentley";
+import { assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
+import type { IModelDb, RequestNewBriefcaseArg} from "@itwin/core-backend";
+import { BriefcaseDb, BriefcaseManager, LinkElement, NativeHost, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
 // import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
-import { BaseConnector } from "./BaseConnector";
+import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import { AllArgsProps, HubArgs, JobArgs } from "./Args";
+import type { AllArgsProps} from "./Args";
+import { HubArgs, JobArgs } from "./Args";
 import { Synchronizer } from "./Synchronizer";
-import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -86,11 +90,10 @@ export class ConnectorRunner {
   }
 
   // NEEDSWORK - How to check if string version od Access Token is expired
-  isAccessTokenExpired () : boolean {
+  isAccessTokenExpired(): boolean {
   //  return this._reqContext.isExpired(5);
-  return true;
+    return true;
   }
-
 
   public async getAuthReqContext(): Promise<AccessToken> {
     if (!this._reqContext )
@@ -237,7 +240,7 @@ export class ConnectorRunner {
     // definitions changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-    
+
     await this.db.locks.acquireLocks({exclusive: jobSubject.id});
 
     await this.connector.initializeJob();
@@ -249,9 +252,9 @@ export class ConnectorRunner {
     // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
-    
+
     await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId});
-    
+
     await this.connector.updateExistingData();
     this.updateDeletedElements();
     this.updateProjectExtent();
@@ -276,10 +279,10 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      "Id": this._connector ? this._connector.getApplicationId() : -1,
-      "Message": "Failure",
-      "Description": err.message,
-      "ExtendedData": {}, 
+      Id: this._connector ? this._connector.getApplicationId() : -1,
+      Message: "Failure",
+      Description: err.message,
+      ExtendedData: {},
     });
     fs.writeFileSync(errorFile, errorStr);
     Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
@@ -367,13 +370,13 @@ export class ConnectorRunner {
     }
     await this._db.locks.acquireLocks({shared: IModel.dictionaryId});
     const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
-    var idToReturn : string;
+    let idToReturn: string;
     if(prevSynchConfigId === undefined)
       idToReturn = this._db.elements.insertElement(synchConfigData);
     else {
       this.updateSynchronizationConfigLink(prevSynchConfigId);
       idToReturn = prevSynchConfigId;
-      }
+    }
     return idToReturn;
   }
   private async updateSynchronizationConfigLink(synchConfigId: string){
@@ -397,7 +400,7 @@ export class ConnectorRunner {
   private async getToken() {
     let token: string;
     if (this._jobArgs.dbType == "snapshot")
-        return "notoken";
+      return "notoken";
 
     if (this.hubArgs.doInteractiveSignIn)
       token = await this.getTokenInteractive();
@@ -423,7 +426,7 @@ export class ConnectorRunner {
   private async getTokenInteractive() {
     const client = new NodeCliAuthorizationClient(this.hubArgs.clientConfig!);
     await client.signIn();
-    return await client.getAccessToken();
+    return client.getAccessToken();
   }
 
   private async loadDb() {
@@ -503,7 +506,7 @@ export class ConnectorRunner {
     const comment = `${revisionHeader} - ${changeDesc}`;
     if (this.db.isBriefcaseDb()) {
       const authReqContext = await this.getAuthReqContext();
-      this._db = this.db as BriefcaseDb;
+      this._db = this.db ;
       await this.db.pullChanges();
       this.db.saveChanges(comment);
       await this.db.pushChanges({description: comment});

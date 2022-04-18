@@ -5,9 +5,12 @@
 *--------------------------------------------------------------------------------------------*/
 import { Angle, AxisIndex, AxisOrder, Matrix3d, Point3d, Transform, Vector3d, YawPitchRollAngles } from "@itwin/core-geometry";
 import { Categories, GeometryParts, Materials } from "./TestConnectorElements";
-import { GeometryPart, IModelDb, RenderMaterialElement, SubCategory } from "@itwin/core-backend";
-import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, GeometryStreamProps, IModelError } from "@itwin/core-common";
-import { Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
+import type { IModelDb} from "@itwin/core-backend";
+import { GeometryPart, RenderMaterialElement, SubCategory } from "@itwin/core-backend";
+import type { GeometryStreamProps} from "@itwin/core-common";
+import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, IModelError } from "@itwin/core-common";
+import type { Id64String} from "@itwin/core-bentley";
+import { IModelStatus, Logger } from "@itwin/core-bentley";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 
 const loggerCategory: string = TestConnectorLoggerCategory.Geometry;
