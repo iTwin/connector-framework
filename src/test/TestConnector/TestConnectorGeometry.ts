@@ -10,10 +10,7 @@ import { GeometryPart, RenderMaterialElement, SubCategory } from "@itwin/core-ba
 import type { GeometryStreamProps} from "@itwin/core-common";
 import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, IModelError } from "@itwin/core-common";
 import type { Id64String} from "@itwin/core-bentley";
-import { IModelStatus, Logger } from "@itwin/core-bentley";
-import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
-
-const loggerCategory: string = TestConnectorLoggerCategory.Geometry;
+import { IModelStatus } from "@itwin/core-bentley";
 
 export enum Casings {
   SmallWidth = 0.1,

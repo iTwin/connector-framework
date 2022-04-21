@@ -23,12 +23,8 @@ export function setupLogging() {
 }
 
 export function setupLoggingWithAPIMRateTrap() {
-  const formatMetaData = (getMetaData?: () => any) => {
-    return getMetaData ? ` ${Logger.stringifyMetaData(getMetaData)}` : "";
-  };
 
-  let hubReqs = 0;
-  const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
+  const resetIntervalId = setInterval(() => 0, 60 * 1000);
 
   // Logger.initialize(
   //   (category: string, message: string, getMetaData?: () => any): void => console.log(`Error   |${category}| ${message}${formatMetaData(getMetaData)}`),

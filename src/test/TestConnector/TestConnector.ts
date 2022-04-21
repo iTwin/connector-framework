@@ -3,32 +3,29 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken, Id64String} from "@itwin/core-bentley";
-import { assert, IModelStatus, Logger } from "@itwin/core-bentley";
+import { assert, IModelStatus } from "@itwin/core-bentley";
 // import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
-  ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
+  ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
 } from "@itwin/core-backend";
 import type { ColorDefProps, GeometryPartProps, InformationPartitionElementProps, SubCategoryAppearance} from "@itwin/core-common";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, IModel, IModelError, RenderMode, RepositoryLinkProps, ViewFlags } from "@itwin/core-common";
+import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, IModel, IModelError, RenderMode, ViewFlags } from "@itwin/core-common";
 import type { SolidPrimitive} from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
 import type { SourceItem, SynchronizationResults } from "../../Synchronizer";
 import { ItemState } from "../../Synchronizer";
 import { BaseConnector } from "../../BaseConnector";
-import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
-import type { TestConnectorGroupProps, TestConnectorPhysicalElement } from "./TestConnectorElements";
+import type { TestConnectorGroupProps } from "./TestConnectorElements";
 import { Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile, TestConnectorGroup } from "./TestConnectorElements";
 import type { QuadCasing, TriangleCasing } from "./TestConnectorGeometry";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing } from "./TestConnectorGeometry";
 import * as hash from "object-hash";
 import * as fs from "fs";
-
-const loggerCategory: string = TestConnectorLoggerCategory.Connector;
 
 export default class TestConnector extends BaseConnector {
 
@@ -453,7 +450,7 @@ export default class TestConnector extends BaseConnector {
     }
 
     // for testing purposes only: double check that what I calculated is what was saved in the briefcase
-    const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.elementProps.id!); // not sure why next line is erroring
+    // const persistentTile = this.synchronizer.imodel.elements.getElement<TestConnectorPhysicalElement>(sync.elementProps.id!); // not sure why next line is erroring
     // assert(persistentTile.placement.origin.isExactEqual((sync.elementProps as TestConnectorPhysicalElement).placement.origin));
 
     const groupCode = TestConnectorGroup.createCode(this.synchronizer.imodel, groupModelId, tile.Group);

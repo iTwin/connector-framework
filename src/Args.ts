@@ -6,13 +6,12 @@ import type { AccessToken} from "@itwin/core-bentley";
 import { Logger } from "@itwin/core-bentley";
 // import { ElectronMainAuthorization, ElectronMainAuthorizationConfiguration } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
-import {NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 
 interface Validatable {
-  isValid(): boolean;
+  isValid: boolean;
 }
 
 /**
@@ -66,7 +65,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.synchConfigFile = props.synchConfigFile;
   }
 
-  public isValid() {
+  public get isValid() {
     if (!this.source) {
       Logger.logError(LoggerCategories.Framework, "JobArgs.source is missing");
       return false;
@@ -118,7 +117,7 @@ export class HubArgs implements HubArgsProps, Validatable {
       this.doInteractiveSignIn = props.doInteractiveSignIn;
   }
 
-  public isValid() {
+  public get isValid(): boolean {
     if (this.briefcaseFile && !fs.existsSync(this.briefcaseFile)) {
       Logger.logError(LoggerCategories.Framework, "HubArgs.briefcaseFile does not exist");
       return false;
@@ -142,12 +141,3 @@ export class HubArgs implements HubArgsProps, Validatable {
     return true;
   }
 }
-
-// BankArgs for iTwin Stack / iModel Bank is still WIP
-interface BankArgsProps {}
-
-/**
- * Arguments specific to iModel Bank used in a connector job
- */
-class BankArgs {}
-

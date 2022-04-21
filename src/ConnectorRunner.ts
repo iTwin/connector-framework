@@ -5,10 +5,9 @@
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
 import type { AccessToken} from "@itwin/core-bentley";
-import { assert, BentleyStatus, Guid, Logger, LogLevel } from "@itwin/core-bentley";
+import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
 import type { IModelDb, RequestNewBriefcaseArg} from "@itwin/core-backend";
-import { BriefcaseDb, BriefcaseManager, LinkElement, NativeHost, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-// import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
+import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
@@ -23,7 +22,6 @@ export class ConnectorRunner {
 
   private _jobArgs: JobArgs;
   private _hubArgs?: HubArgs;
-  // private _bankArgs?: BankArgs;
 
   private _db?: IModelDb;
   private _connector?: BaseConnector;
@@ -34,12 +32,12 @@ export class ConnectorRunner {
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
    */
   constructor(jobArgs: JobArgs, hubArgs?: HubArgs) {
-    if (!jobArgs.isValid())
+    if (!jobArgs.isValid)
       throw new Error("Invalid jobArgs");
     this._jobArgs = jobArgs;
 
     if (hubArgs) {
-      if (!hubArgs.isValid())
+      if (!hubArgs.isValid)
         throw new Error("Invalid hubArgs");
       this._hubArgs = hubArgs;
     }
@@ -90,7 +88,7 @@ export class ConnectorRunner {
   }
 
   // NEEDSWORK - How to check if string version od Access Token is expired
-  isAccessTokenExpired(): boolean {
+  private get _isAccessTokenExpired(): boolean {
   //  return this._reqContext.isExpired(5);
     return true;
   }
@@ -98,7 +96,7 @@ export class ConnectorRunner {
   public async getAuthReqContext(): Promise<AccessToken> {
     if (!this._reqContext )
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (this.isAccessTokenExpired()) {
+    if (this._isAccessTokenExpired) {
       this._reqContext = await this.getToken();
       Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
     }
@@ -262,7 +260,7 @@ export class ConnectorRunner {
     await this.persistChanges("Data Update");
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
 
-    this.updateSynchronizationConfigLink(synchConfig);
+    await this.updateSynchronizationConfigLink(synchConfig);
     await this.persistChanges("Synch Config Update");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
@@ -279,10 +277,10 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      Id: this._connector ? this._connector.getApplicationId() : -1,
-      Message: "Failure",
-      Description: err.message,
-      ExtendedData: {},
+      id: this._connector ? this._connector.getApplicationId() : -1,
+      message: "Failure",
+      description: err.message,
+      extendedData: {},
     });
     fs.writeFileSync(errorFile, errorStr);
     Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
@@ -310,7 +308,7 @@ export class ConnectorRunner {
     });
     this.db.updateProjectExtents(res.extents);
   }
-
+/* eslint-disable */
   private async updateJobSubject(): Promise<Subject> {
     const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
     const existingSubjectId = this.db.elements.queryElementIdByCode(code);
@@ -374,7 +372,7 @@ export class ConnectorRunner {
     if(prevSynchConfigId === undefined)
       idToReturn = this._db.elements.insertElement(synchConfigData);
     else {
-      this.updateSynchronizationConfigLink(prevSynchConfigId);
+      await this.updateSynchronizationConfigLink(prevSynchConfigId);
       idToReturn = prevSynchConfigId;
     }
     return idToReturn;
@@ -399,7 +397,7 @@ export class ConnectorRunner {
 
   private async getToken() {
     let token: string;
-    if (this._jobArgs.dbType == "snapshot")
+    if (this._jobArgs.dbType === "snapshot")
       return "notoken";
 
     if (this.hubArgs.doInteractiveSignIn)
@@ -476,7 +474,6 @@ export class ConnectorRunner {
       }
     }
 
-    const reqContext = await this.getAuthReqContext();
     let openProps: OpenBriefcaseProps;
     if (bcFile) {
       openProps = { fileName: bcFile };
@@ -505,7 +502,6 @@ export class ConnectorRunner {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
     if (this.db.isBriefcaseDb()) {
-      const authReqContext = await this.getAuthReqContext();
       this._db = this.db ;
       await this.db.pullChanges();
       this.db.saveChanges(comment);

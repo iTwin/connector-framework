@@ -3,10 +3,9 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken, Id64String} from "@itwin/core-bentley";
-import { BentleyStatus, Logger } from "@itwin/core-bentley";
+import { BentleyStatus } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
 import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
-import { getTestAccessToken, TestUtility } from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
 import type { HubArgsProps} from "../../Args";
@@ -14,10 +13,8 @@ import { HubArgs, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
-import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
-import * as fs from "fs";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 
 describe("iTwin Connector Fwk (#integration)", () => {
@@ -40,10 +37,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
-    };
-    const userCred = {
-      email: process.env.test_user_name!,
-      password: process.env.test_user_password!,
     };
     // const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
     // token = await client.getAccessToken();
