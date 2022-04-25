@@ -6,6 +6,7 @@ import type { AccessToken, Id64String} from "@itwin/core-bentley";
 import { BentleyStatus } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
 import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
+import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
 import type { HubArgsProps} from "../../Args";
@@ -15,7 +16,6 @@ import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
-import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -38,11 +38,13 @@ describe("iTwin Connector Fwk (#integration)", () => {
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
     };
-    // const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
-    // token = await client.getAccessToken();
-    const client = new NodeCliAuthorizationClient(testClientConfig);
-    await client.signIn();
+    const userCred = {
+      email: process.env.test_user_name!,
+      password: process.env.test_user_password!,
+    };
+    const client = TestUtility.getAuthorizationClient(userCred, testClientConfig);
     token = await client.getAccessToken();
+
     if (!token) {
       throw new Error("Token not defined");
     }
