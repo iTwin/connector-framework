@@ -21,7 +21,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
   let testIModelId: Id64String| undefined;
-  let existingIModelId: Id64String | undefined;
+  let updateIModelId: Id64String | undefined;
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
@@ -50,18 +50,29 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
-    const existingImodelName = process.env.test_existing_imodel_name!;
+    const updateImodelName = process.env.test_existing_imodel_name!;
     const newImodelName = process.env.test_new_imodel_name!;
     
-    existingIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: existingImodelName });
-    if (!existingIModelId) {
-      existingIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: existingImodelName, accessToken: token });
+    updateIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: updateImodelName });
+    if (!updateIModelId) {
+      updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
     }
-    testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
+    testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName})
+    if (!testIModelId) {
+      testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
+    }
   });
 
   after(async () => {
-    // await HubUtility.purgeAcquiredBriefcasesById(token!, testIModelId!, () => {});
+    // updated method to clear briefcases for an imodel
+    // let briefcases = await IModelHost.hubAccess.getMyBriefcaseIds({accessToken: token!, iModelId: testIModelId!});
+    // briefcases.forEach(async b => {
+      // await IModelHost.hubAccess.releaseBriefcase({briefcaseId: b, accessToken: token!, iModelId: testIModelId!});
+    // });
+    // const briefcases = await IModelHost.hubAccess.getMyBriefcaseIds({accessToken: token!, iModelId: updateIModelId!});
+    // briefcases.forEach(async b => {
+    //   await IModelHost.hubAccess.releaseBriefcase({briefcaseId: b, accessToken: token!, iModelId: updateIModelId!});
+    // });
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
     await utils.shutdownBackend();
   });
@@ -99,6 +110,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     await runConnector(jobArgs, hubArgs);
     
+    // cleanup
     await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
   });
 
@@ -110,7 +122,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
-      iModelGuid: existingIModelId,
+      iModelGuid: updateIModelId,
     } as HubArgsProps);
 
     hubArgs.clientConfig = testClientConfig;
@@ -119,5 +131,12 @@ describe("iTwin Connector Fwk (#integration)", () => {
     };
 
     await runConnector(jobArgs, hubArgs);
+
+    // run sync again to test update
+
+    await runConnector(jobArgs, hubArgs);
+
+    // cleanup
+    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId!})
   });
 });
