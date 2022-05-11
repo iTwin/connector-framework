@@ -4,7 +4,6 @@
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken} from "@itwin/core-bentley";
 import { Logger } from "@itwin/core-bentley";
-// import { ElectronMainAuthorization, ElectronMainAuthorizationConfiguration } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
 import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
 import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
