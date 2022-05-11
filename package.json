@@ -24,7 +24,8 @@
     "test:standalone": "npm run pretest && mocha './lib/test/standalone/**/*.js'",
     "test:integration": "npm run pretest && mocha --timeout 100000 './lib/test/integration/**/*.js'",
     "copy:itsyn-assets": "cpx \"./manifest.itsyn.yml\" \"lib/test/TestConnector/\" && cpx \"./node.exe\" \"lib/test/TestConnector/\"",
-    "test:connector": "node lib/test/TestConnector/Main.js lib/test/assets/TestArgs.json"
+    "test:connector": "node lib/test/TestConnector/Main.js lib/test/assets/TestArgs.json",
+    "documentation": "node ./node_modules/@itwin/build-tools/scripts/docs.js"
   },
   "keywords": [
     "Bentley",
