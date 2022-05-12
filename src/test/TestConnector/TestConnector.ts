@@ -4,7 +4,6 @@
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken, Id64String} from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
-// import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,

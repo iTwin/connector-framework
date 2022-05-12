@@ -5,7 +5,6 @@
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
-// import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
 import type { RelationshipProps} from "@itwin/core-backend";
 import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelDb, IModelJsFs, PhysicalModel, PhysicalPartition, SubjectOwnsPartitionElements } from "@itwin/core-backend";
 import type { InformationPartitionElementProps} from "@itwin/core-common";
