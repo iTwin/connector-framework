@@ -73,6 +73,17 @@
   "nyc": {
     "extends": "./node_modules/@itwin/build-tools/.nycrc"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{tsx,ts,jsx,js}": [
+      "prettier --write",
+      "eslint --max-warnings=0 --fix"
+    ]
+  },
   "eslintConfig": {
     "plugins": [
       "@itwin"

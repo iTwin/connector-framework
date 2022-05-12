@@ -308,7 +308,6 @@ export class ConnectorRunner {
     });
     this.db.updateProjectExtents(res.extents);
   }
-/* eslint-disable */
   private async updateJobSubject(): Promise<Subject> {
     const code = Subject.createCode(this.db, IModel.rootSubjectId, this.jobSubjectName);
     const existingSubjectId = this.db.elements.queryElementIdByCode(code);
@@ -318,6 +317,7 @@ export class ConnectorRunner {
     if (existingSubjectId) {
       subject = this.db.elements.getElement<Subject>(existingSubjectId);
     } else {
+      /* eslint-disable @typescript-eslint/naming-convention */
       const jsonProperties: any = {
         Subject: {
           Job: {
@@ -329,6 +329,7 @@ export class ConnectorRunner {
           },
         },
       };
+      /* eslint-disable @typescript-eslint/naming-convention */
 
       const root = this.db.elements.getRootSubject();
       const subjectProps: SubjectProps = {
