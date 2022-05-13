@@ -2,20 +2,20 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
+import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import { BentleyStatus } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
-import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
+import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
+import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
+import type { HubArgsProps} from "../../Args";
+import { HubArgs, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
-import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
-import * as fs from "fs";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -42,15 +42,16 @@ describe("iTwin Connector Fwk (#integration)", () => {
       email: process.env.test_user_name!,
       password: process.env.test_user_password!,
     };
-    const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
+    const client = TestUtility.getAuthorizationClient(userCred, testClientConfig);
     token = await client.getAccessToken();
+
     if (!token) {
       throw new Error("Token not defined");
     }
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
     const imodelName = process.env.test_imodel_name!;
-    
+
     const existingIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: imodelName });
     if (existingIModelId) {
       await IModelHost.hubAccess.deleteIModel({ iTwinId: testProjectId, iModelId: existingIModelId, accessToken: token });
@@ -95,7 +96,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     };
 
     await runConnector(jobArgs, hubArgs);
-    
+
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 });
