@@ -3,12 +3,17 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import { GroupInformationElement, IModelDb, PhysicalElement, SpatialCategory } from "@itwin/core-backend";
-import { AxisAlignedBox3d, Code, CodeScopeProps, CodeSpec, ElementProps, IModelError, PhysicalElementProps, Placement3d, Placement3dProps } from "@itwin/core-common";
-import { Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
+import type { IModelDb} from "@itwin/core-backend";
+import { GroupInformationElement, PhysicalElement, SpatialCategory } from "@itwin/core-backend";
+import type { AxisAlignedBox3d, CodeScopeProps, CodeSpec, ElementProps, PhysicalElementProps, Placement3dProps } from "@itwin/core-common";
+import { Code, IModelError, Placement3d } from "@itwin/core-common";
+import type { Id64String} from "@itwin/core-bentley";
+import { IModelStatus, Logger } from "@itwin/core-bentley";
 import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
-import { Point3d, XYZProps, YawPitchRollAngles, YawPitchRollProps } from "@itwin/core-geometry";
-import { EquilateralTriangleTileBuilder, IsoscelesTriangleTileBuilder, LargeSquareTileBuilder, RectangleTileBuilder, RightTriangleTileBuilder, SmallSquareTileBuilder, TileBuilder } from "./TestConnectorGeometry";
+import type { XYZProps, YawPitchRollProps } from "@itwin/core-geometry";
+import { Point3d, YawPitchRollAngles } from "@itwin/core-geometry";
+import type { TileBuilder } from "./TestConnectorGeometry";
+import { EquilateralTriangleTileBuilder, IsoscelesTriangleTileBuilder, LargeSquareTileBuilder, RectangleTileBuilder, RightTriangleTileBuilder, SmallSquareTileBuilder } from "./TestConnectorGeometry";
 
 export enum CodeSpecs {
   Group = "TestConnector:Group",

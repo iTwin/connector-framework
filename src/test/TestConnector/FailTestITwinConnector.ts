@@ -3,28 +3,25 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, assert, BentleyStatus, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
-//import { AuthorizedClientRequestContext } from "@bentley/itwin-client";
-import { CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, DisplayStyleCreationOptions, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs, ModelSelector, OrthographicViewDefinition, PhysicalElement, PhysicalModel, PhysicalPartition, RelationshipProps, RenderMaterialElement, RepositoryLink, SpatialCategory, SubCategory, SubjectOwnsPartitionElements } from "@itwin/core-backend";
-import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, ColorDefProps, GeometryPartProps, GeometryStreamBuilder, IModel, IModelError, InformationPartitionElementProps, RenderMode, SubCategoryAppearance, ViewFlags } from "@itwin/core-common";
-import { Box, Cone, LinearSweep, Loop, Point3d, SolidPrimitive, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
+import type { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
+import { assert, IModelStatus } from "@itwin/core-bentley";
+import type { RelationshipProps} from "@itwin/core-backend";
+import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelDb, IModelJsFs, PhysicalModel, PhysicalPartition, SubjectOwnsPartitionElements } from "@itwin/core-backend";
+import type { InformationPartitionElementProps} from "@itwin/core-common";
+import { IModel, IModelError } from "@itwin/core-common";
 
-import { ItemState, SourceItem, SynchronizationResults } from "../../Synchronizer";
-import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
+import type { SourceItem, SynchronizationResults } from "../../Synchronizer";
+import { ItemState } from "../../Synchronizer";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
-import { Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile, TestConnectorGroup, TestConnectorGroupProps, TestConnectorPhysicalElement } from "./TestConnectorElements";
-import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, QuadCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing, TriangleCasing } from "./TestConnectorGeometry";
 
 import * as fs from "fs";
 import { ModelNames } from "./TestConnector";
 import { BaseConnector } from "../../BaseConnector";
 
-const loggerCategory: string = TestConnectorLoggerCategory.Connector;
-
 export default class TestConnector extends BaseConnector {
   public static override async create(): Promise<TestConnector> {
-    return new TestConnector;
+    return new TestConnector();
   }
   public async importDefinitions(): Promise<any> {
     return;

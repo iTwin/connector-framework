@@ -2,21 +2,22 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, Logger } from "@itwin/core-bentley";
-import { ElectronMainAuthorization, ElectronMainAuthorizationConfiguration } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
-import { LoggerCategories } from "./LoggerCategory"
+import type { AccessToken} from "@itwin/core-bentley";
+import { Logger } from "@itwin/core-bentley";
+import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+import { LoggerCategories } from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 
 interface Validatable {
-  isValid(): boolean;
+  isValid: boolean;
 }
 
 /**
  * Defines the schema of the .json argument file used to initialize ConnectorRunner
  */
 export interface AllArgsProps {
-  version: "0.0.1",
+  version: "0.0.1";
   jobArgs: JobArgsProps;
   hubArgs?: HubArgsProps;
 }
@@ -26,7 +27,7 @@ export interface JobArgsProps {
   stagingDir?: string;
   revisionHeader?: string;
   dbType?: "briefcase" | "snapshot" | "standalone";
-  issuesDbFile?: string
+  issuesDbFile?: string;
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
   errorFile?: string;
@@ -42,7 +43,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public stagingDir: string = path.join(__dirname, "staging");
   public revisionHeader: string = "JSFWK";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-  public issuesDbFile?: string
+  public issuesDbFile?: string;
   public loggerConfigJSONFile?: string;
   public errorFile: string;
   public doDetectDeletedElements: boolean = true;
@@ -63,7 +64,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.synchConfigFile = props.synchConfigFile;
   }
 
-  public isValid() {
+  public get isValid() {
     if (!this.source) {
       Logger.logError(LoggerCategories.Framework, "JobArgs.source is missing");
       return false;
@@ -89,7 +90,7 @@ export interface HubArgsProps {
 }
 
 /**
- * Arguments specific to iModelHub used in a connector job 
+ * Arguments specific to iModelHub used in a connector job
  */
 export class HubArgs implements HubArgsProps, Validatable {
 
@@ -98,7 +99,7 @@ export class HubArgs implements HubArgsProps, Validatable {
   public projectGuid: string;
   public iModelGuid: string;
   public region: ConnectRegion = "0";
-  public clientConfig?: ElectronMainAuthorizationConfiguration;
+  public clientConfig?: NodeCliAuthorizationConfiguration;
 
   public tokenCallbackUrl?: string;
   public tokenCallback?: () => Promise<AccessToken>;
@@ -115,7 +116,7 @@ export class HubArgs implements HubArgsProps, Validatable {
       this.doInteractiveSignIn = props.doInteractiveSignIn;
   }
 
-  public isValid() {
+  public get isValid(): boolean {
     if (this.briefcaseFile && !fs.existsSync(this.briefcaseFile)) {
       Logger.logError(LoggerCategories.Framework, "HubArgs.briefcaseFile does not exist");
       return false;
@@ -139,12 +140,3 @@ export class HubArgs implements HubArgsProps, Validatable {
     return true;
   }
 }
-
-// BankArgs for iTwin Stack / iModel Bank is still WIP
-interface BankArgsProps {}
-
-/**
- * Arguments specific to iModel Bank used in a connector job 
- */
-class BankArgs {}
-

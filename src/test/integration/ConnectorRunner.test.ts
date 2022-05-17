@@ -2,20 +2,20 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, BentleyStatus, Id64String, Logger } from "@itwin/core-bentley";
+import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import { BentleyStatus } from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { ElectronMainAuthorization } from "@itwin/electron-authorization/lib/cjs/ElectronMain";
-import { getTestAccessToken, TestBrowserAuthorizationClientConfiguration, TestUtility } from "@itwin/oidc-signin-tool";
+import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
+import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../ConnectorRunner";
-import { HubArgs, HubArgsProps, JobArgs } from "../../Args";
+import type { HubArgsProps} from "../../Args";
+import { HubArgs, JobArgs } from "../../Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
-import { HubUtility } from "../TestConnector/HubUtility";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
-import * as fs from "fs";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -43,8 +43,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
       email: process.env.test_user_name!,
       password: process.env.test_user_password!,
     };
-    const client = await TestUtility.getAuthorizationClient(userCred, testClientConfig);
+    const client = TestUtility.getAuthorizationClient(userCred, testClientConfig);
     token = await client.getAccessToken();
+
     if (!token) {
       throw new Error("Token not defined");
     }
@@ -52,12 +53,12 @@ describe("iTwin Connector Fwk (#integration)", () => {
     testProjectId = process.env.test_project_id!;
     const updateImodelName = process.env.test_existing_imodel_name!;
     const newImodelName = process.env.test_new_imodel_name!;
-    
+
     updateIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: updateImodelName });
     if (!updateIModelId) {
       updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
     }
-    testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName})
+    testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName});
     if (!testIModelId) {
       testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
     }
@@ -67,7 +68,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     // updated method to clear briefcases for an imodel
     // let briefcases = await IModelHost.hubAccess.getMyBriefcaseIds({accessToken: token!, iModelId: testIModelId!});
     // briefcases.forEach(async b => {
-      // await IModelHost.hubAccess.releaseBriefcase({briefcaseId: b, accessToken: token!, iModelId: testIModelId!});
+    // await IModelHost.hubAccess.releaseBriefcase({briefcaseId: b, accessToken: token!, iModelId: testIModelId!});
     // });
     // const briefcases = await IModelHost.hubAccess.getMyBriefcaseIds({accessToken: token!, iModelId: updateIModelId!});
     // briefcases.forEach(async b => {
@@ -109,7 +110,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     };
 
     await runConnector(jobArgs, hubArgs);
-    
+
     // cleanup
     await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
   });
@@ -137,6 +138,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await runConnector(jobArgs, hubArgs);
 
     // cleanup
-    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId!})
+    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId!});
   });
 });

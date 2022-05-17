@@ -5,15 +5,16 @@
 
 import { assert } from "chai";
 import * as path from "path";
-import { DbResult, Id64, Id64String, Logger, LogLevel } from "@itwin/core-bentley";
-//import { loadEnv } from "@bentley/config-loader";
+import type { Id64String} from "@itwin/core-bentley";
+import { DbResult, Id64, Logger, LogLevel } from "@itwin/core-bentley";
 import { IModel } from "@itwin/core-common";
-import { ECSqlStatement, ExternalSourceAspect, IModelDb, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
-//import { ITwinClientLoggerCategory } from "@bentley/itwin-client";
-import { CodeSpecs, RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
+import type { ECSqlStatement, IModelDb} from "@itwin/core-backend";
+import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
+import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
+import { CodeSpecs } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
-import { JobArgs } from "../Args";
+import type { JobArgs } from "../Args";
 import * as fs from "fs";
 
 export function setupLogging() {
@@ -22,13 +23,8 @@ export function setupLogging() {
 }
 
 export function setupLoggingWithAPIMRateTrap() {
-  const formatMetaData = (getMetaData?: () => any) => {
-    return getMetaData ? ` ${Logger.stringifyMetaData(getMetaData)}` : "";
-  };
 
-  let hubReqs = 0;
-  const resetIntervalId = setInterval(() => hubReqs = 0, 60 * 1000);
-
+  const resetIntervalId = setInterval(() => 0, 60 * 1000);
 
   // Logger.initialize(
   //   (category: string, message: string, getMetaData?: () => any): void => console.log(`Error   |${category}| ${message}${formatMetaData(getMetaData)}`),
@@ -64,7 +60,7 @@ function loadEnv(envFile: string) {
 export async function startBackend(): Promise<void> {
   loadEnv(path.join(__dirname, "..", "..", ".env"));
   const config = new IModelHostConfiguration();
-  //config.concurrentQuery.concurrent = 4; // for test restrict this to two threads. Making closing connection faster
+  // config.concurrentQuery.concurrent = 4; // for test restrict this to two threads. Making closing connection faster
   // NEEDSWORK how do we do this in imodel js V3.x?
   config.cacheDir = KnownTestLocations.outputDir;
   await IModelHost.startup(config);
@@ -151,5 +147,4 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
     assert.equal(tile.placement.origin.y, 2.0);
   }
 }
-
 
