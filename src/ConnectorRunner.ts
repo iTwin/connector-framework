@@ -271,6 +271,7 @@ export class ConnectorRunner {
     if (this._db && this._db.isBriefcaseDb()) {
       this._db.abandonChanges();
     }
+    await this.db.locks.releaseAllLocks();
     this.recordError(err);
   }
 
@@ -367,12 +368,12 @@ export class ConnectorRunner {
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    await this._db.locks.acquireLocks({shared: IModel.dictionaryId});
     const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
     let idToReturn: string;
-    if(prevSynchConfigId === undefined)
+    if(prevSynchConfigId === undefined) {
+      await this._db.locks.acquireLocks({exclusive: IModel.dictionaryId});
       idToReturn = this._db.elements.insertElement(synchConfigData);
-    else {
+    } else {
       await this.updateSynchronizationConfigLink(prevSynchConfigId);
       idToReturn = prevSynchConfigId;
     }
@@ -387,7 +388,7 @@ export class ConnectorRunner {
       code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    await this._db.locks.acquireLocks({exclusive: synchConfigData.id});
+    await this.db.locks.acquireLocks({exclusive: synchConfigData.id});
     this._db.elements.updateElement(synchConfigData);
   }
 
