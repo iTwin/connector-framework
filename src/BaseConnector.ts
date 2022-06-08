@@ -113,7 +113,6 @@ export abstract class BaseConnector {
     return this._jobSubject;
   }
 
-  public abstract getApplicationId(): string;
   public abstract getApplicationVersion(): string;
   public abstract getConnectorName(): string;
 
