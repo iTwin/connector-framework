@@ -6,9 +6,12 @@
  * @module Framework
  */
 
-import { BriefcaseDb, DefinitionElement, ECSqlStatement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink } from "@itwin/core-backend";
-import { AccessToken, assert, DbOpcode, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger } from "@itwin/core-bentley";
-import { Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps } from "@itwin/core-common";
+import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
+import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
+import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
+import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
+import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
 
 /** The state of the given SourceItem against the iModelDb
@@ -294,8 +297,8 @@ export class Synchronizer {
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
    * @beta
    */
-     public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): ExternalSourceProps | undefined {
-      let sourceId;
+  public getExternalSourceElementByLinkId(repositoryLinkId: Id64String): ExternalSourceProps | undefined {
+    let sourceId;
     this.imodel.withStatement(
       "select * from BisCore.ExternalSource where repository.id=?",
       (stmt) => {
@@ -308,8 +311,8 @@ export class Synchronizer {
     if(sourceId)
       return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
     return;
-    }
-  
+  }
+
   /** Given synchronizations results for an element (and possibly its children), insert the new element into the bim
    * @param results The result set to insert
    * @beta

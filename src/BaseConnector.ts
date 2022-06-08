@@ -2,10 +2,11 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, assert, BentleyStatus, Logger } from "@itwin/core-bentley";
-import { Subject } from "@itwin/core-backend";
-import { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import { Synchronizer } from "./Synchronizer";
+import type { AccessToken} from "@itwin/core-bentley";
+import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
+import type { Subject } from "@itwin/core-backend";
+import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import type { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 
 /** Abstract implementation of the iTwin Connector.
