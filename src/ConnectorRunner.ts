@@ -278,7 +278,7 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      id: this._connector ? this._connector.getApplicationId() : -1,
+      id: this._connector,
       message: "Failure",
       description: err.message,
       extendedData: {},
