@@ -33,9 +33,6 @@ export default class TestConnector extends BaseConnector {
   public async  updateExistingData(): Promise<any> {
     return;
   }
-  public getApplicationId(): string {
-    return "2661";
-  }
   public getApplicationVersion(): string {
     return "1.0.0.0";
   }

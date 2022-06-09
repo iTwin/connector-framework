@@ -111,9 +111,6 @@ export default class TestConnector extends BaseConnector {
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
   }
-  public getApplicationId(): string {
-    return "2661";
-  }
   public getApplicationVersion(): string {
     return "1.0.0.0";
   }
