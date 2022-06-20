@@ -157,14 +157,14 @@ export class ConnectorRunner {
    * This method does not throw any errors
    * @returns BentleyStatus
    */
-  public async run(connectorFile: string): Promise<BentleyStatus> {
+  public async run(connector: BaseConnector): Promise<BentleyStatus> {
     let runStatus = BentleyStatus.SUCCESS;
     try {
-      await this.runUnsafe(connectorFile);
+      await this.runUnsafe(connector);
     } catch (err) {
       const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
-      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connectorFile}`);
+      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connector.getConnectorName()}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       await this.onFailure(err);
@@ -174,14 +174,14 @@ export class ConnectorRunner {
     return runStatus;
   }
 
-  private async runUnsafe(connectorFile: string) {
+  private async runUnsafe(connector: BaseConnector) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
     let reqContext: AccessToken;
 
     // load
 
-    await this.loadConnector(connectorFile);
+    await this.loadConnector(connector);
     Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
 
     await this.loadReqContext();
@@ -352,10 +352,8 @@ export class ConnectorRunner {
 
   private initProgressMeter() {}
 
-  private async loadConnector(connectorFile: string) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const connectorClass = require(connectorFile).default;
-    this._connector = await connectorClass.create();
+  private async loadConnector(connector: BaseConnector) {
+    this._connector = connector;
   }
 
   private async insertSynchronizationConfigLink(){
@@ -399,7 +397,7 @@ export class ConnectorRunner {
 
   private async getToken() {
     let token: string;
-    if (this._jobArgs.dbType === "snapshot")
+    if (["standalone", "snapshot"].includes(this._jobArgs.dbType))
       return "notoken";
 
     if (this.hubArgs.doInteractiveSignIn)
@@ -514,4 +512,3 @@ export class ConnectorRunner {
     }
   }
 }
-
