@@ -157,14 +157,14 @@ export class ConnectorRunner {
    * This method does not throw any errors
    * @returns BentleyStatus
    */
-  public async run(connector: BaseConnector): Promise<BentleyStatus> {
+  public async run(connector: typeof BaseConnector): Promise<BentleyStatus> {
     let runStatus = BentleyStatus.SUCCESS;
     try {
       await this.runUnsafe(connector);
     } catch (err) {
       const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
-      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connector.getConnectorName()}`);
+      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connector.name}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       await this.onFailure(err);
@@ -174,7 +174,7 @@ export class ConnectorRunner {
     return runStatus;
   }
 
-  private async runUnsafe(connector: BaseConnector) {
+  private async runUnsafe(connector: typeof BaseConnector) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
     let reqContext: AccessToken;
@@ -352,8 +352,8 @@ export class ConnectorRunner {
 
   private initProgressMeter() {}
 
-  private async loadConnector(connector: BaseConnector) {
-    this._connector = connector;
+  private async loadConnector(connector: typeof BaseConnector) {
+    this._connector = await connector.create();
   }
 
   private async insertSynchronizationConfigLink(){

@@ -15,7 +15,7 @@ async function main() {
   const argfile = process.argv[2];
   const runner = ConnectorRunner.fromFile(argfile);
 
-  const runStatus = await runner.run(new TestConnector());
+  const runStatus = await runner.run(TestConnector);
   if (runStatus !== BentleyStatus.SUCCESS)
     throw new Error("ConnectorRunner failed");
 

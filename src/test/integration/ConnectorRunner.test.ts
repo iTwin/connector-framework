@@ -81,7 +81,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
-    const status = await runner.run(new TestConnector());
+    const status = await runner.run(TestConnector);
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 
