@@ -6,7 +6,7 @@
  * @module Framework
  */
 
-import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
+import { BriefcaseDb, ECSqlStatement, Element, IModelDb, ElementUniqueAspect} from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
@@ -84,6 +84,7 @@ export interface SynchronizationResults {
  */
 export class Synchronizer {
   private _seenElements: Set<Id64String> = new Set<Id64String>();
+  private _seenAspects: Set<Id64String> = new Set<Id64String>();
   private _unchangedSources: Id64String[] = new Array<Id64String>();
   private _links = new Map<string, SynchronizationResults>();
 
@@ -178,7 +179,7 @@ export class Synchronizer {
     }
     if (undefined === aspect)
       return results;
-
+    this._seenAspects.add(aspect.id);
     if (undefined !== aspect.version && undefined !== item.version && aspect.version !== item.version) {
       results.state = ItemState.Changed;
       results.id = ids.elementId;
@@ -383,7 +384,7 @@ export class Synchronizer {
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
+        // const elementChannelRoot = db.elements.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
         // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
         const hasSeenElement = this._seenElements.has(elementId);
         if (!hasSeenElement) {
@@ -431,8 +432,15 @@ export class Synchronizer {
 
   private deleteElements(elementIds: Id64String[], defElementIds: Id64String[]) {
     for (const elementId of elementIds) {
-      if (this.imodel.elements.tryGetElement(elementId))
+      if (this.imodel.elements.tryGetElement(elementId)){
         this.imodel.elements.deleteElement(elementIds);
+        const aspects = this.imodel.elements.getAspects(elementId, ElementUniqueAspect.classFullName);
+        for ( const aspect of aspects){
+          if(this._seenAspects.has(aspect.id))
+            continue;
+          this.imodel.elements.deleteAspect(aspect.id);
+        }
+      }
     }
     for (const elementId of defElementIds) {
       if (this.imodel.elements.tryGetElement(elementId))
@@ -456,7 +464,6 @@ export class Synchronizer {
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.WrongClass;
     }
-
     this.imodel.elements.updateElement(elementProps);
 
     assert(elementProps.id !== undefined && Id64.isValidId64(elementProps.id));
