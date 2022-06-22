@@ -6,7 +6,8 @@
  * @module Framework
  */
 
-import { BriefcaseDb, ECSqlStatement, Element, IModelDb, ElementUniqueAspect} from "@itwin/core-backend";
+import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
+import { ElementUniqueAspect} from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
