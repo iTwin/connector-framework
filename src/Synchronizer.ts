@@ -385,7 +385,7 @@ export class Synchronizer {
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        // const elementChannelRoot = db.elements.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
+        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
         // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
         const hasSeenElement = this._seenElements.has(elementId);
         if (!hasSeenElement) {
