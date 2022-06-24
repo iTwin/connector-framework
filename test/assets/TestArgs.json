@@ -1,8 +1,8 @@
 {
   "version": "0.0.1",
   "jobArgs": {
-    "source": "./lib/test/assets/TestConnector.json",
-    "stagingDir": "./lib/test/assets",
+    "source": "test/assets/TestConnector.json",
+    "stagingDir": "test/assets",
     "doInteractiveSignin": false
   },
   "hubArgs": {

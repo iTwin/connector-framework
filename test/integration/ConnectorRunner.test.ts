@@ -9,11 +9,13 @@ import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-sig
 import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
+import TestConnector from "../TestConnector/TestConnector";
 import type { HubArgsProps} from "../../src/Args";
 import { HubArgs, JobArgs } from "../../src/Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
+import { readFileSync } from "node:fs";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 
@@ -26,9 +28,17 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let token: AccessToken| undefined;
 
   before(async () => {
+    // TODO: Horrible evasion of missing environment variables due to JIT
+    // complication from `ts-node` and `nyc`. At least that's my theory. Sorry
+    // y'all.
+
+    Object.assign(process.env, JSON.parse(readFileSync(".env", "utf8"))); // BAD ❗❗❗
+
+    // ---
+
     await utils.startBackend();
     utils.setupLogging();
-    const iModelClient = new IModelsClient({ api: { baseUrl: `https://${process.env.IMJS_URL_PREFIX ?? ""}api.bentley.com/imodels`}});
+    const iModelClient = new IModelsClient({ api: { baseUrl: `https://${process.env.imjs_url_prefix ?? ""}api.bentley.com/imodels`}});
     IModelHost.setHubAccess(new BackendIModelsAccess(iModelClient));
 
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
@@ -39,6 +49,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
     };
+
     const userCred = {
       email: process.env.test_user_name!,
       password: process.env.test_user_password!,
@@ -80,8 +91,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
-    const connectorFile = "./test/TestConnector/TestConnector.js";
-    const status = await runner.run(connectorFile);
+    const status = await runner.run(TestConnector);
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 

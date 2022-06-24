@@ -5,17 +5,16 @@
 /* eslint-disable no-console */
 import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { BentleyStatus } from "@itwin/core-bentley";
+import TestConnector from "../TestConnector/TestConnector";
 import * as utils from "../ConnectorTestUtils";
-import * as path from "path";
 
 async function main() {
   await utils.startBackend();
 
-  const connectorFile = path.join(__dirname, "TestConnector.js");
   const argfile = process.argv[2];
   const runner = ConnectorRunner.fromFile(argfile);
 
-  const runStatus = await runner.run(connectorFile);
+  const runStatus = await runner.run(TestConnector);
   if (runStatus !== BentleyStatus.SUCCESS)
     throw new Error("ConnectorRunner failed");
 

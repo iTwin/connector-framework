@@ -1,11 +1,13 @@
 {
     "require": [
         "ts-node/register",
-        "source-map-support/register"
+        "source-map-support/register",
+        "mocha-suppress-logs"
     ],
     "recursive": true,
     "extension": ["ts"],
     "exclude": [
         "test/TestConnector/Main.ts"
-    ]
+    ],
+    "timeout": 10000
 }
