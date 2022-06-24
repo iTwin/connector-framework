@@ -5,17 +5,16 @@
 import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@itwin/core-backend";
 import { BentleyStatus } from "@itwin/core-bentley";
 import { KnownTestLocations } from "../KnownTestLocations";
-import { ConnectorRunner } from "../../ConnectorRunner";
-import { SqliteIssueReporter } from "../../SqliteIssueReporter";
-import { JobArgs } from "../../Args";
+import { ConnectorRunner } from "../../src/ConnectorRunner";
+import { SqliteIssueReporter } from "../../src/SqliteIssueReporter";
+import { JobArgs } from "../../src/Args";
 import * as utils from "../ConnectorTestUtils";
 import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
-
-  const connectorFile = "./test/TestConnector/TestConnector.js";
+  const connectorFile = "../../lib/test/TestConnector/TestConnector.js";
 
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
@@ -64,7 +63,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
     });
-    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
+    const failConnectorFile = "../../lib/test/TestConnector/FailTestITwinConnector.js";
     const fileName = `error.json`;
     try{
       const runner = new ConnectorRunner(jobArgs);
@@ -88,9 +87,9 @@ describe("iTwin Connector Fwk StandAlone", () => {
       source: assetFile,
       stagingDir: KnownTestLocations.outputDir,
       dbType: "snapshot",
-      synchConfigFile: path.join(__dirname, "..\\..\\..\\src\\test\\synchConfigTest.json"),
+      synchConfigFile: path.join(__dirname, "..", "synchConfigTest.json"),
     });
-    const failConnectorFile = "./test/TestConnector/FailTestITwinConnector.js";
+    const failConnectorFile = "../../lib/TestConnector/FailTestITwinConnector.js";
     // const connectorJobDef = new ConnectorJobDefArgs();
     // connectorJobDef.sourcePath = assetFile;
     // connectorJobDef.connectorModule = ;

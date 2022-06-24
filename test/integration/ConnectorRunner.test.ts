@@ -8,9 +8,9 @@ import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/co
 import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
 import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
-import { ConnectorRunner } from "../../ConnectorRunner";
-import type { HubArgsProps} from "../../Args";
-import { HubArgs, JobArgs } from "../../Args";
+import { ConnectorRunner } from "../../src/ConnectorRunner";
+import type { HubArgsProps} from "../../src/Args";
+import { HubArgs, JobArgs } from "../../src/Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";

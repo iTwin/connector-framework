@@ -10,14 +10,14 @@ import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModel
 import type { InformationPartitionElementProps} from "@itwin/core-common";
 import { IModel, IModelError } from "@itwin/core-common";
 
-import type { SourceItem, SynchronizationResults } from "../../Synchronizer";
-import { ItemState } from "../../Synchronizer";
+import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import { ItemState } from "../../src/Synchronizer";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
 
 import * as fs from "fs";
 import { ModelNames } from "./TestConnector";
-import { BaseConnector } from "../../BaseConnector";
+import { BaseConnector } from "../../src/BaseConnector";
 
 export default class TestConnector extends BaseConnector {
   public static override async create(): Promise<TestConnector> {

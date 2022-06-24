@@ -1,6 +1,15 @@
-lib
 node_modules
+# compile
+lib
+
+# test
+coverage
+.nyc_output
+
+# configuration
 secret.bat
 .env
-manifest.itsyn.yml
+
+# ???
 node.exe
+manifest.itsyn.yml

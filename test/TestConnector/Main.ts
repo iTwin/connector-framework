@@ -2,9 +2,8 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-
 /* eslint-disable no-console */
-import { ConnectorRunner } from "../../ConnectorRunner";
+import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { BentleyStatus } from "@itwin/core-bentley";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";

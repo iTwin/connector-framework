@@ -14,7 +14,7 @@ import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnect
 import { CodeSpecs } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
-import type { JobArgs } from "../Args";
+import type { JobArgs } from "../src/Args";
 import * as fs from "fs";
 
 export function setupLogging() {

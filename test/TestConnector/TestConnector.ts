@@ -14,9 +14,9 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, 
 import type { SolidPrimitive} from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { SourceItem, SynchronizationResults } from "../../Synchronizer";
-import { ItemState } from "../../Synchronizer";
-import { BaseConnector } from "../../BaseConnector";
+import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import { ItemState } from "../../src/Synchronizer";
+import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
 import type { TestConnectorGroupProps } from "./TestConnectorElements";
