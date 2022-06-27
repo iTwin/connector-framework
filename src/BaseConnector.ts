@@ -8,6 +8,7 @@ import type { Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import type { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
+import * as path from "node:path";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -66,7 +67,7 @@ export abstract class BaseConnector {
       canUserFix,
     };
     Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
-    fs.writeFileSync(`${dir}\\SyncError.json`, JSON.stringify(object), {flag: "w"});
+    fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
   }
 
   /**
