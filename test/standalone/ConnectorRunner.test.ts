@@ -69,7 +69,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
       issueReporter.recordSourceFileInfo("TestBridge.json", "TestBridge", "TestBridge", "itemType", "dataSource", "state", "failureReason", true, 200, true);
       runner.issueReporter = issueReporter;
-      await runner.run(TestConnector);
+      await runner.run(FailTestITwinConnector);
     } catch (error) {
       if (isErrnoException(error))
         expect(error.message).to.eql("Connector has not been loaded.");
