@@ -514,4 +514,30 @@ export class ConnectorRunner {
     }
   }
 }
+// private async enterChannel() {
+//   if (!this.db.isBriefcaseDb())
+//     return;
+
+//   this._db = this.db as BriefcaseDb;
+//   // all of these arguments are no longer present, not sure if i just dont know where they are though, doing the checks that were added instead
+//   // if (!this.db.locks.isBulkMode)
+//   //   this.db.concurrencyControl.startBulkMode();
+//   // if (this.db.concurrencyControl.hasPendingRequests)
+//   //   throw new Error("has pending requests");
+//   // if (this.db.concurrencyControl.locks.hasSchemaLock)
+//   //   throw new Error("has schema lock");
+//   // if (this.db.concurrencyControl.locks.hasCodeSpecsLock)
+//   //   throw new Error("has code spec lock");
+//   // if (this.db.concurrencyControl.channel.isChannelRootLocked)
+//   //   throw new Error("holds lock on current channel root. it must be released before entering a new channel.");
+//   if(this.db.locks.holdsExclusiveLock(IModel.dictionaryId)) // I believe will check for whole model?
+//     throw new Error("holds exclusive lock");
+//   if(this.db.locks.holdsSharedLock(IModel.dictionaryId))
+//     throw new Error("holds shared lock");
+
+//   // this.db.concurrencyControl.channel.channelRoot = rootId;
+
+//   // const reqContext = await this.getAuthReqContext();
+//   // await this.db.concurrencyControl.channel.lockChannelRoot(reqContext); // Channel not present anymore either, think its handled with other new locking stuff instead but leaving just in case
+// }
 
