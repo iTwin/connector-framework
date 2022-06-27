@@ -2,8 +2,8 @@
   "name": "@itwin/connector-framework",
   "version": "0.1.0",
   "description": "iTwin Connector Framework",
-  "main": "lib/connector-framework.js",
-  "typings": "lib/connector-framework",
+  "main": "lib/src/connector-framework.js",
+  "typings": "lib/src/connector-framework.d.ts",
   "license": "MIT",
   "engines": {
     "node": ">=14.17.0 <17.0"
