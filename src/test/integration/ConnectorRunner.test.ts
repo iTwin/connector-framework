@@ -57,9 +57,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
     updateIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: updateImodelName });
     if (!updateIModelId) {
       updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
+    } else {
+      await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId });
+      updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
     }
     testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName});
     if (!testIModelId) {
+      testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
+    } else {
+      await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId });
       testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
     }
   });

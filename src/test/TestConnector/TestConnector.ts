@@ -151,7 +151,7 @@ export default class TestConnector extends BaseConnector {
       code: GroupInformationPartition.createCode(this.synchronizer.imodel, this.jobSubject.id, ModelNames.Group),
     };
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
-
+    this.synchronizer.onElementSeen(partitionId);
     return this.synchronizer.imodel.models.insertModel({ classFullName: TestConnectorGroupModel.classFullName, modeledElement: { id: partitionId } });
   }
 
@@ -174,6 +174,7 @@ export default class TestConnector extends BaseConnector {
       classFullName: "BisCore.ElementHasLinks",
     };
     this.synchronizer.imodel.relationships.insertInstance(relationshipProps);
+    this.synchronizer.onElementSeen(modelid);
     return modelid;
   }
 
@@ -195,7 +196,7 @@ export default class TestConnector extends BaseConnector {
       code: DefinitionPartition.createCode(this.synchronizer.imodel, this.jobSubject.id, ModelNames.Definition),
     };
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
-
+    this.synchronizer.onElementSeen(partitionId);
     return this.synchronizer.imodel.models.insertModel({ classFullName: DefinitionModel.classFullName, modeledElement: { id: partitionId } });
   }
 

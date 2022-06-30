@@ -362,37 +362,32 @@ export class Synchronizer {
   /** Deletes elements from a BriefcaseDb that were previously converted but not longer exist in the source data.
    * @beta
    */
-  public detectDeletedElements() {
+  public async detectDeletedElements(jobSubjectId: string) {
     if (this.imodel.isSnapshotDb())
       return;
 
     if (this._supportsMultipleFilesPerChannel)
       this.detectDeletedElementsInFiles();
     else
-      this.detectDeletedElementsInChannel();
+      await this.detectDeletedElementsInChannel(jobSubjectId);
   }
 
-  private detectDeletedElementsInChannel() {
+  private async detectDeletedElementsInChannel(jobSubjectId: string) {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;
-    const sql = `SELECT aspect.Element.Id FROM ${ExternalSourceAspect.classFullName} aspect WHERE aspect.Kind !='DocumentWithBeGuid'`;
     const elementsToDelete: Id64String[] = [];
     const defElementsToDelete: Id64String[] = [];
     const db = this.imodel as BriefcaseDb;
-    this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
-      while (DbResult.BE_SQLITE_ROW === statement.step()) {
-        const elementId = statement.getValue(0).getId();
-        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
-        // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
-        const hasSeenElement = this._seenElements.has(elementId);
-        if (!hasSeenElement) {
-          const element = db.elements.getElement(elementId);
-          if (element instanceof DefinitionElement)
-            defElementsToDelete.push(elementId);
-          else
-            elementsToDelete.push(elementId);
-        }
+    const seenElements = this._seenElements;
+    const childElements = db.elements.queryChildren(jobSubjectId);
+    childElements.forEach(function (id) {
+      if(!seenElements.has(id)){
+        const element = db.elements.getElement(id);
+        if (element instanceof DefinitionElement)
+          defElementsToDelete.push(id);
+        else
+          elementsToDelete.push(id);
       }
     });
     this.deleteElements(elementsToDelete, defElementsToDelete);
