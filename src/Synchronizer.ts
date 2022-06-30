@@ -376,23 +376,43 @@ export class Synchronizer {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;
-    const elementsToDelete: Id64String[] = [];
-    const defElementsToDelete: Id64String[] = [];
+    // const elementsToDelete: Id64String[] = [];
+    // const defElementsToDelete: Id64String[] = [];
     const db = this.imodel as BriefcaseDb;
     const seenElements = this._seenElements;
     const childElements = db.elements.queryChildren(jobSubjectId);
-    childElements.forEach(function (id) {
+    for(const id of childElements){
       if(!seenElements.has(id)){
-        const element = db.elements.getElement(id);
-        if (element instanceof DefinitionElement)
-          defElementsToDelete.push(id);
-        else
-          elementsToDelete.push(id);
+        this.deleteElementAndChildren(id);
+        // const element = db.elements.getElement(id);
+        // if (element instanceof DefinitionElement)
+        //   defElementsToDelete.push(id);
+        // else
+        //   elementsToDelete.push(id);
       }
-    });
-    this.deleteElements(elementsToDelete, defElementsToDelete);
+    }
+    // this.deleteElements(elementsToDelete, defElementsToDelete);
   }
-
+  private deleteElementAndChildren(elementId: string) {
+    const children = this.imodel.elements.queryChildren(elementId);
+    const submodel = this.imodel.models.tryGetSubModel(elementId);
+    if(submodel !== undefined){
+      if(submodel.id !== elementId)
+        this.deleteElementAndChildren(submodel.id); // check if this model has a submodel and delete that
+      this.imodel.models.deleteModel(submodel.id);
+    }
+    if (children && children.length !== 0) {
+      for(const id of children) {
+        this.deleteElementAndChildren(id); // recursively delete children until you get to an element with no children
+      }
+    }
+    const element = this.imodel.elements.tryGetElement(elementId);
+    if(element !== undefined)
+      if(element instanceof DefinitionElement)
+        this.imodel.elements.deleteDefinitionElements([elementId]);
+      else
+        this.imodel.elements.deleteElement(elementId);
+  }
   private detectDeletedElementsInFiles() {
     for (const value of this._links.values()) {
       if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
