@@ -244,10 +244,11 @@ export class Synchronizer {
    */
   public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
-    if (ItemState.Unchanged === results.itemState) {
-      if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id))
-        throw new IModelError(IModelStatus.BadArg, "missing id");
 
+    if (ItemState.Unchanged === results.itemState) {
+      if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
+        throw new IModelError(IModelStatus.BadArg, "missing id");
+      }
       this.onElementSeen(results.elementProps.id);
       return status;
     }

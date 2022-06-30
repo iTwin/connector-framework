@@ -5,7 +5,7 @@
 import type { Id64String } from "@itwin/core-bentley";
 
 import type {
-  ExternalSourceAspectProps, InformationPartitionElementProps,
+  ElementProps, ExternalSourceAspectProps, ExternalSourceProps, InformationPartitionElementProps,
   ModelProps, RepositoryLinkProps, SubjectProps,
 } from "@itwin/core-common";
 
@@ -31,12 +31,29 @@ describe("synchronizer #standalone", () => {
   const path = join(KnownTestLocations.outputDir, `${name}.bim`);
   const root = "root";
 
-  const makeToyElement = (imodel: SnapshotDb): Id64String => {
+  const makeToyDocument = (sync: Synchronizer): ExternalSourceProps => {
+    const link = sync.recordDocument(
+      SnapshotDb.repositoryModelId,
+      { id: "source document" },
+      "json",
+    );
+
+    assert.isOk(link.elementProps.id);
+
+    const source = sync.getExternalSourceElementByLinkId(link.elementProps.id!);
+
+    assert.isOk(source);
+
+    return source!;
+  };
+
+  const makeToyElement = (imodel: SnapshotDb): [Id64String, SubjectProps] => {
     const subjectProps: SubjectProps = {
       classFullName: Subject.classFullName,
       code: Subject.createCode(imodel, SnapshotDb.rootSubjectId, "fruits"),
       model: SnapshotDb.repositoryModelId,
       parent: new SubjectOwnsSubjects(SnapshotDb.rootSubjectId),
+      description: "all about fruits",
     };
 
     const subjectId = imodel.elements.insertElement(subjectProps);
@@ -57,9 +74,9 @@ describe("synchronizer #standalone", () => {
       modeledElement: { id: partitionId }, // The bis:Element that this bis:Model is sub-modeling
     };
 
-    const modelId = imodel.models.insertModel(modelProps);
+    imodel.models.insertModel(modelProps);
 
-    return modelId;
+    return [subjectId, subjectProps];
   };
 
   before(async () => {
@@ -79,148 +96,197 @@ describe("synchronizer #standalone", () => {
     IModelJsFs.unlinkSync(path);
   });
 
-  it("external source is in repository", () => {
-    const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-    const synchronizer = new Synchronizer(empty, false);
+  describe("record document", () => {
+    it("external source is in repository", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const source = makeToyDocument(synchronizer);
 
-    const link = synchronizer.recordDocument(
-      SnapshotDb.repositoryModelId,
-      { id: "source document"},
-      "json"
-    );
+      // TODO: An external source should probably have its own code.
 
-    assert.isOk(link.elementProps.id);
-    assert.strictEqual(link.elementProps.userLabel, "source document");
+      assert.isOk(source);
+    });
 
-    const source = synchronizer.getExternalSourceElementByLinkId(link.elementProps.id!);
+    it("return unmodified document", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
 
-    // TODO: An external source should probably have its own code.
+      const poke = () =>
+        synchronizer.recordDocument(
+          SnapshotDb.repositoryModelId,
+          { id: "source document"},
+          "json"
+        );
 
-    assert.isOk(source);
+      // Access the document again without modifying it. Expect synchronization results to be the same
+      // object because the synchronizer maintains a cache.
+      assert.equal(poke(), poke());
+    });
+
+    it("repository link already exists", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const document = "source document";
+
+      // `getRepositoryLinkInfo` eventually defaults to using the document source identifier as the
+      // code value of the repository, which uniquely identifies it along with its kind.
+
+      const linkProps: RepositoryLinkProps = {
+        classFullName: RepositoryLink.classFullName,
+        code: RepositoryLink.createCode(empty, SnapshotDb.repositoryModelId, document),
+        model: SnapshotDb.repositoryModelId,
+      };
+
+      empty.elements.insertElement(linkProps);
+
+      const oops = () => {
+        synchronizer.recordDocument(
+          SnapshotDb.repositoryModelId,
+          { id: document },
+          "json"
+        );
+      };
+
+      assert.throws(oops, IModelError, /Maybe RecordDocument was previously called/i);
+    });
   });
 
-  it("return unmodified document", () => {
-    const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-    const synchronizer = new Synchronizer(empty, false);
+  describe("detect changes", () => {
+    it("detect version change and checksum change", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
 
-    const poke = () =>
-      synchronizer.recordDocument(
-        SnapshotDb.repositoryModelId,
-        { id: "source document"},
-        "json"
-      );
+      // The element referenced by the external source.
+      const identifier = "fruit subject";
+      const kind = "subject";
+      const scope = SnapshotDb.repositoryModelId;
 
-    // Access the document again without modifying it. Expect synchronization results to be the same
-    // object because the synchronizer maintains a cache.
-    assert.equal(poke(), poke());
+      const source = makeToyDocument(synchronizer);
+
+      const [elementId, _] = makeToyElement(empty);
+
+      const aspectProps: ExternalSourceAspectProps = {
+        classFullName: ExternalSourceAspect.classFullName,
+        element: { id: elementId },  // The bis:Element that owns this bis:ElementMultiAspect.
+        identifier,                  // The document's external identifier.
+        kind,                        // TODO: This information is duplicated by the element relationship?
+        source: { id: source.id! }, // The external source from which this element originated.
+        scope: { id: scope },
+        version: "1.0.0",
+        checksum: "01111010011000010110001101101000",
+      };
+
+      empty.elements.insertAspect(aspectProps);
+
+      // Version change takes priority over a checksum change.
+
+      let edited: SourceItem = {
+        id: identifier,
+        version: "1.0.1",
+        checksum: "01111010011000010110001101101001",
+      };
+
+      let changes = synchronizer.detectChanges(scope, kind, edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Changed);
+
+      // Checksum change.
+
+      edited = {
+        id: identifier,
+        version: "1.0.0",
+        checksum: "01111010011000010110001101101001",
+      };
+
+      changes = synchronizer.detectChanges(scope, kind, edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Changed);
+
+      // No change.
+
+      edited = {
+        id: identifier,
+        version: "1.0.0",
+        checksum: "01111010011000010110001101101000",
+      };
+
+      changes = synchronizer.detectChanges(scope, kind, edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Unchanged);
+    });
   });
 
-  it("repository link already exists", () => {
-    const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-    const synchronizer = new Synchronizer(empty, false);
-    const document = "source document";
-
-    // `getRepositoryLinkInfo` eventually defaults to using the document source identifier as the
-    // code value of the repository, which uniquely identifies it along with its kind.
-
-    const linkProps: RepositoryLinkProps = {
-      classFullName: RepositoryLink.classFullName,
-      code: RepositoryLink.createCode(empty, SnapshotDb.repositoryModelId, document),
-      model: SnapshotDb.repositoryModelId,
-    };
-
-    empty.elements.insertElement(linkProps);
-
-    let failure = false;
-
-    try {
-      synchronizer.recordDocument(
-        SnapshotDb.repositoryModelId,
-        { id: document },
-        "json"
-      );
-    } catch (oops) {
-      assert.instanceOf(oops, IModelError);
-      assert.strictEqual((oops as IModelError).errorNumber, IModelStatus.NotFound);
-      failure = true;
-    }
-
-    assert.isTrue(failure);
-  });
-
-  it("detect version change and checksum change", () => {
-    const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-    const synchronizer = new Synchronizer(empty, false);
-
+  describe("update imodel", () => {
     // The element referenced by the external source.
-    const identifier = "fruit definitions model";
-    const kind = "model";
+    const identifier = "fruit subject";
+    const kind = "subject";
     const scope = SnapshotDb.repositoryModelId;
 
-    const link = synchronizer.recordDocument(
-      SnapshotDb.repositoryModelId,
-      { id: "source document" },
-      "json",
-    );
+    const setToyProvenance = (imodel: SnapshotDb, source: ExternalSourceProps, sync: Synchronizer): [SourceItem, ElementProps] => {
+      const [_, elementProps] = makeToyElement(imodel);
 
-    assert.isOk(link.elementProps.id);
+      const meta: SourceItem = {
+        id: identifier,
+        version: "1.0.0",
+      };
 
-    const source = synchronizer.getExternalSourceElementByLinkId(link.elementProps.id!);
+      const status = sync.setExternalSourceAspect(
+        elementProps, ItemState.New, scope, meta, kind, source.id
+      );
 
-    assert.isOk(source);
+      assert.strictEqual(status, IModelStatus.Success);
 
-    const elementId = makeToyElement(empty);
-
-    const aspectProps: ExternalSourceAspectProps = {
-      classFullName: ExternalSourceAspect.classFullName,
-      element: { id: elementId },  // The bis:Element that owns this bis:ElementMultiAspect.
-      identifier,                  // The document's external identifier.
-      kind,                        // TODO: This information is duplicated by the element relationship?
-      source: { id: source!.id! }, // The external source from which this element originated.
-      scope: { id: scope },
-      version: "1.0.0",
-      checksum: "01111010011000010110001101101000",
+      return [meta, elementProps];
     };
 
-    empty.elements.insertAspect(aspectProps);
+    it("update imodel with unchanged element", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const source = makeToyDocument(synchronizer);
 
-    // Version change takes priority over a checksum change.
+      const [meta, elementProps] = setToyProvenance(empty, source, synchronizer);
 
-    let edited: SourceItem = {
-      id: identifier,
-      version: "1.0.1",
-      checksum: "01111010011000010110001101101001",
-    };
+      const changes = synchronizer.detectChanges(scope, kind, meta);
 
-    let changes = synchronizer.detectChanges(scope, kind, edited);
+      const sync = { elementProps, itemState: changes.state };
 
-    assert.strictEqual(changes.id, elementId);
-    assert.strictEqual(changes.state, ItemState.Changed);
+      const status = synchronizer.updateIModel(sync, scope, meta, kind, source);
 
-    // Checksum change.
+      assert.strictEqual(status, IModelStatus.Success);
 
-    edited = {
-      id: identifier,
-      version: "1.0.0",
-      checksum: "01111010011000010110001101101001",
-    };
+      // Butcher element identifier.
+      sync.elementProps.id = undefined;
 
-    changes = synchronizer.detectChanges(scope, kind, edited);
+      const oops = () => synchronizer.updateIModel(sync, scope, meta, kind, source);
 
-    assert.strictEqual(changes.id, elementId);
-    assert.strictEqual(changes.state, ItemState.Changed);
+      assert.throws(oops, IModelError, /missing id/i);
+    });
 
-    // No change.
+    it("update imodel with changed element", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const source = makeToyDocument(synchronizer);
 
-    edited = {
-      id: identifier,
-      version: "1.0.0",
-      checksum: "01111010011000010110001101101000",
-    };
+      const [meta, elementProps] = setToyProvenance(empty, source, synchronizer);
 
-    changes = synchronizer.detectChanges(scope, kind, edited);
+      // New patch for our subject element from the source document!
+      meta.version = "1.0.1";
+      (elementProps as SubjectProps).description = "all about berries 🍓";
 
-    assert.strictEqual(changes.id, elementId);
-    assert.strictEqual(changes.state, ItemState.Unchanged);
+      const changes = synchronizer.detectChanges(scope, kind, meta);
+
+      const sync = { elementProps, itemState: changes.state };
+
+      const status = synchronizer.updateIModel(sync, scope, meta, kind, source);
+
+      assert.strictEqual(status, IModelStatus.Success);
+
+      const subject = empty.elements.getElement<Subject>(elementProps.id!);
+
+      assert.strictEqual(subject.description!, "all about berries 🍓");
+    });
   });
 });
