@@ -83,13 +83,13 @@ describe("synchronizer #standalone", () => {
     return [subjectId, subjectProps, modelId];
   };
 
-  const berryGroups = (imodel: SnapshotDb): [SourceItem, SynchronizationResults] => {
+  const berryGroups = (imodel: SnapshotDb, definitionModel: Id64String): [SourceItem, SynchronizationResults] => {
     const meta: SourceItem = {
       id: "berry definition group",
       version: "1.0.0",
     };
 
-    const [ , , modelId] = makeToyElement(imodel);
+    const modelId = definitionModel;
 
     const berryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
@@ -350,7 +350,10 @@ describe("synchronizer #standalone", () => {
     it("insert new child elements", () => {
       const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
       const synchronizer = new Synchronizer(empty, false);
-      const [ , tree] = berryGroups(empty);
+
+      const [ , , modelId ] = makeToyElement(empty);
+      const [ , tree ] = berryGroups(empty, modelId);
+
       const status = synchronizer.insertResultsIntoIModel(tree);
 
       assert.strictEqual(status, IModelStatus.Success);
@@ -359,6 +362,35 @@ describe("synchronizer #standalone", () => {
         statement.step();
         assert.strictEqual(statement.getValue(0).getInteger(), 3);
       });
+    });
+
+  });
+
+  describe("update results in imodel", () => {
+    it("update modified root element with children", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const source = makeToyDocument(synchronizer);
+
+      const [ , , modelId ] = makeToyElement(empty);
+      const [ meta, tree ] = berryGroups(empty, modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      // Change the external identifier of the root definition group. The synchronizer will consider
+      // the root group (berry) and the children groups (strawberry, raspberry) modified even though
+      // only the root element has changed. TODO. This is probably not desirable behavior. Once the
+      // synchronizer sees that the root element has changed, it will fall into a recursive update
+      // operation.
+
+      // Path berry definition group.
+      meta.version = "1.0.1";
+      tree.childElements![0].elementProps.userLabel = "definitions of boysenberries";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
     });
   });
 });
