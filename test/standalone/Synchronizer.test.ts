@@ -391,6 +391,18 @@ describe("synchronizer #standalone", () => {
       tree.childElements![0].elementProps.userLabel = "definitions of boysenberries";
 
       assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      empty.withStatement<void>(query("boysenberries"), (statement) => {
+        statement.step();
+        assert.strictEqual(statement.getValue(0).getInteger(), 1);
+      });
+
+      empty.withStatement<void>(query("raspberries"), (statement) => {
+        statement.step();
+        assert.strictEqual(statement.getValue(0).getInteger(), 1);
+      });
     });
   });
 });
