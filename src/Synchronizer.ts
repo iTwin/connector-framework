@@ -6,8 +6,8 @@
  * @module Framework
  */
 
-import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
-import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import type { BriefcaseDb, ECSqlStatement, IModelDb, Model} from "@itwin/core-backend";
+import { DefinitionElement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
@@ -362,42 +362,66 @@ export class Synchronizer {
   /** Deletes elements from a BriefcaseDb that were previously converted but not longer exist in the source data.
    * @beta
    */
-  public detectDeletedElements() {
+  public async detectDeletedElements(jobSubjectId: string) {
     if (this.imodel.isSnapshotDb())
       return;
 
     if (this._supportsMultipleFilesPerChannel)
       this.detectDeletedElementsInFiles();
     else
-      this.detectDeletedElementsInChannel();
+      await this.detectDeletedElementsInChannel(jobSubjectId);
   }
 
-  private detectDeletedElementsInChannel() {
+  private async detectDeletedElementsInChannel(jobSubjectId: string) {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;
-    const sql = `SELECT aspect.Element.Id FROM ${ExternalSourceAspect.classFullName} aspect WHERE aspect.Kind !='DocumentWithBeGuid'`;
-    const elementsToDelete: Id64String[] = [];
-    const defElementsToDelete: Id64String[] = [];
+    // const elementsToDelete: Id64String[] = [];
+    // const defElementsToDelete: Id64String[] = [];
     const db = this.imodel as BriefcaseDb;
+    const seenElements = this._seenElements;
+    const childElements = db.elements.queryChildren(jobSubjectId);
+    for(const id of childElements){
+      if(!seenElements.has(id)){
+        this.deleteElementAndChildren(id);
+        // const element = db.elements.getElement(id);
+        // if (element instanceof DefinitionElement)
+        //   defElementsToDelete.push(id);
+        // else
+        //   elementsToDelete.push(id);
+      }
+    }
+    // this.deleteElements(elementsToDelete, defElementsToDelete);
+  }
+  private deleteElementAndChildren(elementId: string) {
+    const children = this.imodel.elements.queryChildren(elementId);
+    if (children && children.length !== 0) {
+      for(const id of children) {
+        this.deleteElementAndChildren(id); // recursively delete children until you get to an element with no children
+      }
+    }
+    const submodel = this.imodel.models.tryGetSubModel(elementId);
+    if(submodel !== undefined){
+      this.deleteModel(submodel);
+    }
+    const element = this.imodel.elements.tryGetElement(elementId);
+    if(element !== undefined)
+      if(element instanceof DefinitionElement)
+        this.imodel.elements.deleteDefinitionElements([elementId]);
+      else
+        this.imodel.elements.deleteElement(elementId);
+  }
+  private deleteModel(modelToDelete: Model) {
+    const sql = `SELECT ECInstanceId FROM ${Element.classFullName} WHERE model.id=?`;
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
+      statement.bindId(1, modelToDelete.id);
       while (DbResult.BE_SQLITE_ROW === statement.step()) {
         const elementId = statement.getValue(0).getId();
-        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
-        // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
-        const hasSeenElement = this._seenElements.has(elementId);
-        if (!hasSeenElement) {
-          const element = db.elements.getElement(elementId);
-          if (element instanceof DefinitionElement)
-            defElementsToDelete.push(elementId);
-          else
-            elementsToDelete.push(elementId);
-        }
+        this.deleteElementAndChildren(elementId);
       }
     });
-    this.deleteElements(elementsToDelete, defElementsToDelete);
+    this.imodel.models.deleteModel(modelToDelete.id);
   }
-
   private detectDeletedElementsInFiles() {
     for (const value of this._links.values()) {
       if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
