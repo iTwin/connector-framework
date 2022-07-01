@@ -6,8 +6,8 @@
  * @module Framework
  */
 
-import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
-import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import type { BriefcaseDb, ECSqlStatement, IModelDb, Model} from "@itwin/core-backend";
+import { DefinitionElement, Element, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
@@ -395,16 +395,14 @@ export class Synchronizer {
   }
   private deleteElementAndChildren(elementId: string) {
     const children = this.imodel.elements.queryChildren(elementId);
-    const submodel = this.imodel.models.tryGetSubModel(elementId);
-    if(submodel !== undefined){
-      if(submodel.id !== elementId)
-        this.deleteElementAndChildren(submodel.id); // check if this model has a submodel and delete that
-      this.imodel.models.deleteModel(submodel.id);
-    }
     if (children && children.length !== 0) {
       for(const id of children) {
         this.deleteElementAndChildren(id); // recursively delete children until you get to an element with no children
       }
+    }
+    const submodel = this.imodel.models.tryGetSubModel(elementId);
+    if(submodel !== undefined){
+      this.deleteModel(submodel);
     }
     const element = this.imodel.elements.tryGetElement(elementId);
     if(element !== undefined)
@@ -412,6 +410,17 @@ export class Synchronizer {
         this.imodel.elements.deleteDefinitionElements([elementId]);
       else
         this.imodel.elements.deleteElement(elementId);
+  }
+  private deleteModel(modelToDelete: Model) {
+    const sql = `SELECT ECInstanceId FROM ${Element.classFullName} WHERE model.id=?`;
+    this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
+      statement.bindId(1, modelToDelete.id);
+      while (DbResult.BE_SQLITE_ROW === statement.step()) {
+        const elementId = statement.getValue(0).getId();
+        this.deleteElementAndChildren(elementId);
+      }
+    });
+    this.imodel.models.deleteModel(modelToDelete.id);
   }
   private detectDeletedElementsInFiles() {
     for (const value of this._links.values()) {
