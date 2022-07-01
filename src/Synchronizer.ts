@@ -437,9 +437,8 @@ export class Synchronizer {
         this.imodel.elements.deleteElement(elementIds);
         const aspects = this.imodel.elements.getAspects(elementId, ElementUniqueAspect.classFullName);
         for ( const aspect of aspects){
-          if(this._seenAspects.has(aspect.id))
-            continue;
-          this.imodel.elements.deleteAspect(aspect.id);
+          if(!this._seenAspects.has(aspect.id))
+            this.imodel.elements.deleteAspect(aspect.id);
         }
       }
     }
