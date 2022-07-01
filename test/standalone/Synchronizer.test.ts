@@ -139,6 +139,13 @@ describe("synchronizer #standalone", () => {
     return imodel.elements.getAspect(aspectId!) as ExternalSourceAspect;
   };
 
+  const count = (imodel: SnapshotDb, query: string, times: number): void => {
+    imodel.withStatement<void>(query, (statement) => {
+      statement.step();
+      assert.strictEqual(statement.getValue(0).getInteger(), times);
+    });
+  };
+
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir)) {
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
@@ -358,16 +365,12 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(status, IModelStatus.Success);
 
-      empty.withStatement<void>("select count(*) from bis:DefinitionGroup", (statement) => {
-        statement.step();
-        assert.strictEqual(statement.getValue(0).getInteger(), 3);
-      });
+      count(empty, "select count(*) from bis:DefinitionGroup", 3);
     });
-
   });
 
   describe("update results in imodel", () => {
-    it("update modified root element with children", () => {
+    it("update modified root element with children, one-to-one", () => {
       const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
       const synchronizer = new Synchronizer(empty, false);
       const source = makeToyDocument(synchronizer);
@@ -386,7 +389,7 @@ describe("synchronizer #standalone", () => {
       // synchronizer sees that the root element has changed, it will fall into a recursive update
       // operation.
 
-      // Path berry definition group.
+      // Patch berry definition group.
       meta.version = "1.0.1";
       tree.childElements![0].elementProps.userLabel = "definitions of boysenberries";
 
@@ -394,15 +397,47 @@ describe("synchronizer #standalone", () => {
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
-      empty.withStatement<void>(query("boysenberries"), (statement) => {
-        statement.step();
-        assert.strictEqual(statement.getValue(0).getInteger(), 1);
+      count(empty, query("boysenberries"), 1);
+      count(empty, query("raspberries"), 1);
+    });
+
+    it("update modified root element with children, larger source set", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const synchronizer = new Synchronizer(empty, false);
+      const source = makeToyDocument(synchronizer);
+
+      const [ , , modelId ] = makeToyElement(empty);
+      const [ meta, tree ] = berryGroups(empty, modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const blueberryProps: DefinitionElementProps = {
+        classFullName: DefinitionGroup.classFullName,
+        code: Code.createEmpty(),
+        model: modelId,
+        isPrivate: false,
+        userLabel: "definitions of blueberries",
+        // parent: new ElementOwnsChildElements(...),
+      };
+
+      tree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryProps,
       });
 
-      empty.withStatement<void>(query("raspberries"), (statement) => {
-        statement.step();
-        assert.strictEqual(statement.getValue(0).getInteger(), 1);
-      });
+      // Patch berry definition group.
+      meta.version = "1.0.1";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(empty, query("strawberries"), 1);
+      count(empty, query("raspberries"), 1);
+      count(empty, query("blueberries"), 1);
     });
   });
 });
