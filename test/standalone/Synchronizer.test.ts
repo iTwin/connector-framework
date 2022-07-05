@@ -226,7 +226,7 @@ describe("synchronizer #standalone", () => {
 
       const source = makeToyDocument(synchronizer);
 
-      const [elementId, _] = makeToyElement(empty);
+      const [ elementId, , ] = makeToyElement(empty);
 
       const aspectProps: ExternalSourceAspectProps = {
         classFullName: ExternalSourceAspect.classFullName,
