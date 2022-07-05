@@ -12,7 +12,7 @@ jobs:
       - run: npm install
       - name: Run tests
         run: npm run test || exit 0
-      - name: Run coveralls
+      - name: Write coverage
         run: npm run coveralls
       - name: Setup Coveralls
         uses: coverallsapp/github-action@1.1.3

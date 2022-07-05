@@ -1,9 +1,3 @@
-We get this beautiful little badge on the Coveralls branch.
-
-[![Coverage Status](https://coveralls.io/repos/github/jackson-at-bentley/connector-framework/badge.svg?branch=coveralls)](https://coveralls.io/github/jackson-at-bentley/connector-framework?branch=coveralls)
-
----
-
 # iTwin Connector Framework
 
 [![Build Status](https://bentleycs.visualstudio.com/iModelTechnologies/_apis/build/status/iTwin%20Connector%20Frameworks/iTwin.connector-framework?repoName=iTwin%2Fconnector-framework&branchName=main)](https://bentleycs.visualstudio.com/iModelTechnologies/_build/latest?definitionId=5669&repoName=iTwin%2Fconnector-framework&branchName=main)
@@ -21,7 +15,7 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 
     e.g. the class `iModelBridge` becomes `iTwinConnector`
 
-2. TypeScript source files should import the new classes from `@itwin/connector-framework`.  
+2. TypeScript source files should import the new classes from `@itwin/connector-framework`.
 
     e.g.
 
