@@ -278,10 +278,10 @@ export class ConnectorRunner {
   public recordError(err: any) {
     const errorFile = this.jobArgs.errorFile;
     const errorStr = JSON.stringify({
-      id: this._connector?.getConnectorName(),
+      id: this._connector?.getConnectorName() ?? "",
       message: "Failure",
       description: err.message,
-      extendedData: {},
+      extendedData: err,
     });
     fs.writeFileSync(errorFile, errorStr);
     Logger.logInfo(LoggerCategories.Framework, `Error recorded at ${errorFile}`);
@@ -290,6 +290,9 @@ export class ConnectorRunner {
   private async onFinish() {
     if (this._db) {
       this._db.abandonChanges();
+
+      this.connector?.onClosingIModel?.();
+
       this._db.close();
     }
 
