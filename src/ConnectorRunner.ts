@@ -291,8 +291,7 @@ export class ConnectorRunner {
     if (this._db) {
       this._db.abandonChanges();
 
-      if (this._connector !== undefined && this.connector.onFinish !== undefined)
-        this.connector.onFinish();
+      this.connector?.onClosingIModel?.();
 
       this._db.close();
     }
