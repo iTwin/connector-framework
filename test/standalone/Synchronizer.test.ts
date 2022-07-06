@@ -393,6 +393,9 @@ describe("synchronizer #standalone", () => {
       meta.version = "1.0.1";
       tree.childElements![0].elementProps.userLabel = "definitions of boysenberries";
 
+      tree.childElements![0].itemState = ItemState.Changed;
+      tree.childElements![1].itemState = ItemState.Unchanged;
+
       assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
@@ -414,19 +417,23 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
 
-      const blueberryProps: DefinitionElementProps = {
+      const blueberryProps = new DefinitionGroup({
         classFullName: DefinitionGroup.classFullName,
         code: Code.createEmpty(),
         model: modelId,
         isPrivate: false,
         userLabel: "definitions of blueberries",
         // parent: new ElementOwnsChildElements(...),
-      };
+      }, empty);
 
       tree.childElements!.push({
         itemState: ItemState.New,
-        elementProps: blueberryProps,
+        elementProps: blueberryProps.toJSON(),
       });
+
+      tree.childElements![0].itemState = ItemState.Unchanged;
+      tree.childElements![1].itemState = ItemState.Unchanged;
+      tree.childElements![2].itemState = ItemState.New;
 
       // Patch berry definition group.
       meta.version = "1.0.1";
