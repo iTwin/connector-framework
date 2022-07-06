@@ -15,7 +15,7 @@ import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
-describe("iTwin Connector Fwk StandAlone", () => {
+describe("iTwin Connector Fwk StandAlone #standalone", () => {
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
