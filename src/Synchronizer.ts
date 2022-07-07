@@ -458,12 +458,15 @@ export class Synchronizer {
     });
 
     // If all elements were deleted successfully, delete the parent.
+
     if (childrenStatus === IModelStatus.Success) {
       // Throws. We can't recover from this, so we let it explode the process.
       if (isElement && !this._seenElements.has(element)) {
         this.imodel.elements.deleteElement(element);
-      } else if (!isElement && children.length === 0) {
-        this.imodel.models.deleteModel(element);
+      } else if (!isElement && childrenOfModel(this.imodel, model.id).length === 0) {
+        // Delete both the modeled element and the model.
+        this.imodel.models.deleteModel(model.id);
+        this.imodel.elements.deleteElement(element);
       }
     }
 
