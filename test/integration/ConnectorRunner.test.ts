@@ -91,8 +91,11 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
     const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
-    utils.verifyIModel(db, jobArgs, false);
-    db.close();
+    try {
+      utils.verifyIModel(db, jobArgs, false);
+    } finally {
+      db.close();
+    }
   }
 
   it("should download and perform updates on a new imodel", async () => {
@@ -117,7 +120,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
   });
 
-  it("should download and perform updates on an existing imodel", async () => {
+  it.skip("should download and perform updates on an existing imodel", async () => {
+    // TODO: This test does not seem to operate on a fresh iModel; see before().
+
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
