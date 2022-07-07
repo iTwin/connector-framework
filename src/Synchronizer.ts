@@ -449,6 +449,7 @@ export class Synchronizer {
       // The element is a parent element.
       children = this.imodel.elements.queryChildren(element);
     } else {
+      // The element is a modeled element.
       children = childrenOfModel(this.imodel, model.id);
     }
 
@@ -457,7 +458,6 @@ export class Synchronizer {
     });
 
     // If all elements were deleted successfully, delete the parent.
-
     if (childrenStatus === IModelStatus.Success) {
       // Throws. We can't recover from this, so we let it explode the process.
       if (isElement && !this._seenElements.has(element)) {
@@ -467,7 +467,6 @@ export class Synchronizer {
       }
     }
 
-    // The element is a modeled element.
     return IModelStatus.Success;
   }
 
