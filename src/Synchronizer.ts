@@ -86,10 +86,10 @@ function foldStatus(folded: IModelStatus, addition: IModelStatus) {
   return addition;
 }
 
-function elementsInModel(imodel: IModelDb, model: Id64String): Id64String[] {
+function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
   const elements: Id64String[] = [];
 
-  const query = "select ECInstanceId from bis:Element where Model.id=?";
+  const query = "select ECInstanceId from bis:Element where Model.id=? and Parent is NULL";
   imodel.withPreparedStatement<void>(query, (statement) => {
     statement.bindId(1, model);
     for (const row of statement) {
@@ -449,7 +449,7 @@ export class Synchronizer {
       // The element is a parent element.
       children = this.imodel.elements.queryChildren(element);
     } else {
-      children = elementsInModel(this.imodel, model.id);
+      children = childrenOfModel(this.imodel, model.id);
     }
 
     children.forEach((child) => {
@@ -461,10 +461,8 @@ export class Synchronizer {
     if (childrenStatus === IModelStatus.Success) {
       // Throws. We can't recover from this, so we let it explode the process.
       if (isElement && !this._seenElements.has(element)) {
-        console.log(this.imodel.elements.getElement(element).userLabel);
         this.imodel.elements.deleteElement(element);
       } else if (!isElement && children.length === 0) {
-        console.log(this.imodel.models.getModel(element).name);
         this.imodel.models.deleteModel(element);
       }
     }

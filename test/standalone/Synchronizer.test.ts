@@ -69,7 +69,7 @@ describe("synchronizer #standalone", () => {
       parent: new SubjectOwnsPartitionElements(subjectId),
     };
 
-    const partitionId = imodel.elements.insertElement(partitionProps);
+    const partitionId = imodel.elements.insertElement(new DefinitionPartition(partitionProps, imodel).toJSON());
 
     const modelProps: ModelProps = {
       classFullName: DictionaryModel.classFullName,
