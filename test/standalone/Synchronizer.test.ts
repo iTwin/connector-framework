@@ -447,4 +447,40 @@ describe("synchronizer #standalone", () => {
       count(empty, query("blueberries"), 1);
     });
   });
+
+  describe("detect deleted elements", () => {
+    it("deletes child that is not visited", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      let synchronizer = new Synchronizer(empty, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [ , , modelId ] = makeToyElement(empty);
+      const [ meta, tree ] = berryGroups(empty, modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(empty, query("strawberries"), 1);
+      count(empty, query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(empty, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      tree.childElements!.pop();
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      synchronizer.deleteInChannel(modelId);
+
+      count(empty, query("strawberries"), 1);
+      count(empty, query("raspberries"), 0);
+    });
+  });
 });

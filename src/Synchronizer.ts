@@ -79,6 +79,27 @@ export interface SynchronizationResults {
   itemState: ItemState;
 }
 
+function foldStatus(folded: IModelStatus, addition: IModelStatus) {
+  if (folded !== IModelStatus.Success) {
+    return folded;
+  }
+  return addition;
+}
+
+function elementsInModel(imodel: IModelDb, model: Id64String): Id64String[] {
+  const elements: Id64String[] = [];
+
+  const query = "select ECInstanceId from bis:Element where Model.id=?";
+  imodel.withPreparedStatement<void>(query, (statement) => {
+    statement.bindId(1, model);
+    for (const row of statement) {
+      elements.push(row.id);
+    }
+  });
+
+  return elements;
+}
+
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -400,6 +421,8 @@ export class Synchronizer {
    * @beta
    */
   public detectDeletedElements() {
+    // TODO: Why are snapshots skipped?
+
     if (this.imodel.isSnapshotDb())
       return;
 
@@ -409,8 +432,50 @@ export class Synchronizer {
       this.detectDeletedElementsInChannel();
   }
 
+  public deleteInChannel(element: Id64String): IModelStatus {
+    // There are only two kinds of elements in BIS: modeled elements and parent elements.
+    // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
+
+    // We perform a post-order traversal down the channel, because we must ensure that every child
+    // is deleted before its parent, and every model before its modeled element.
+
+    let children: Id64String[];
+    let childrenStatus: IModelStatus = IModelStatus.Success;
+
+    const model = this.imodel.models.tryGetSubModel(element);
+    const isElement = model === undefined;
+
+    if (isElement) {
+      // The element is a parent element.
+      children = this.imodel.elements.queryChildren(element);
+    } else {
+      children = elementsInModel(this.imodel, model.id);
+    }
+
+    children.forEach((child) => {
+      childrenStatus = foldStatus(childrenStatus, this.deleteInChannel(child));
+    });
+
+    // If all elements were deleted successfully, delete the parent.
+
+    if (childrenStatus === IModelStatus.Success) {
+      // Throws. We can't recover from this, so we let it explode the process.
+      if (isElement && !this._seenElements.has(element)) {
+        console.log(this.imodel.elements.getElement(element).userLabel);
+        this.imodel.elements.deleteElement(element);
+      } else if (!isElement && children.length === 0) {
+        console.log(this.imodel.models.getModel(element).name);
+        this.imodel.models.deleteModel(element);
+      }
+    }
+
+    // The element is a modeled element.
+    return IModelStatus.Success;
+  }
+
   private detectDeletedElementsInChannel() {
-    // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
+    // This detection only is called for connectors that support a single source file per channel.
+    // If we skipped that file because it was unchanged, then we don't need to delete anything.
     if (this._unchangedSources.length !== 0)
       return;
     const sql = `SELECT aspect.Element.Id FROM ${ExternalSourceAspect.classFullName} aspect WHERE aspect.Kind !='DocumentWithBeGuid'`;
@@ -436,11 +501,11 @@ export class Synchronizer {
   }
 
   private detectDeletedElementsInFiles() {
-    for (const value of this._links.values()) {
-      if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
-        continue;
-      assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
-      this.detectDeletedElementsInScope(value.elementProps.id);
+    for (const link of this._links.values()) {
+      if (link.itemState === ItemState.Changed) {
+        assert(link.elementProps.id !== undefined && Id64.isValidId64(link.elementProps.id));
+        this.detectDeletedElementsInScope(link.elementProps.id);
+      }
     }
   }
 
