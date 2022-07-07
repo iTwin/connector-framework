@@ -273,11 +273,17 @@ export class ConnectorRunner {
         this._db.abandonChanges();
       }
       await this.db.locks.releaseAllLocks();
-    } catch (err) {
+    } catch (err1) {
       // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
-      console.error(err);
+      // eslint-disable-next-line no-console
+      console.error(err1);
     } finally {
-      this.recordError(err);
+      try {
+        this.recordError(err);
+      } catch (err2) {
+        // eslint-disable-next-line no-console
+        console.error(err2);
+      }
     }
   }
 
