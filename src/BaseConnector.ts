@@ -18,7 +18,7 @@ export abstract class BaseConnector {
   private _synchronizer?: Synchronizer;
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
-  
+
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
   }
