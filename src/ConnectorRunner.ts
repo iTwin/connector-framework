@@ -268,11 +268,17 @@ export class ConnectorRunner {
   }
 
   private async onFailure(err: any) {
-    if (this._db && this._db.isBriefcaseDb()) {
-      this._db.abandonChanges();
+    try {
+      if (this._db && this._db.isBriefcaseDb()) {
+        this._db.abandonChanges();
+      }
+      await this.db.locks.releaseAllLocks();
+    } catch (err) {
+      // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
+      console.error(err);
+    } finally {
+      this.recordError(err);
     }
-    await this.db.locks.releaseAllLocks();
-    this.recordError(err);
   }
 
   public recordError(err: any) {
