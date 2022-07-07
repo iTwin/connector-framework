@@ -564,4 +564,12 @@ describe("synchronizer #standalone", () => {
       assert.isNotOk(deletedModel);
     });
   });
+
+  describe("native", () => {
+    it("can delete model", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      const [,,, modelId] = makeToyElement(empty);
+      assert.doesNotThrow(() => empty.models.deleteModel(modelId));
+    });
+  });
 });
