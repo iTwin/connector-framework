@@ -8,6 +8,7 @@ import type { Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import type { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
+import * as path from "path";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -26,6 +27,11 @@ export abstract class BaseConnector {
   public async onOpenIModel(): Promise<BentleyStatus> {
     return BentleyStatus.SUCCESS;
   }
+
+  /** This is called when the synchronization is finished, just before the iModel is closed. The connector can implement this callback if its needs
+   * to close the source file or do any other post-synchronization clean-up. The connector should *not* attempt to write to the iModel.
+   */
+  public onClosingIModel?: () => void;
 
   /** This is only called the first time this source data is synchronized.  Allows the connector to perform any steps after the Job Subject has been created.  It
    * must call synchronizer.recordDocument on the source data. Called in the [Repository channel]($docs/learning/backend/Channel).
@@ -66,7 +72,7 @@ export abstract class BaseConnector {
       canUserFix,
     };
     Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
-    fs.writeFileSync(`${dir}\\SyncError.json`, JSON.stringify(object), {flag: "w"});
+    fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
   }
 
   /**
