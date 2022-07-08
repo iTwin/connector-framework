@@ -18,6 +18,8 @@ import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 
+type Path = string;
+
 export class ConnectorRunner {
 
   private _jobArgs: JobArgs;
@@ -157,14 +159,14 @@ export class ConnectorRunner {
    * This method does not throw any errors
    * @returns BentleyStatus
    */
-  public async run(connector: typeof BaseConnector): Promise<BentleyStatus> {
+  public async run(connector: Path): Promise<BentleyStatus> {
     let runStatus = BentleyStatus.SUCCESS;
     try {
       await this.runUnsafe(connector);
     } catch (err) {
       const msg = (err as any).message;
       Logger.logError(LoggerCategories.Framework, msg);
-      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connector.name}`);
+      Logger.logError(LoggerCategories.Framework, `Failed to execute connector module - ${connector}`);
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       await this.onFailure(err);
@@ -174,7 +176,7 @@ export class ConnectorRunner {
     return runStatus;
   }
 
-  private async runUnsafe(connector: typeof BaseConnector) {
+  private async runUnsafe(connector: Path) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
     let reqContext: AccessToken;
@@ -352,8 +354,11 @@ export class ConnectorRunner {
 
   private initProgressMeter() {}
 
-  private async loadConnector(connector: typeof BaseConnector) {
-    this._connector = await connector.create();
+  private async loadConnector(connector: Path) {
+    // TODO: Using `require` in a library isn't ergonomic. See
+    // https://github.com/iTwin/connector-framework/issues/40.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    this._connector = await require(connector).default.create();
   }
 
   private async insertSynchronizationConfigLink(){

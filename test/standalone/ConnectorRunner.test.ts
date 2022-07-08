@@ -6,8 +6,6 @@ import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@itwin/core-b
 import { BentleyStatus } from "@itwin/core-bentley";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
-import TestConnector from "../TestConnector/TestConnector";
-import FailTestITwinConnector from "../TestConnector/FailTestITwinConnector";
 import { SqliteIssueReporter } from "../../src/SqliteIssueReporter";
 import { JobArgs } from "../../src/Args";
 import * as utils from "../ConnectorTestUtils";
@@ -16,6 +14,10 @@ import * as path from "path";
 import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
+
+  const testConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "TestConnector.js");
+  const failConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "FailTestITwinConnector.js");
+
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.mkdirSync(KnownTestLocations.outputDir);
@@ -43,7 +45,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
 
     const runner = new ConnectorRunner(jobArgs);
     const dbpath = path.join(KnownTestLocations.outputDir, "TestConnector.bim");
-    const status = await runner.run(TestConnector);
+    const status = await runner.run(testConnector);
     expect(status).eq(BentleyStatus.SUCCESS);
     const db = SnapshotDb.openFile(dbpath);
     assert.equal(1, utils.getCount(db, SynchronizationConfigLink.classFullName));
@@ -69,7 +71,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
       const issueReporter = new SqliteIssueReporter("37c91053-2257-4976-bf7e-e567d5725fad", "5f7e765f-e3db-4f97-91c5-f344d664e066", "6dd55743-0c78-42ee-be50-558294a752c1", "TestBridge.json", KnownTestLocations.outputDir, undefined, assetFile);
       issueReporter.recordSourceFileInfo("TestBridge.json", "TestBridge", "TestBridge", "itemType", "dataSource", "state", "failureReason", true, 200, true);
       runner.issueReporter = issueReporter;
-      await runner.run(FailTestITwinConnector);
+      await runner.run(failConnector);
     } catch (error) {
       if (isErrnoException(error))
         expect(error.message).to.eql("Connector has not been loaded.");
@@ -96,7 +98,7 @@ describe("iTwin Connector Fwk StandAlone", () => {
     // connectorJobDef.synchConfigLink = ;
     const runner = new ConnectorRunner(jobArgs);
     const fileName = `error.json`;
-    const status = await runner.run(FailTestITwinConnector);
+    const status = await runner.run(failConnector);
     expect(status).eq(BentleyStatus.ERROR);
     const filePath = path.join(KnownTestLocations.outputDir, `${path.basename(assetFile, path.extname(assetFile))}.bim`);
     const imodel = SnapshotDb.openFile(filePath);
