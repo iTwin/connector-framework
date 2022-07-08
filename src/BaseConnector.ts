@@ -28,6 +28,11 @@ export abstract class BaseConnector {
     return BentleyStatus.SUCCESS;
   }
 
+  /** This is called when the synchronization is finished, just before the iModel is closed. The connector can implement this callback if its needs
+   * to close the source file or do any other post-synchronization clean-up. The connector should *not* attempt to write to the iModel.
+   */
+  public onClosingIModel?: () => void;
+
   /** This is only called the first time this source data is synchronized.  Allows the connector to perform any steps after the Job Subject has been created.  It
    * must call synchronizer.recordDocument on the source data. Called in the [Repository channel]($docs/learning/backend/Channel).
    */
