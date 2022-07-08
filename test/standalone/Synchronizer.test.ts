@@ -24,7 +24,7 @@ import { KnownTestLocations } from "../KnownTestLocations";
 
 import type { SourceItem, SynchronizationResults} from "../../src/Synchronizer";
 
-import { ItemState, Synchronizer } from "../../src/Synchronizer";
+import { childrenOfModel, ItemState, Synchronizer } from "../../src/Synchronizer";
 
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
@@ -567,9 +567,26 @@ describe("synchronizer #standalone", () => {
 
   describe("native", () => {
     it("can delete model", () => {
+      // Here's our toy element.
+
+      // fruits subject ➡ fruits definition partition ➡ fruits definition model
+
+      // Try to delete the model first, and then the partition.
+
       const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-      const [,,, modelId] = makeToyElement(empty);
+      const [,, partitionId, modelId] = makeToyElement(empty);
+
+      // No definition elements in the model! No need for `deleteDefinitionElements`.
+      assert.deepEqual(childrenOfModel(empty, modelId), []);
+
       assert.doesNotThrow(() => empty.models.deleteModel(modelId));
+      assert.doesNotThrow(() => empty.elements.deleteElement(partitionId));
+
+      const partition = empty.elements.tryGetElement(partitionId);
+      assert.isNotOk(partition);
+
+      const model = empty.models.tryGetModel(modelId);
+      assert.isNotOk(model);
     });
   });
 });

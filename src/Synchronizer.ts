@@ -86,7 +86,7 @@ function foldStatus(folded: IModelStatus, addition: IModelStatus) {
   return addition;
 }
 
-function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
+export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
   const elements: Id64String[] = [];
 
   const query = "select ECInstanceId from bis:Element where Model.id=? and Parent is NULL";
