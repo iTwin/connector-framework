@@ -9,7 +9,7 @@ import * as path from "node:path";
 import * as utils from "../ConnectorTestUtils";
 
 async function main() {
-  const testConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "TestConnector.js");
+  const testConnector = path.join("..", "test", "TestConnector", "TestConnector.js");
 
   await utils.startBackend();
 

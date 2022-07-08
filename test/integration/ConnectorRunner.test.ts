@@ -25,7 +25,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
-  const testConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "TestConnector.js");
+  const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
   before(async () => {
     await utils.startBackend();

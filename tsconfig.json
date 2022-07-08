@@ -5,7 +5,6 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./lib",
-    "rootDir": ".",
     "strict": true,
   },
   "exclude": [

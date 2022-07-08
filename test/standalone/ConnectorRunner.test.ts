@@ -14,9 +14,10 @@ import * as path from "path";
 import * as fs from "fs";
 
 describe("iTwin Connector Fwk StandAlone", () => {
-
-  const testConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "TestConnector.js");
-  const failConnector = path.join(__dirname, "..", "..", "lib", "test", "TestConnector", "FailTestITwinConnector.js");
+  // Hypothesis: The JIT compiler from ts-node executes the connector runner in the test directory,
+  // so we have to pull the compiled connectors relative to that location.
+  const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
+  const failConnector = path.join("..", "lib", "test", "TestConnector", "FailTestITwinConnector.js");
 
   before(async () => {
     if (!IModelJsFs.existsSync(KnownTestLocations.outputDir))
