@@ -11,8 +11,7 @@ import type { DefinitionElementProps, ExternalSourceAspectProps, ExternalSourceP
 import { Code, IModelError, IModelStatus } from "@itwin/core-common";
 
 import {
-  DefinitionGroup,
-  DefinitionPartition, DictionaryModel, ExternalSourceAspect, IModelJsFs,
+  DefinitionGroup, DefinitionModel, DefinitionPartition, ExternalSourceAspect, IModelJsFs,
   RepositoryLink, SnapshotDb, Subject, SubjectOwnsPartitionElements, SubjectOwnsSubjects,
 } from "@itwin/core-backend";
 
@@ -24,7 +23,7 @@ import { KnownTestLocations } from "../KnownTestLocations";
 
 import type { SourceItem, SynchronizationResults} from "../../src/Synchronizer";
 
-import { childrenOfModel, ItemState, Synchronizer } from "../../src/Synchronizer";
+import { ItemState, Synchronizer } from "../../src/Synchronizer";
 
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
@@ -69,10 +68,10 @@ describe("synchronizer #standalone", () => {
       parent: new SubjectOwnsPartitionElements(subjectId),
     };
 
-    const partitionId = imodel.elements.insertElement(new DefinitionPartition(partitionProps, imodel).toJSON());
+    const partitionId = imodel.elements.insertElement(partitionProps);
 
     const modelProps: ModelProps = {
-      classFullName: DictionaryModel.classFullName,
+      classFullName: DefinitionModel.classFullName,
       // TODO: No `new ModelModelsElement(partitionId)`?
       // https://www.itwinjs.org/reference/core-backend/relationships/
       modeledElement: { id: partitionId }, // The bis:Element that this bis:Model is sub-modeling
@@ -529,7 +528,6 @@ describe("synchronizer #standalone", () => {
       const [,, partitionId, modelId] = makeToyElement(empty);
       const [meta, tree] = berryGroups(empty, modelId);
 
-      // TODO: What on earth is this? ❗❗❗❗❗
       assert.strictEqual(partitionId, modelId);
 
       const scope = SnapshotDb.repositoryModelId;
@@ -562,31 +560,6 @@ describe("synchronizer #standalone", () => {
 
       assert.isNotOk(deletedModeledElement);
       assert.isNotOk(deletedModel);
-    });
-  });
-
-  describe("native", () => {
-    it("can delete model", () => {
-      // Here's our toy element.
-
-      // fruits subject ➡ fruits definition partition ➡ fruits definition model
-
-      // Try to delete the model first, and then the partition.
-
-      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
-      const [,, partitionId, modelId] = makeToyElement(empty);
-
-      // No definition elements in the model! No need for `deleteDefinitionElements`.
-      assert.deepEqual(childrenOfModel(empty, modelId), []);
-
-      assert.doesNotThrow(() => empty.models.deleteModel(modelId));
-      assert.doesNotThrow(() => empty.elements.deleteElement(partitionId));
-
-      const partition = empty.elements.tryGetElement(partitionId);
-      assert.isNotOk(partition);
-
-      const model = empty.models.tryGetModel(modelId);
-      assert.isNotOk(model);
     });
   });
 });
