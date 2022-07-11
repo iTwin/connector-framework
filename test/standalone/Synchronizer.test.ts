@@ -8,7 +8,7 @@ import type { DefinitionElementProps, ExternalSourceAspectProps, ExternalSourceP
   InformationPartitionElementProps, ModelProps, RepositoryLinkProps, SubjectProps,
 } from "@itwin/core-common";
 
-import { Code, IModelError, IModelStatus } from "@itwin/core-common";
+import { Code, CodeScopeSpec, CodeSpec, IModelError, IModelStatus } from "@itwin/core-common";
 
 import {
   DefinitionGroup, DefinitionModel, DefinitionPartition, ExternalSourceAspect, IModelJsFs,
@@ -88,11 +88,19 @@ describe("synchronizer #standalone", () => {
       version: "1.0.0",
     };
 
+    const spec = CodeSpec.create(imodel, "definition group spec", CodeScopeSpec.Type.Repository);
+
+    const code = (value: string) => new Code({
+      scope: SnapshotDb.repositoryModelId,
+      spec: spec.name,
+      value,
+    });
+
     const modelId = definitionModel;
 
     const berryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("berries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of berries",
@@ -100,7 +108,7 @@ describe("synchronizer #standalone", () => {
 
     const strawberryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("strawberries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of strawberries",
@@ -109,7 +117,7 @@ describe("synchronizer #standalone", () => {
 
     const raspberryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("raspberries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of raspberries",
