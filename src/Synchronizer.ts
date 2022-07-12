@@ -448,7 +448,7 @@ export class Synchronizer {
     // is deleted before its parent, and every model before its modeled element.
 
     let children: Id64String[];
-    const childrenStatus: IModelStatus = IModelStatus.Success;
+    let childrenStatus: IModelStatus = IModelStatus.Success;
 
     const model = this.imodel.models.tryGetSubModel(instance);
     const isElement = model === undefined;
@@ -461,7 +461,9 @@ export class Synchronizer {
       children = childrenOfModel(this.imodel, model.id, Element);
     }
 
-    children.forEach((child) => foldStatus(childrenStatus, this.deleteInChannel(child)));
+    children.forEach((child) => {
+      childrenStatus = foldStatus(childrenStatus, this.deleteInChannel(child));
+    });
 
     // If all elements were deleted successfully, delete the parent.
 
