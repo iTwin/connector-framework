@@ -6,7 +6,8 @@
  * @module Framework
  */
 
-import { BriefcaseDb, DefinitionModel, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
+import type { BriefcaseDb, ECSqlStatement, IModelDb} from "@itwin/core-backend";
+import { Element} from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
@@ -86,10 +87,17 @@ function foldStatus(folded: IModelStatus, addition: IModelStatus) {
   return addition;
 }
 
-export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
+/**
+ * Return the iModel IDs of the immediate children of a model.
+ * @param imodel The iModel containing the model.
+ * @param model The model containing the children.
+ * @param kind The type of child element.
+ * @returns A list of iModel IDs of the immediate children.
+ */
+export function childrenOfModel<E extends typeof Element | typeof DefinitionElement>(imodel: IModelDb, model: Id64String, kind: E): Id64String[] {
   const elements: Id64String[] = [];
+  const query = `select ECInstanceId from ${kind.classFullName} where Model.id=? and Parent is NULL`;
 
-  const query = "select ECInstanceId from bis:Element where Model.id=? and Parent is NULL";
   imodel.withPreparedStatement<void>(query, (statement) => {
     statement.bindId(1, model);
     for (const row of statement) {
@@ -433,83 +441,61 @@ export class Synchronizer {
   }
 
   public deleteInChannel(instance: Id64String): IModelStatus {
-    const go: (id: Id64String) => [IModelStatus, Id64String[]] = (id: Id64String) => {
-      // There are only two kinds of elements in BIS: modeled elements and parent elements.
-      // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
+    // There are only two kinds of elements in BIS: modeled elements and parent elements.
+    // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
 
-      // We perform a post-order traversal down the channel, because we must ensure that every child
-      // is deleted before its parent, and every model before its modeled element.
+    // We perform a post-order traversal down the channel, because we must ensure that every child
+    // is deleted before its parent, and every model before its modeled element.
 
-      let children: Id64String[];
-      let childrenStatus: IModelStatus = IModelStatus.Success;
+    let children: Id64String[];
+    const childrenStatus: IModelStatus = IModelStatus.Success;
 
-      const model = this.imodel.models.tryGetSubModel(id);
-      const isElement = model === undefined;
+    const model = this.imodel.models.tryGetSubModel(instance);
+    const isElement = model === undefined;
 
-      if (isElement) {
-        // The element is a parent element.
-        children = this.imodel.elements.queryChildren(id);
-      } else {
-        // The element is a modeled element.
-        children = childrenOfModel(this.imodel, model.id);
-      }
+    if (isElement) {
+      // The element is a parent element.
+      children = this.imodel.elements.queryChildren(instance);
+    } else {
+      // The element is a modeled element.
+      children = childrenOfModel(this.imodel, model.id, Element);
+    }
 
-      let definitions: Id64String[] = [];
+    children.forEach((child) => foldStatus(childrenStatus, this.deleteInChannel(child)));
 
-      children.forEach((child) => {
-        const [childStatus, childDefinitions] = go(child);
-        childrenStatus = foldStatus(childrenStatus, childStatus);
-        definitions.push(...childDefinitions);
-      });
+    // If all elements were deleted successfully, delete the parent.
 
-      // If all elements were deleted successfully, delete the parent.
+    // TODO: This if statement throws. We can't recover from this, so we let it explode the
+    // process. Can this leave the iModel in an inconsistent state?
 
-      // TODO: This if statement throws. We can't recover from this, so we let it explode the
-      // process. Can this leave the iModel in an inconsistent state?
+    if (childrenStatus === IModelStatus.Success) {
+      if (isElement && !this._seenElements.has(instance)) {
+        const element = this.imodel.elements.getElement(instance);
+        if (element instanceof DefinitionElement) {
+          // TODO: This is inefficient, but I'm trying to avoid prematurely optimizing. If we need
+          // to, we can locate the youngest common ancestor of the definition elements seen in a
+          // definition model and pass the parent.
+          this.imodel.elements.deleteDefinitionElements([instance]);
+        } else {
+          this.imodel.elements.deleteElement(instance);
+        }
+      } else if (!isElement) {
+        // If we've deleted all the immediate children of the model, delete both the modeled
+        // element and the model.
 
-      if (childrenStatus === IModelStatus.Success) {
-        console.log(`hello ${id}`);
-        if (isElement && !this._seenElements.has(id)) {
-          const element = this.imodel.elements.getElement(id);
-          // Force TypeScript to narrow the type of Element. If it's a definition element, try to
-          // delete it when we swim up to the definition model that contains it. This includes
-          // definition containers and groups.
+        // TODO: Should we ignore the dictionary model because we can't delete it? A dictionary
+        // model is a definition model, so this will probably explode.
 
-          // See also:
-          // https://www.itwinjs.org/bis/intro/modeling-perspectives/#modeling-perspectives-and-bis-class-hierarchy
+        const remainingChildren = childrenOfModel(this.imodel, model.id, Element);
 
-          if (element instanceof DefinitionElement) {
-            console.log(`  push definition element ${id}`);
-            definitions.push(id);
-          } else {
-            console.log(`deleting element ${id}`);
-            this.imodel.elements.deleteElement(id);
-          }
-        } else if (!isElement) {
-          if (model instanceof DefinitionModel) {
-            // TODO: Should we ignore the dictionary model because we can't delete it? A dictionary
-            // model is a definition model, so this will probably explode.
-            console.log(`  deleting definition elements ${definitions}`);
-            this.imodel.elements.deleteDefinitionElements(definitions);
-
-            // Regardless of how successful we were, drop the definitions we've been gathering.
-            definitions = [];
-          }
-
-          // If we've deleted all the immediate children of the model, delete both the modeled
-          // element and the model.
-          if (childrenOfModel(this.imodel, model.id).length === 0) {
-            console.log(`  deleting model ${model.id}`);
-            this.imodel.models.deleteModel(model.id);
-            this.imodel.elements.deleteElement(id);
-          }
+        if (remainingChildren.length === 0) {
+          this.imodel.models.deleteModel(model.id);
+          this.imodel.elements.deleteElement(instance);
         }
       }
+    }
 
-      return [IModelStatus.Success, definitions];
-    };
-
-    return go(instance)[0];
+    return IModelStatus.Success;
   }
 
   private detectDeletedElementsInChannel() {
