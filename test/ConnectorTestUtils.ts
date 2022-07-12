@@ -14,7 +14,7 @@ import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnect
 import { CodeSpecs } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
-import type { JobArgs } from "../Args";
+import type { JobArgs } from "../src/Args";
 import * as fs from "fs";
 
 export function setupLogging() {
@@ -50,6 +50,7 @@ function loadEnv(envFile: string) {
   const dotenv = require("dotenv"); // eslint-disable-line @typescript-eslint/no-var-requires
   const dotenvExpand = require("dotenv-expand"); // eslint-disable-line @typescript-eslint/no-var-requires
   const envResult = dotenv.config({ path: envFile });
+
   if (envResult.error) {
     throw envResult.error;
   }
@@ -58,7 +59,7 @@ function loadEnv(envFile: string) {
 }
 
 export async function startBackend(): Promise<void> {
-  loadEnv(path.join(__dirname, "..", "..", ".env"));
+  loadEnv(path.join(__dirname, "..", ".env"));
   const config = new IModelHostConfiguration();
   // config.concurrentQuery.concurrent = 4; // for test restrict this to two threads. Making closing connection faster
   // NEEDSWORK how do we do this in imodel js V3.x?

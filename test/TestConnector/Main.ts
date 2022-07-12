@@ -2,21 +2,21 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-
 /* eslint-disable no-console */
-import { ConnectorRunner } from "../../ConnectorRunner";
+import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { BentleyStatus } from "@itwin/core-bentley";
+import * as path from "node:path";
 import * as utils from "../ConnectorTestUtils";
-import * as path from "path";
 
 async function main() {
+  const testConnector = path.join("..", "test", "TestConnector", "TestConnector.js");
+
   await utils.startBackend();
 
-  const connectorFile = path.join(__dirname, "TestConnector.js");
   const argfile = process.argv[2];
   const runner = ConnectorRunner.fromFile(argfile);
 
-  const runStatus = await runner.run(connectorFile);
+  const runStatus = await runner.run(testConnector);
   if (runStatus !== BentleyStatus.SUCCESS)
     throw new Error("ConnectorRunner failed");
 

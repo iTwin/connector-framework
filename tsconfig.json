@@ -4,11 +4,9 @@
     "target": "es2017",
     "module": "commonjs",
     "moduleResolution": "node",
-    "outDir": "./lib"
+    "outDir": "./lib",
+    "strict": true,
   },
-  "include": [
-    "./src/**/*.ts"
-  ],
   "exclude": [
     "lib",
     "node_modules"
