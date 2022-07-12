@@ -9,7 +9,6 @@ import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-sig
 import { TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
-import TestConnector from "../TestConnector/TestConnector";
 import type { HubArgsProps} from "../../src/Args";
 import { HubArgs, JobArgs } from "../../src/Args";
 import { KnownTestLocations } from "../KnownTestLocations";
@@ -25,6 +24,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let updateIModelId: Id64String | undefined;
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
+
+  const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
   before(async () => {
     await utils.startBackend();
@@ -82,7 +83,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
-    const status = await runner.run(TestConnector);
+    const status = await runner.run(testConnector);
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 

@@ -1,0 +1,20 @@
+name: Coveralls
+on: [ push, pull_request ]
+
+jobs:
+  wear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2.4.2
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.3.0
+      - run: npm install
+      - name: Run tests
+        run: npm run test || exit 0
+      - name: Write coverage
+        run: npm run coveralls
+      - name: Setup Coveralls
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

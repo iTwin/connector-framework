@@ -25,6 +25,7 @@ import type { QuadCasing, TriangleCasing } from "./TestConnectorGeometry";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing } from "./TestConnectorGeometry";
 import * as hash from "object-hash";
 import * as fs from "fs";
+import * as path from "node:path";
 
 export default class TestConnector extends BaseConnector {
 
@@ -69,7 +70,17 @@ export default class TestConnector extends BaseConnector {
       return;
     }
     TestConnectorSchema.registerSchema();
-    const fileName = TestConnectorSchema.schemaFilePath;
+
+    // WIP: JIT compiler in ts-node means that __dirname will be different when we require() this
+    // connector. Hard-code as a hack, I strongly recommend placing the responsibility of the
+    // require() on the node wrapper. I'm open to tooling suggestions too.
+
+    // Not sure how nativeDb.importSchemas reads files, we use an absolute path, which seems to
+    // work.
+
+    // const fileName = TestConnectorSchema.schemaFilePath;
+    const fileName = path.join(__dirname, "..", "..", "..", "test", "assets", "TestConnector.ecschema.xml");
+
     await this.synchronizer.imodel.importSchemas([fileName]);
   }
 

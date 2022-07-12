@@ -19,9 +19,10 @@
     "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
     "lint:fix": "npm run lint -- --fix",
     "test": "npm run test:standalone",
+    "coveralls": "npx nyc report --reporter=text-lcov > ./coverage/lcov.info",
     "lint:copyright": "node .githooks/copyright-linter.js",
-    "test:standalone": "nyc mocha --grep standalone",
-    "test:integration": "nyc mocha --grep integration",
+    "test:standalone": "npm run build && nyc mocha --grep StandAlone",
+    "test:integration": "npm run build && nyc mocha --grep integration",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
     "documentation": "node ./node_modules/@itwin/build-tools/scripts/docs.js --source=./src --out=./documentation --json=./documentation/doc.json --excludes=test"
   },
