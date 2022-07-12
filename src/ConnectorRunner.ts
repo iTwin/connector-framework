@@ -417,7 +417,7 @@ export class ConnectorRunner {
 
   private async getToken() {
     let token: string;
-    if (["standalone", "snapshot"].includes(this._jobArgs.dbType))
+    if (this._jobArgs.dbType === "snapshot")
       return "notoken";
 
     if (this.hubArgs.doInteractiveSignIn)
