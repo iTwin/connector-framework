@@ -4,15 +4,16 @@
 *--------------------------------------------------------------------------------------------*/
 import type { Id64String } from "@itwin/core-bentley";
 
-import type { DefinitionElementProps, ExternalSourceAspectProps, ExternalSourceProps,
+import type { DefinitionElementProps, ElementProps, ExternalSourceAspectProps, ExternalSourceProps,
   InformationPartitionElementProps, ModelProps, RepositoryLinkProps, SubjectProps,
 } from "@itwin/core-common";
 
 import { Code, CodeScopeSpec, CodeSpec, IModelError, IModelStatus } from "@itwin/core-common";
 
 import {
-  DefinitionGroup, DefinitionModel, DefinitionPartition, ExternalSourceAspect, IModelJsFs,
-  RepositoryLink, SnapshotDb, Subject, SubjectOwnsPartitionElements, SubjectOwnsSubjects,
+  DefinitionGroup, DefinitionModel, DefinitionPartition, ElementGroupsMembers, ExternalSourceAspect,
+  Group, IModelJsFs, RepositoryLink, SnapshotDb, Subject, SubjectOwnsPartitionElements,
+  SubjectOwnsSubjects,
 } from "@itwin/core-backend";
 
 import { assert } from "chai";
@@ -568,6 +569,60 @@ describe("synchronizer #standalone", () => {
 
       assert.isNotOk(deletedModeledElement);
       assert.isNotOk(deletedModel);
+    });
+
+    it("deletes element referred to by other element", () => {
+      const empty = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
+      let synchronizer = new Synchronizer(empty, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement(empty);
+      const [meta, tree] = berryGroups(empty, modelId);
+
+      const berryBasket: ElementProps = {
+        classFullName: Group.classFullName,
+        code: Code.createEmpty(),
+        model: SnapshotDb.repositoryModelId,
+        userLabel: "a basket of berries",
+      };
+
+      const basketId = empty.elements.insertElement(berryBasket);
+
+      // berries
+      //   o <---+
+      //  / \    |---o berry basket
+      // o   o <-+
+
+      const berry = tree.childElements![1].elementProps.id!;
+      ElementGroupsMembers.create(empty, basketId, tree.elementProps.id!).insert();
+      ElementGroupsMembers.create(empty, basketId, berry).insert();
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(empty, query("berries"), 1);
+      count(empty, query("strawberries"), 1);
+      count(empty, query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(empty, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      tree.childElements = [];
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(empty, query("berries"), 1);
+      count(empty, query("strawberries"), 0);
+      count(empty, query("raspberries"), 0);
     });
   });
 });
