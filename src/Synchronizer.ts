@@ -7,7 +7,7 @@
  */
 
 import type { BriefcaseDb, ECSqlStatement, IModelDb} from "@itwin/core-backend";
-import { Element} from "@itwin/core-backend";
+import { Element, ElementUniqueAspect} from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
@@ -113,6 +113,7 @@ export function childrenOfModel<E extends typeof Element | typeof DefinitionElem
  */
 export class Synchronizer {
   private _seenElements: Set<Id64String> = new Set<Id64String>();
+  private _seenAspects: Set<Id64String> = new Set<Id64String>();
   private _unchangedSources: Id64String[] = new Array<Id64String>();
   private _links = new Map<string, SynchronizationResults>();
 
@@ -560,8 +561,14 @@ export class Synchronizer {
 
   private deleteElements(elementIds: Id64String[], defElementIds: Id64String[]) {
     for (const elementId of elementIds) {
-      if (this.imodel.elements.tryGetElement(elementId))
+      if (this.imodel.elements.tryGetElement(elementId)){
         this.imodel.elements.deleteElement(elementIds);
+        const aspects = this.imodel.elements.getAspects(elementId, ElementUniqueAspect.classFullName);
+        for ( const aspect of aspects){
+          if(!this._seenAspects.has(aspect.id))
+            this.imodel.elements.deleteAspect(aspect.id);
+        }
+      }
     }
     for (const elementId of defElementIds) {
       if (this.imodel.elements.tryGetElement(elementId))
@@ -585,7 +592,6 @@ export class Synchronizer {
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.WrongClass;
     }
-
     this.imodel.elements.updateElement(elementProps);
 
     assert(elementProps.id !== undefined && Id64.isValidId64(elementProps.id));
