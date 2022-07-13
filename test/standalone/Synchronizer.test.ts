@@ -620,6 +620,9 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
 
+      // Assert that the berry basket still exists.
+      assert.isOk(empty.elements.tryGetElement(basketId));
+
       count(empty, query("berries"), 1);
       count(empty, query("strawberries"), 0);
       count(empty, query("raspberries"), 0);
