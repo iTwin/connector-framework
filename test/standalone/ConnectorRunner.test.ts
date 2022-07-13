@@ -13,7 +13,7 @@ import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
 
-describe("iTwin Connector Fwk StandAlone", () => {
+describe("iTwin Connector Fwk #standalone", () => {
   // Hypothesis: The JIT compiler from ts-node executes the connector runner in the test directory,
   // so we have to pull the compiled connectors relative to that location.
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
