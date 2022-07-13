@@ -39,11 +39,9 @@ describe("synchronizer #standalone", () => {
     );
 
     const linkId = results.elementProps.id;
-
     assert.isOk(linkId);
 
     const source = sync.getExternalSourceElementByLinkId(linkId!);
-
     assert.isOk(source);
 
     assert.strictEqual(source!.repository!.id, linkId!);
@@ -210,6 +208,9 @@ describe("synchronizer #standalone", () => {
         );
       };
 
+      // Chai's documentation: https://www.chaijs.com/api/assert/#method_throws
+      // The third parameter can be a regular expression object. We use literal notation.
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp
       assert.throws(oops, IModelError, /Maybe RecordDocument was previously called/i);
     });
   });
