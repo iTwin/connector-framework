@@ -316,7 +316,7 @@ export class ConnectorRunner {
 
   private updateDeletedElements() {
     if (this.jobArgs.doDetectDeletedElements)
-      this.connector.synchronizer.detectDeletedElements();
+      this.connector.synchronizer.deleteInChannel(this.connector.jobSubject.id);
   }
 
   private updateProjectExtent() {
