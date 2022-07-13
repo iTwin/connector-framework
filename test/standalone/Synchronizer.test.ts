@@ -212,6 +212,9 @@ describe("synchronizer #standalone", () => {
         );
       };
 
+      // Chai's documentation: https://www.chaijs.com/api/assert/#method_throws
+      // The third parameter can be a regular expression object. We use literal notation.
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp
       assert.throws(oops, IModelError, /Maybe RecordDocument was previously called/i);
     });
   });
