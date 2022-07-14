@@ -91,8 +91,11 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const briefcaseEntry = briefcases[0];
     expect(briefcaseEntry !== undefined);
     const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
-    utils.verifyIModel(db, jobArgs, false);
-    db.close();
+    try {
+      utils.verifyIModel(db, jobArgs, false);
+    } finally {
+      db.close();
+    }
   }
 
   it("should download and perform updates on a new imodel", async () => {

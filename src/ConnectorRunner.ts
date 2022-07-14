@@ -4,7 +4,7 @@
 *--------------------------------------------------------------------------------------------*/
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
-import type { AccessToken} from "@itwin/core-bentley";
+import type { AccessToken, Id64String} from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
 import type { IModelDb, RequestNewBriefcaseArg} from "@itwin/core-backend";
 import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
@@ -179,94 +179,116 @@ export class ConnectorRunner {
   private async runUnsafe(connector: Path) {
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
 
-    let reqContext: AccessToken;
-
     // load
 
+    Logger.logInfo(LoggerCategories.Framework, "Loading connector...");
     await this.loadConnector(connector);
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector has been loaded.");
 
+    Logger.logInfo(LoggerCategories.Framework, "Authenticating...");
     await this.loadReqContext();
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.reqContext has been loaded.");
 
+    Logger.logInfo(LoggerCategories.Framework, "Retrieving iModel...");
     await this.loadDb();
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.db has been loaded.");
 
+    Logger.logInfo(LoggerCategories.Framework, "Loading synchronizer...");
     await this.loadSynchronizer();
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.connector.synchronizer has been loaded.");
 
-    this.initProgressMeter();
+    // config link
+
+    Logger.logInfo(LoggerCategories.Framework, "Inserting synchronization configuration...");
+    const synchConfig = await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.insertSynchronizationConfigLink(),
+      "write synchronization configuration"
+    );
 
     // source data
 
-    Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
+    Logger.logInfo(LoggerCategories.Framework, "Opening source data...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.connector.openSourceData(this.jobArgs.source),
+      "open source data"
+    );
 
-    const synchConfig = await this.insertSynchronizationConfigLink();
-    await this.connector.openSourceData(this.jobArgs.source);
-    await this.connector.onOpenIModel();
+    // on open imodel
 
-    await this.persistChanges(`Initialization`);
-    Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData ended.");
+    Logger.logInfo(LoggerCategories.Framework, "Before opening the iModel...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.connector.onOpenIModel(),
+      "on open imodel"
+    );
 
     // domain schema
+    // TODO: No locking required here?
 
-    Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema started");
-
-    reqContext = await this.getReqContext();
-    await this.connector.importDomainSchema(reqContext);
-
-    await this.persistChanges(`Domain Schema Update`);
-    Logger.logInfo(LoggerCategories.Framework, "connector.updateDomainSchema ended");
+    Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.connector.importDomainSchema(await this.getReqContext()),
+      "import domain schema"
+    );
 
     // dynamic schema
+    // TODO: No locking required here?
 
-    Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema started");
-
-    reqContext = await this.getReqContext();
-    await this.connector.importDynamicSchema(reqContext);
-
-    await this.persistChanges("Dynamic Schema Update");
-    Logger.logInfo(LoggerCategories.Framework, "connector.importDynamicSchema ended");
+    Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.connector.importDynamicSchema(await this.getReqContext()),
+      "import dynamic schema"
+    );
 
     // initialize job subject
 
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject started");
+    Logger.logInfo(LoggerCategories.Framework, "Writing job subject...");
+    const jobSubject = await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.updateJobSubject(),
+      "write job subject"
+    );
 
-    const jobSubject = await this.updateJobSubject();
+    // initialize job
 
-    await this.persistChanges(`Job Subject Update`);
-    Logger.logInfo(LoggerCategories.Framework, "ConnectorRunner.updateJobSubject ended.");
+    Logger.logInfo(LoggerCategories.Framework, "Initializing job...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      this.connector.initializeJob.bind(this.connector),
+      "initialize job"
+    );
 
-    // definitions changes
+    // dictionary and definitions
 
-    Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
-
-    await this.db.locks.acquireLocks({exclusive: jobSubject.id});
-
-    await this.connector.initializeJob();
-    await this.connector.importDefinitions();
-
-    await this.persistChanges("Definitions Update");
-    Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions ended");
+    Logger.logInfo(LoggerCategories.Framework, "Importing definitions...");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => this.connector.importDefinitions(),
+      "import definitions"
+    );
 
     // data changes
 
-    Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
+    Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
+    await this.doInChannel(
+      jobSubject.id,
+      async () => {
+        await this.connector.updateExistingData();
+        this.updateDeletedElements();
+      },
+      "synchronize"
+    );
 
-    await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId});
-
-    await this.connector.updateExistingData();
-    this.updateDeletedElements();
-    this.updateProjectExtent();
-
-    await this.persistChanges("Data Update");
-    Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData ended");
-
-    await this.updateSynchronizationConfigLink(synchConfig);
-    await this.persistChanges("Synch Config Update");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      async () => {
+        this.updateProjectExtent();
+        this.updateSynchronizationConfigLink(synchConfig);
+      },
+      "write synchronization finish time and extent"
+    );
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
-    await this.db.locks.releaseAllLocks();
   }
 
   private async onFailure(err: any) {
@@ -359,7 +381,6 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
-      await this.db.locks.acquireLocks({shared: IModel.repositoryModelId});
       const newSubjectId = this.db.elements.insertElement(subjectProps);
       subject = this.db.elements.getElement<Subject>(newSubjectId);
       // await this.db.locks.releaseAllLocks();
@@ -369,8 +390,6 @@ export class ConnectorRunner {
     return subject;
   }
 
-  private initProgressMeter() {}
-
   private async loadConnector(connector: Path) {
     // TODO: Using `require` in a library isn't ergonomic. See
     // https://github.com/iTwin/connector-framework/issues/40.
@@ -378,38 +397,36 @@ export class ConnectorRunner {
     this._connector = await require(connector).default.create();
   }
 
-  private async insertSynchronizationConfigLink(){
-    assert(this._db !== undefined);
+  private insertSynchronizationConfigLink(){
     let synchConfigData = {
       classFullName:  SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
-      code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
+      code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     };
     if (this.jobArgs.synchConfigFile) {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
-    const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
+    const prevSynchConfigId = this.db.elements.queryElementIdByCode(
+      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
+    );
     let idToReturn: string;
     if(prevSynchConfigId === undefined) {
-      await this._db.locks.acquireLocks({exclusive: IModel.dictionaryId});
-      idToReturn = this._db.elements.insertElement(synchConfigData);
+      idToReturn = this.db.elements.insertElement(synchConfigData);
     } else {
-      await this.updateSynchronizationConfigLink(prevSynchConfigId);
+      this.updateSynchronizationConfigLink(prevSynchConfigId);
       idToReturn = prevSynchConfigId;
     }
     return idToReturn;
   }
-  private async updateSynchronizationConfigLink(synchConfigId: string){
-    assert(this._db !== undefined);
+  private updateSynchronizationConfigLink(synchConfigId: string){
     const synchConfigData = {
       id: synchConfigId,
       classFullName:  SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
-      code: LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"),
+      code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
     };
-    await this.db.locks.acquireLocks({exclusive: synchConfigData.id});
-    this._db.elements.updateElement(synchConfigData);
+    this.db.elements.updateElement(synchConfigData);
   }
 
   private async loadReqContext() {
@@ -504,7 +521,7 @@ export class ConnectorRunner {
       const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
-
+      this.hubArgs.briefcaseId;
       const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
       if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
         await BriefcaseDb.upgradeSchemas(bcProps);
@@ -532,5 +549,12 @@ export class ConnectorRunner {
     } else {
       this.db.saveChanges(comment);
     }
+  }
+
+  private async doInChannel<R>(channel: Id64String, task: () => Promise<R>, message: string): Promise<R> {
+    await this.db.locks.acquireLocks({ exclusive: channel });
+    const result = await task();
+    await this.persistChanges(message);
+    return result;
   }
 }
