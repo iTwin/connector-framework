@@ -108,6 +108,26 @@ export function childrenOfModel<E extends typeof Element | typeof DefinitionElem
   return elements;
 }
 
+/**
+ * Return the iModel IDs of the immediate children of an element.
+ * @param imodel The iModel containing the element.
+ * @param element The element that owns the desired children.
+ * @returns A list of iModel IDs of the immediate children.
+ */
+export function childrenOfElement(imodel: IModelDb, element: Id64String): Id64String[] {
+  const elements: Id64String[] = [];
+  const query = "select ECInstanceId from bis:Element as e where e.Parent.id=?";
+
+  imodel.withPreparedStatement<void>(query, (statement) => {
+    statement.bindId(1, element);
+    for (const row of statement) {
+      elements.push(row.id);
+    }
+  });
+
+  return elements;
+}
+
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -472,7 +492,15 @@ export class Synchronizer {
     // process. Can this leave the iModel in an inconsistent state?
 
     if (childrenStatus === IModelStatus.Success) {
-      if (isElement && !this._seenElements.has(instance)) {
+      let remainingChildren: Id64String[];
+
+      if (isElement) {
+        remainingChildren = childrenOfElement(this.imodel, instance);
+      } else {
+        remainingChildren = childrenOfModel(this.imodel, model.id, Element);
+      }
+
+      if (isElement && remainingChildren.length === 0 && !this._seenElements.has(instance)) {
         const element = this.imodel.elements.getElement(instance);
         if (element instanceof DefinitionElement) {
           // TODO: This is inefficient, but I'm trying to avoid prematurely optimizing. If we need
@@ -482,19 +510,15 @@ export class Synchronizer {
         } else {
           this.imodel.elements.deleteElement(instance);
         }
-      } else if (!isElement) {
+      } else if (!isElement && remainingChildren.length === 0) {
         // If we've deleted all the immediate children of the model, delete both the modeled
         // element and the model.
 
-        // TODO: Should we ignore the dictionary model because we can't delete it? A dictionary
-        // model is a definition model, so this will probably explode.
+        // TODO: Should we ignore the dictionary model because we can't delete it? This will
+        // explode, just like deleting the repository model.
 
-        const remainingChildren = childrenOfModel(this.imodel, model.id, Element);
-
-        if (remainingChildren.length === 0) {
-          this.imodel.models.deleteModel(model.id);
-          this.imodel.elements.deleteElement(instance);
-        }
+        this.imodel.models.deleteModel(model.id);
+        this.imodel.elements.deleteElement(instance);
       }
     }
 

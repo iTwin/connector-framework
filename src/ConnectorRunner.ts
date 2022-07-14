@@ -315,8 +315,10 @@ export class ConnectorRunner {
   }
 
   private updateDeletedElements() {
-    if (this.jobArgs.doDetectDeletedElements)
-      this.connector.synchronizer.deleteInChannel(this.connector.jobSubject.id);
+    if (this.jobArgs.doDetectDeletedElements) {
+      const job = this.connector.jobSubject.id;
+      this.connector.synchronizer.deleteInChannel(job);
+    }
   }
 
   private updateProjectExtent() {
