@@ -405,6 +405,9 @@ describe("synchronizer #standalone", () => {
       tree.childElements![0].itemState = ItemState.Changed;
       tree.childElements![1].itemState = ItemState.Unchanged;
 
+      // Synchronizer does not care if we've actually changed the element, it will just look at what
+      // we've specified here.
+      //                                           vvvv
       assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
@@ -493,6 +496,40 @@ describe("synchronizer #standalone", () => {
       count(query("berries"), 1);
       count(query("strawberries"), 1);
       count(query("raspberries"), 0);
+    });
+
+    it("does not delete a parent if its children exist", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Oops, somehow we haven't visited the parent this run!
+      synchronizer.onElementSeen(tree.childElements![0].elementProps.id!);
+      synchronizer.onElementSeen(tree.childElements![1].elementProps.id!);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(query("berries"), 1);      // <-- Still alive!
+      count(query("strawberries"), 1); // <-- Seen!
+      count(query("raspberries"), 1);  // <-- Seen!
     });
 
     it("deletes all children of an element", () => {
@@ -589,7 +626,7 @@ describe("synchronizer #standalone", () => {
 
       // berries
       //   o <---+
-      //  / \    |---o berry basket
+      //  / \    |---o berry basket (referencing strength)
       // o   o <-+
 
       const berry = tree.childElements![1].elementProps.id!;

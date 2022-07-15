@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { IModelJsFs, SnapshotDb, SynchronizationConfigLink } from "@itwin/core-backend";
+import { IModelJsFs, SnapshotDb, StandaloneDb, SynchronizationConfigLink } from "@itwin/core-backend";
 import { BentleyStatus } from "@itwin/core-bentley";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
@@ -49,6 +49,35 @@ describe("iTwin Connector Fwk #standalone", () => {
     const status = await runner.run(testConnector);
     expect(status).eq(BentleyStatus.SUCCESS);
     const db = SnapshotDb.openFile(dbpath);
+    assert.equal(1, utils.getCount(db, SynchronizationConfigLink.classFullName));
+    utils.verifyIModel(db, jobArgs);
+    db.close();
+  });
+
+  it.skip("Should perform updates on standalone iModel", async () => {
+    const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: assetFile,
+      stagingDir: KnownTestLocations.outputDir,
+      dbType: "standalone",
+    });
+
+    const dbpath = path.join(KnownTestLocations.outputDir, "TestConnector.bim");
+
+    let runner = new ConnectorRunner(jobArgs);
+    let status = await runner.run(testConnector);
+    let db = StandaloneDb.openFile(dbpath);
+
+    expect(status).eq(BentleyStatus.SUCCESS);
+    assert.equal(1, utils.getCount(db, SynchronizationConfigLink.classFullName));
+    utils.verifyIModel(db, jobArgs);
+    db.close();
+
+    runner = new ConnectorRunner(jobArgs);
+    status = await runner.run(testConnector);
+    db = StandaloneDb.openFile(dbpath);
+
+    expect(status).eq(BentleyStatus.SUCCESS);
     assert.equal(1, utils.getCount(db, SynchronizationConfigLink.classFullName));
     utils.verifyIModel(db, jobArgs);
     db.close();

@@ -436,7 +436,8 @@ export class ConnectorRunner {
 
   private async getToken() {
     let token: string;
-    if (this._jobArgs.dbType === "snapshot")
+    const kind = this._jobArgs.dbType;
+    if (kind === "snapshot" || kind === "standalone")
       return "notoken";
 
     if (this.hubArgs.doInteractiveSignIn)
@@ -541,7 +542,8 @@ export class ConnectorRunner {
   private async persistChanges(changeDesc: string) {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
-    if (this.db.isBriefcaseDb()) {
+    const isStandalone = this.jobArgs.dbType === "standalone";
+    if (!isStandalone && this.db.isBriefcaseDb()) {
       this._db = this.db ;
       await this.db.pullChanges();
       this.db.saveChanges(comment);
