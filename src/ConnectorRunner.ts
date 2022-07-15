@@ -521,7 +521,7 @@ export class ConnectorRunner {
       const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
-      this.hubArgs.briefcaseId;
+
       const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
       if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
         await BriefcaseDb.upgradeSchemas(bcProps);
