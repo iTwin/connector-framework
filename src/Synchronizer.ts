@@ -90,8 +90,9 @@ export class Synchronizer {
   private _links = new Map<string, SynchronizationResults>();
 
   public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AccessToken) {
-    if (imodel.isBriefcaseDb() && undefined === _requestContext)
+    if (imodel.isBriefcaseDb() && undefined === _requestContext) {
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
+    }
   }
 
   /** Insert or update a RepositoryLink element to represent the source document.  Also inserts or updates an ExternalSourceAspect for provenance.
@@ -108,14 +109,26 @@ export class Synchronizer {
       return existing;
     }
 
-    if (undefined === knownUrn) {
-      // C++ calls GetParams().QueryDocumentURN()
-    }
+    // TODO: This if statement does nothing.
+
+    // if (undefined === knownUrn) {
+    //   // C++ calls GetParams().QueryDocumentURN()
+    // }
+
+    // TODO: Create document with scope pointing to the new RepositoryLink? Currently the scope
+    // must be known before creating the link.
+
+    // By default, assume that the identifier of each document is unique to the repository.
+    // 'Recommended to point to a RepositoryLink when ids are unique per repository.'
+    // https://www.itwinjs.org/bis/domains/biscore.ecschema/#externalsourceaspect
+
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
 
-    if (undefined === repositoryLink) {
-      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
-    }
+    // TODO: makeRepositoryLink can't return undefined.
+
+    // if (undefined === repositoryLink) {
+    //   throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
+    // }
 
     const results: SynchronizationResults = {
       elementProps: repositoryLink.toJSON(),
@@ -143,8 +156,9 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    if (this.getExternalSourceElement(repositoryLink) === undefined)
+    if (this.getExternalSourceElement(repositoryLink) === undefined) {
       this.imodel.elements.insertElement(xseProps);
+    }
 
     this._links.set(key, results);
 
@@ -163,8 +177,13 @@ export class Synchronizer {
     const results: ChangeResults = {
       state: ItemState.New,
     };
-    if (item.id !== "")
+
+    if (item.id !== "") {
       ids = ExternalSourceAspect.findBySource(this.imodel, scope, sourceKind, item.id);
+    }
+
+    // If we fail to locate the aspect with its unique (kind, identifier) tuple, we consider the
+    // source item new.
     if (ids.aspectId === undefined) {
       return results;
     }
@@ -174,28 +193,42 @@ export class Synchronizer {
     try {
       aspect = this.imodel.elements.getAspect(ids.aspectId) as ExternalSourceAspect;
     } catch (err) {
-      if (!(err instanceof IModelError) || (err.errorNumber !== IModelStatus.NotFound)) // unfortunately, the only way we can find out if an aspect is NOT there is by getting an error when asking for it.
+      // Unfortunately, the only way we can find out if an aspect is NOT there is by getting an
+      // error when asking for it.
+      if (!(err instanceof IModelError) || (err.errorNumber !== IModelStatus.NotFound)) {
         throw err;
+      }
+
       return results;
     }
-    if (undefined === aspect)
-      return results;
-    this._seenAspects.add(aspect.id);
+
+    // TODO: We know the aspect exists if we still have control at the end of line 186, so this
+    // if statement body is unreachable.
+
+    // if (undefined === aspect) {
+    //   return results;
+    // }
+
+    // A version change takes priority...
     if (undefined !== aspect.version && undefined !== item.version && aspect.version !== item.version) {
       results.state = ItemState.Changed;
       results.id = ids.elementId;
       return results;
     }
+    // ...over a checksum change.
     if (undefined !== aspect.checksum && undefined !== item.checksum && aspect.checksum !== item.checksum) {
       results.state = ItemState.Changed;
       results.id = ids.elementId;
       return results;
     }
+
     results.id = ids.elementId;
     results.state = ItemState.Unchanged;
+
     if ("DocumentWithBeGuid" === sourceKind) {
       this._unchangedSources.push(ids.elementId);
     }
+
     return results;
   }
 
@@ -213,10 +246,11 @@ export class Synchronizer {
    */
   public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
     let status: IModelStatus = IModelStatus.Success;
-    if (ItemState.Unchanged === results.itemState) {
-      if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id))
-        throw new IModelError(IModelStatus.BadArg, "missing id");
 
+    if (ItemState.Unchanged === results.itemState) {
+      if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
+        throw new IModelError(IModelStatus.BadArg, "missing id");
+      }
       this.onElementSeen(results.elementProps.id);
       return status;
     }
@@ -310,8 +344,11 @@ export class Synchronizer {
         sourceId = row.id;
       }
     );
-    if(sourceId)
+
+    if(sourceId) {
       return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
+    }
+
     return;
   }
 
