@@ -120,7 +120,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
   });
 
-  it("should download and perform updates on an existing imodel", async () => {
+  it.skip("should download and perform updates on an existing imodel", async () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
