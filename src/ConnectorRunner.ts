@@ -339,6 +339,9 @@ export class ConnectorRunner {
   private updateDeletedElements() {
     if (this.jobArgs.doDetectDeletedElements) {
       const job = this.connector.jobSubject.id;
+      // TODO: This should probably be a connector method, because otherwise we're coupling the
+      // connector framework with the synchrnoizer. What if the connector author wants to use their
+      // own synchrnoizer?
       this.connector.synchronizer.deleteInChannel(job);
     }
   }

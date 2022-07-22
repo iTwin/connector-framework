@@ -54,7 +54,7 @@ describe("iTwin Connector Fwk #standalone", () => {
     db.close();
   });
 
-  it.skip("Should perform updates on standalone iModel", async () => {
+  it("Should perform updates on standalone iModel", async () => {
     const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetFile,

@@ -1,1 +1,1 @@
-{"id":"TestConnector","message":"Failure","description":"Unable to find model Id for TestConnector_Groups","extendedData":{"errorNumber":65539,"name":"Bad Arg"}}
+{"id":"TestConnector","message":"Failure","description":"Lock(s) is owned by another briefcase.","extendedData":{"code":"ConflictWithAnotherUser","name":"ConflictWithAnotherUser","message":"Lock(s) is owned by another briefcase."}}
