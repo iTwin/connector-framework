@@ -201,6 +201,8 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "connector.openSourceData started.");
 
+    await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId}); // openSourceData may write to the repository model. It might call recordDocument, and that might insert a new element or update an existing element.
+
     const synchConfig = await this.insertSynchronizationConfigLink();
     await this.connector.openSourceData(this.jobArgs.source);
     await this.connector.onOpenIModel();
@@ -241,7 +243,7 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "connector.importDefinitions started");
 
-    await this.db.locks.acquireLocks({exclusive: jobSubject.id});
+    await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId}); // initializeJob and importDefinitions will write to the repository model. They may insert new elements or update existing elements.
 
     await this.connector.initializeJob();
     await this.connector.importDefinitions();
@@ -253,7 +255,7 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "connector.updateExistingData started");
 
-    await this.db.locks.acquireLocks({exclusive: IModel.repositoryModelId});
+    await this.db.locks.acquireLocks({exclusive: jobSubject.id}); // updateExistingData will write to the job's children and to its private models.
 
     await this.connector.updateExistingData();
     this.updateDeletedElements();
@@ -266,7 +268,7 @@ export class ConnectorRunner {
     await this.persistChanges("Synch Config Update");
 
     Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
-    await this.db.locks.releaseAllLocks();
+    await this.db.locks.releaseAllLocks(); // this call should not be necessary. this.persistChanges should have released all locks
   }
 
   private async onFailure(err: any) {
@@ -389,7 +391,7 @@ export class ConnectorRunner {
     const prevSynchConfigId = this._db.elements.queryElementIdByCode(LinkElement.createCode(this._db, IModel.repositoryModelId, "SynchConfig"));
     let idToReturn: string;
     if(prevSynchConfigId === undefined) {
-      await this._db.locks.acquireLocks({exclusive: IModel.dictionaryId});
+      await this._db.locks.acquireLocks({shared: IModel.rootSubjectId});
       idToReturn = this._db.elements.insertElement(synchConfigData);
     } else {
       await this.updateSynchronizationConfigLink(prevSynchConfigId);
