@@ -232,7 +232,7 @@ export class ConnectorRunner {
       IModel.rootSubjectId,
       "exclusive",
       async () => {
-        await this.connector.importDynamicSchema(await this.getReqContext());
+        await this.connector.importDomainSchema(await this.getReqContext());
       },
       "Import dynamic schema."
     );
@@ -256,7 +256,7 @@ export class ConnectorRunner {
       "exclusive",
       async () => {
         await this.connector.updateExistingData();
-        this.updateDeletedElements();
+        // this.updateDeletedElements();
       },
       "Synchronize."
     );
@@ -320,15 +320,18 @@ export class ConnectorRunner {
       await this.connector.issueReporter.publishReport();
   }
 
-  private updateDeletedElements() {
-    if (this.jobArgs.doDetectDeletedElements) {
-      const job = this.connector.jobSubject.id;
-      // TODO: This should probably be a connector method, because otherwise we're coupling the
-      // connector framework with the synchrnoizer. What if the connector author wants to use their
-      // own synchrnoizer?
-      this.connector.synchronizer.deleteInChannel(job);
-    }
-  }
+  // PROPOSAL: This should not be the runner's responsibility. The connector author uses the
+  // synchronizer to map source files to an iModel. The cleanup is part of that process.
+
+  // private updateDeletedElements() {
+  //   if (this.jobArgs.doDetectDeletedElements) {
+  //     const job = this.connector.jobSubject.id;
+  //     // TODO: This should probably be a connector method, because otherwise we're coupling the
+  //     // connector framework with the synchronizer. What if the connector author wants to use their
+  //     // own synchronizer?
+  //     this.connector.synchronizer.deleteInChannel(job);
+  //   }
+  // }
 
   private updateProjectExtent() {
     const res = this.db.computeProjectExtents({

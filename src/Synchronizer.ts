@@ -8,7 +8,7 @@
 
 import { ElementUniqueAspect} from "@itwin/core-backend";
 import type { BriefcaseDb, ECSqlStatement, IModelDb} from "@itwin/core-backend";
-import { Element } from "@itwin/core-backend";
+import type { Element } from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
@@ -92,35 +92,14 @@ function foldStatus(folded: IModelStatus, addition: IModelStatus) {
  * Return the iModel IDs of the immediate children of a model.
  * @param imodel The iModel containing the model.
  * @param model The model containing the children.
- * @param kind The type of child element.
  * @returns A list of iModel IDs of the immediate children.
  */
-export function childrenOfModel<E extends typeof Element | typeof DefinitionElement>(imodel: IModelDb, model: Id64String, kind: E): Id64String[] {
+export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
   const elements: Id64String[] = [];
-  const query = `select ECInstanceId from ${kind.classFullName} where Model.id=? and Parent is NULL`;
+  const query = `select ECInstanceId from bis:Element where Model.id=? and Parent is NULL`;
 
   imodel.withPreparedStatement<void>(query, (statement) => {
     statement.bindId(1, model);
-    for (const row of statement) {
-      elements.push(row.id);
-    }
-  });
-
-  return elements;
-}
-
-/**
- * Return the iModel IDs of the immediate children of an element.
- * @param imodel The iModel containing the element.
- * @param element The element that owns the desired children.
- * @returns A list of iModel IDs of the immediate children.
- */
-export function childrenOfElement(imodel: IModelDb, element: Id64String): Id64String[] {
-  const elements: Id64String[] = [];
-  const query = "select ECInstanceId from bis:Element as e where e.Parent.id=?";
-
-  imodel.withPreparedStatement<void>(query, (statement) => {
-    statement.bindId(1, element);
     for (const row of statement) {
       elements.push(row.id);
     }
@@ -465,7 +444,7 @@ export class Synchronizer {
       this.detectDeletedElementsInChannel();
   }
 
-  public deleteInChannel(instance: Id64String): IModelStatus {
+  public deleteInChannel(branch: Id64String): IModelStatus {
     // There are only two kinds of elements in BIS: modeled elements and parent elements.
     // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
 
@@ -475,15 +454,15 @@ export class Synchronizer {
     let children: Id64String[];
     let childrenStatus: IModelStatus = IModelStatus.Success;
 
-    const model = this.imodel.models.tryGetSubModel(instance);
+    const model = this.imodel.models.tryGetSubModel(branch);
     const isElement = model === undefined;
 
     if (isElement) {
       // The element is a parent element.
-      children = this.imodel.elements.queryChildren(instance);
+      children = this.imodel.elements.queryChildren(branch);
     } else {
       // The element is a modeled element.
-      children = childrenOfModel(this.imodel, model.id, Element);
+      children = childrenOfModel(this.imodel, model.id);
     }
 
     children.forEach((child) => {
@@ -499,20 +478,20 @@ export class Synchronizer {
       let remainingChildren: Id64String[];
 
       if (isElement) {
-        remainingChildren = childrenOfElement(this.imodel, instance);
+        remainingChildren = this.imodel.elements.queryChildren(branch);
       } else {
-        remainingChildren = childrenOfModel(this.imodel, model.id, Element);
+        remainingChildren = childrenOfModel(this.imodel, model.id);
       }
 
-      if (isElement && remainingChildren.length === 0 && !this._seenElements.has(instance)) {
-        const element = this.imodel.elements.getElement(instance);
+      if (isElement && remainingChildren.length === 0 && !this._seenElements.has(branch)) {
+        const element = this.imodel.elements.getElement(branch);
         if (element instanceof DefinitionElement) {
           // TODO: This is inefficient, but I'm trying to avoid prematurely optimizing. If we need
           // to, we can locate the youngest common ancestor of the definition elements seen in a
           // definition model and pass the parent.
-          this.imodel.elements.deleteDefinitionElements([instance]);
+          this.imodel.elements.deleteDefinitionElements([branch]);
         } else {
-          this.imodel.elements.deleteElement(instance);
+          this.imodel.elements.deleteElement(branch);
         }
       } else if (!isElement && remainingChildren.length === 0) {
         // If we've deleted all the immediate children of the model, delete both the modeled
@@ -522,7 +501,7 @@ export class Synchronizer {
         // explode, just like deleting the repository model.
 
         this.imodel.models.deleteModel(model.id);
-        this.imodel.elements.deleteElement(instance);
+        this.imodel.elements.deleteElement(branch);
       }
     }
 
