@@ -232,7 +232,7 @@ export class ConnectorRunner {
       IModel.rootSubjectId,
       "exclusive",
       async () => {
-        await this.connector.importDomainSchema(await this.getReqContext());
+        await this.connector.importDynamicSchema(await this.getReqContext());
       },
       "Import dynamic schema."
     );
