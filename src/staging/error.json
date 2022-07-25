@@ -1,1 +1,1 @@
-{"id":"TestConnector","message":"Failure","description":"Lock(s) is owned by another briefcase.","extendedData":{"code":"ConflictWithAnotherUser","name":"ConflictWithAnotherUser","message":"Lock(s) is owned by another briefcase."}}
+{"id":"TestConnector","message":"Failure","description":"Error importing schema","extendedData":{"errorNumber":318767114,"name":"Schema Upgrade Failed"}}

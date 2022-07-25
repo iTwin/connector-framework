@@ -177,7 +177,7 @@ export class ConnectorRunner {
   }
 
   private async runUnsafe(connector: Path) {
-    Logger.logInfo(LoggerCategories.Framework, "Connector Job has started");
+    Logger.logInfo(LoggerCategories.Framework, "Connector job has started");
 
     // load
 
@@ -193,102 +193,86 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Loading synchronizer...");
     await this.loadSynchronizer();
 
-    // config link
-
-    Logger.logInfo(LoggerCategories.Framework, "Inserting synchronization configuration...");
+    Logger.logInfo(LoggerCategories.Framework, "Writing synchronization configuration...");
     const synchConfig = await this.doInChannel(
       IModel.rootSubjectId,
+      "exclusive",
       async () => this.insertSynchronizationConfigLink(),
-      "write synchronization configuration"
+      "Write synchronization configuration."
     );
-
-    // source data
 
     Logger.logInfo(LoggerCategories.Framework, "Opening source data...");
     await this.doInChannel(
       IModel.rootSubjectId,
-      async () => this.connector.openSourceData(this.jobArgs.source),
-      "open source data"
+      "exclusive",
+      async () => {
+        await this.connector.openSourceData(this.jobArgs.source);
+        await this.connector.onOpenIModel();
+      },
+      "Open source data."
     );
 
-    // on open imodel
-
-    Logger.logInfo(LoggerCategories.Framework, "Before opening the iModel...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      async () => this.connector.onOpenIModel(),
-      "on open imodel"
-    );
-
-    // domain schema
-    // TODO: No locking required here?
+    // We don't batch the schema upgrades because the schema lock needs to be released first?
+    // https://www.itwinjs.org/reference/core-backend/imodels/imodeldb/acquireschemalock
+    // > Note: To acquire the schema lock, all other briefcases must first release all their locks.
+    // > No other briefcases will be able to acquire any locks while the schema lock is held.
 
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
     await this.doInChannel(
       IModel.rootSubjectId,
-      async () => this.connector.importDomainSchema(await this.getReqContext()),
-      "import domain schema"
+      "exclusive",
+      async () => {
+        await this.connector.importDomainSchema(await this.getReqContext());
+      },
+      "Import domain schema."
     );
-
-    // dynamic schema
-    // TODO: No locking required here?
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
     await this.doInChannel(
       IModel.rootSubjectId,
-      async () => this.connector.importDynamicSchema(await this.getReqContext()),
-      "import dynamic schema"
+      "exclusive",
+      async () => {
+        await this.connector.importDomainSchema(await this.getReqContext());
+      },
+      "Import dynamic schema."
     );
 
-    // initialize job subject
-
-    Logger.logInfo(LoggerCategories.Framework, "Writing job subject...");
+    Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
     const jobSubject = await this.doInChannel(
       IModel.rootSubjectId,
-      async () => this.updateJobSubject(),
-      "write job subject"
+      "exclusive",
+      async () => {
+        const job = await this.updateJobSubject();
+        await this.connector.initializeJob();
+        await this.connector.importDefinitions();
+        return job;
+      },
+      "Write job subject and definitions."
     );
-
-    // initialize job
-
-    Logger.logInfo(LoggerCategories.Framework, "Initializing job...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      this.connector.initializeJob.bind(this.connector),
-      "initialize job"
-    );
-
-    // dictionary and definitions
-
-    Logger.logInfo(LoggerCategories.Framework, "Importing definitions...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      async () => this.connector.importDefinitions(),
-      "import definitions"
-    );
-
-    // data changes
 
     Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
     await this.doInChannel(
       jobSubject.id,
+      "exclusive",
       async () => {
         await this.connector.updateExistingData();
         this.updateDeletedElements();
       },
-      "synchronize"
+      "Synchronize."
     );
 
+    Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
     await this.doInChannel(
       IModel.rootSubjectId,
+      "exclusive",
       async () => {
         this.updateProjectExtent();
         this.updateSynchronizationConfigLink(synchConfig);
       },
-      "write synchronization finish time and extent"
+      "Write synchronization finish time and extent."
     );
 
-    Logger.logInfo(LoggerCategories.Framework, "Connector Job has completed");
+    Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
   }
 
   private async onFailure(err: any) {
@@ -556,8 +540,12 @@ export class ConnectorRunner {
     }
   }
 
-  private async doInChannel<R>(channel: Id64String, task: () => Promise<R>, message: string): Promise<R> {
-    await this.db.locks.acquireLocks({ exclusive: channel });
+  private async doInChannel<R>(channel: Id64String, grip: "shared" | "exclusive", task: () => Promise<R>, message: string): Promise<R> {
+    if (grip === "shared") {
+      await this.db.locks.acquireLocks({ shared: channel });
+    } else {
+      await this.db.locks.acquireLocks({ exclusive: channel });
+    }
     const result = await task();
     await this.persistChanges(message);
     return result;
