@@ -193,23 +193,17 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Loading synchronizer...");
     await this.loadSynchronizer();
 
-    Logger.logInfo(LoggerCategories.Framework, "Writing synchronization configuration...");
+    Logger.logInfo(LoggerCategories.Framework, "Writing configuration and opening source data...");
     const synchConfig = await this.doInChannel(
       IModel.rootSubjectId,
       "exclusive",
-      async () => this.insertSynchronizationConfigLink(),
-      "Write synchronization configuration."
-    );
-
-    Logger.logInfo(LoggerCategories.Framework, "Opening source data...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
       async () => {
+        const config = this.insertSynchronizationConfigLink();
         await this.connector.openSourceData(this.jobArgs.source);
         await this.connector.onOpenIModel();
+        return config;
       },
-      "Open source data."
+      "Write configuration and open source data."
     );
 
     // We don't batch the schema upgrades because the schema lock needs to be released first?
@@ -218,24 +212,12 @@ export class ConnectorRunner {
     // > No other briefcases will be able to acquire any locks while the schema lock is held.
 
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
-      async () => {
-        await this.connector.importDomainSchema(await this.getReqContext());
-      },
-      "Import domain schema."
-    );
+    await this.connector.importDomainSchema(await this.getReqContext());
+    await this.persistChanges("Write domain schema.");
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
-      async () => {
-        await this.connector.importDynamicSchema(await this.getReqContext());
-      },
-      "Import dynamic schema."
-    );
+    await this.connector.importDynamicSchema(await this.getReqContext());
+    await this.persistChanges("Write dynamic schema.");
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
     const jobSubject = await this.doInChannel(
