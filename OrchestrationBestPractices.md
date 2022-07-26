@@ -2,7 +2,7 @@
 
 This document is intended to provide best practices and tips for creating an orchestrator that can
 run your Connector(s). There are several aspects or shortcuts you may take during development, but
-as you look to deploy and support larger teams and co-existing with other Connectors, there are some
+as you look to deploy and support larger teams and co-exist with other Connectors, there are some
 things to keep in mind.
 
 ## Briefcase management
@@ -36,3 +36,15 @@ time, the orchestrator (e.g. a parent process) can be an additional line of defe
 operation of the iModel.
 
 ## Concurrency
+
+Apps that write data into an iModel, including Connectors, will lock areas of the iModel that
+they're operating on. Connectors make an effort to hold high-level locks for as little time as
+possible. Most Connectors' run time will be within their job subject, which is assumed to be their
+own private world to operate in.
+
+Job subjects are typically created based on a single input file. Since the Connector assumes it will
+have full control over its subject, it is important that your orchestrator only try to convert any
+given file exclusively. It is relatively safe to attempt to synchronize multiple different files
+concurrently. Connectors will retry to acquire locks several times before giving up. However, it is
+feasible that one Connector could acquire a very high-level lock for a period of time, preventing
+other Connectors from continuing.
