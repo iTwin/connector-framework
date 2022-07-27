@@ -4,15 +4,15 @@
 *--------------------------------------------------------------------------------------------*/
 import type { Id64String } from "@itwin/core-bentley";
 
-import type { DefinitionElementProps, ExternalSourceAspectProps, ExternalSourceProps,
+import type { DefinitionElementProps, ElementProps, ExternalSourceAspectProps, ExternalSourceProps,
   InformationPartitionElementProps, ModelProps, RepositoryLinkProps, SubjectProps,
 } from "@itwin/core-common";
 
-import { Code, IModelError, IModelStatus } from "@itwin/core-common";
+import { Code, CodeScopeSpec, CodeSpec, IModelError, IModelStatus } from "@itwin/core-common";
 
 import {
-  DefinitionGroup, DefinitionPartition, DictionaryModel, ExternalSourceAspect, RepositoryLink,
-  SnapshotDb, Subject, SubjectOwnsPartitionElements, SubjectOwnsSubjects,
+  DefinitionGroup, DefinitionModel, DefinitionPartition, ElementGroupsMembers, ExternalSourceAspect,
+  Group, RepositoryLink, SnapshotDb, Subject, SubjectOwnsPartitionElements, SubjectOwnsSubjects,
 } from "@itwin/core-backend";
 
 import { assert } from "chai";
@@ -51,7 +51,7 @@ describe("synchronizer #standalone", () => {
     return source!;
   };
 
-  const makeToyElement = (): [Id64String, SubjectProps, Id64String] => {
+  const makeToyElement = (): [Id64String, SubjectProps, Id64String, Id64String] => {
     const subjectProps: SubjectProps = {
       classFullName: Subject.classFullName,
       code: Subject.createCode(imodel, SnapshotDb.rootSubjectId, "fruits"),
@@ -72,7 +72,7 @@ describe("synchronizer #standalone", () => {
     const partitionId = imodel.elements.insertElement(partitionProps);
 
     const modelProps: ModelProps = {
-      classFullName: DictionaryModel.classFullName,
+      classFullName: DefinitionModel.classFullName,
       // TODO: No `new ModelModelsElement(partitionId)`?
       // https://www.itwinjs.org/reference/core-backend/relationships/
       modeledElement: { id: partitionId }, // The bis:Element that this bis:Model is sub-modeling
@@ -80,7 +80,7 @@ describe("synchronizer #standalone", () => {
 
     const modelId = imodel.models.insertModel(modelProps);
 
-    return [subjectId, subjectProps, modelId];
+    return [subjectId, subjectProps, partitionId, modelId];
   };
 
   const berryGroups = (definitionModel: Id64String): [SourceItem, SynchronizationResults] => {
@@ -89,11 +89,19 @@ describe("synchronizer #standalone", () => {
       version: "1.0.0",
     };
 
+    const spec = CodeSpec.create(imodel, "definition group spec", CodeScopeSpec.Type.Repository);
+
+    const code = (value: string) => new Code({
+      scope: SnapshotDb.repositoryModelId,
+      spec: spec.name,
+      value,
+    });
+
     const modelId = definitionModel;
 
     const berryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("berries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of berries",
@@ -101,7 +109,7 @@ describe("synchronizer #standalone", () => {
 
     const strawberryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("strawberries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of strawberries",
@@ -110,7 +118,7 @@ describe("synchronizer #standalone", () => {
 
     const raspberryProps: DefinitionElementProps = {
       classFullName: DefinitionGroup.classFullName,
-      code: Code.createEmpty(),
+      code: code("raspberries"),
       model: modelId,
       isPrivate: false,
       userLabel: "definitions of raspberries",
@@ -230,7 +238,7 @@ describe("synchronizer #standalone", () => {
 
       const source = makeToyDocument(synchronizer);
 
-      const [elementId,,] = makeToyElement();
+      const [elementId,,,,] = makeToyElement();
 
       const aspectProps: ExternalSourceAspectProps = {
         classFullName: ExternalSourceAspect.classFullName,
@@ -293,7 +301,7 @@ describe("synchronizer #standalone", () => {
     const scope = SnapshotDb.repositoryModelId;
 
     const setToyProvenance = (source: ExternalSourceProps, sync: Synchronizer): [SourceItem, SubjectProps] => {
-      const [, elementProps,,] = makeToyElement();
+      const [, elementProps,,,] = makeToyElement();
 
       const meta: SourceItem = {
         id: identifier,
@@ -359,7 +367,7 @@ describe("synchronizer #standalone", () => {
     it("insert new child elements", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
-      const [,, modelId] = makeToyElement();
+      const [,,, modelId] = makeToyElement();
       const [, tree] = berryGroups(modelId);
 
       const status = synchronizer.insertResultsIntoIModel(tree);
@@ -375,7 +383,7 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const source = makeToyDocument(synchronizer);
 
-      const [,, modelId]  = makeToyElement();
+      const [,,, modelId] = makeToyElement();
       const [meta, tree] = berryGroups(modelId);
 
       const scope = SnapshotDb.repositoryModelId;
@@ -396,6 +404,9 @@ describe("synchronizer #standalone", () => {
       tree.childElements![0].itemState = ItemState.Changed;
       tree.childElements![1].itemState = ItemState.Unchanged;
 
+      // Synchronizer does not care if we've actually changed the element, it will just look at what
+      // we've specified here.
+      //                                           vvvv
       assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
@@ -411,7 +422,7 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const source = makeToyDocument(synchronizer);
 
-      const [,, modelId] = makeToyElement();
+      const [,,, modelId] = makeToyElement();
       const [meta, tree] = berryGroups(modelId);
 
       const scope = SnapshotDb.repositoryModelId;
@@ -447,6 +458,209 @@ describe("synchronizer #standalone", () => {
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
       count(query("blueberries"), 1);
+    });
+  });
+
+  describe("detect deleted elements", () => {
+    it("deletes child that is not visited", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      tree.childElements!.pop();
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 0);
+    });
+
+    it("does not delete a parent if its children exist", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Oops, somehow we haven't visited the parent this run!
+      synchronizer.onElementSeen(tree.childElements![0].elementProps.id!);
+      synchronizer.onElementSeen(tree.childElements![1].elementProps.id!);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(query("berries"), 1);      // <-- Still alive!
+      count(query("strawberries"), 1); // <-- Seen!
+      count(query("raspberries"), 1);  // <-- Seen!
+    });
+
+    it("deletes all children of an element", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      tree.childElements = [];
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 0);
+      count(query("raspberries"), 0);
+    });
+
+    it("deletes a model with no children elements", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,, partitionId, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      assert.strictEqual(partitionId, modelId);
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      // tree = *poof!*;
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      count(query("berries"), 0);
+      count(query("strawberries"), 0);
+      count(query("raspberries"), 0);
+
+      const deletedModeledElement = imodel.elements.tryGetElement(partitionId);
+      const deletedModel = imodel.models.tryGetModel(modelId);
+
+      assert.isNotOk(deletedModeledElement);
+      assert.isNotOk(deletedModel);
+    });
+
+    it("deletes element referred to by other element", () => {
+      let synchronizer = new Synchronizer(imodel, false);
+      let source = makeToyDocument(synchronizer);
+
+      const [,,, modelId] = makeToyElement();
+      const [meta, tree] = berryGroups(modelId);
+
+      const berryBasket: ElementProps = {
+        classFullName: Group.classFullName,
+        code: Code.createEmpty(),
+        model: SnapshotDb.repositoryModelId,
+        userLabel: "a basket of berries",
+      };
+
+      const basketId = imodel.elements.insertElement(berryBasket);
+
+      // berries
+      //   o <---+
+      //  / \    |---o berry basket (referencing strength)
+      // o   o <-+
+
+      const berry = tree.childElements![1].elementProps.id!;
+      ElementGroupsMembers.create(imodel, basketId, tree.elementProps.id!).insert();
+      ElementGroupsMembers.create(imodel, basketId, berry).insert();
+
+      const scope = SnapshotDb.repositoryModelId;
+      const kind = "definition group";
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+
+      // We construct a new synchronizer to simulate another run.
+      synchronizer = new Synchronizer(imodel, false);
+
+      source = makeToyDocument(synchronizer);
+
+      // Delete an element in the source file.
+      tree.childElements = [];
+
+      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+
+      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+
+      // Assert that the berry basket still exists.
+      assert.isOk(imodel.elements.tryGetElement(basketId));
+
+      count(query("berries"), 1);
+      count(query("strawberries"), 0);
+      count(query("raspberries"), 0);
     });
   });
 });

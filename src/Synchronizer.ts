@@ -6,8 +6,9 @@
  * @module Framework
  */
 
-import type { BriefcaseDb, ECSqlStatement, Element, IModelDb} from "@itwin/core-backend";
 import { ElementUniqueAspect} from "@itwin/core-backend";
+import type { BriefcaseDb, ECSqlStatement, IModelDb} from "@itwin/core-backend";
+import type { Element } from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
@@ -78,6 +79,33 @@ export interface SynchronizationResults {
   childElements?: SynchronizationResults[];
   /** The state of the element */
   itemState: ItemState;
+}
+
+function foldStatus(folded: IModelStatus, addition: IModelStatus) {
+  if (folded !== IModelStatus.Success) {
+    return folded;
+  }
+  return addition;
+}
+
+/**
+ * Return the iModel IDs of the immediate children of a model.
+ * @param imodel The iModel containing the model.
+ * @param model The model containing the children.
+ * @returns A list of iModel IDs of the immediate children.
+ */
+export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
+  const elements: Id64String[] = [];
+  const query = `select ECInstanceId from bis:Element where Model.id=? and Parent is NULL`;
+
+  imodel.withPreparedStatement<void>(query, (statement) => {
+    statement.bindId(1, model);
+    for (const row of statement) {
+      elements.push(row.id);
+    }
+  });
+
+  return elements;
 }
 
 /** Helper class for interacting with the iModelDb during synchronization.
@@ -208,6 +236,11 @@ export class Synchronizer {
     // if (undefined === aspect) {
     //   return results;
     // }
+
+    // TODO: Adam's code to delete external source aspects; shouldn't they be deleted by the iModel
+    // API because of the embedding relationship?
+
+    this._seenAspects.add(aspect.id);
 
     // A version change takes priority...
     if (undefined !== aspect.version && undefined !== item.version && aspect.version !== item.version) {
@@ -409,6 +442,70 @@ export class Synchronizer {
       this.detectDeletedElementsInFiles();
     else
       this.detectDeletedElementsInChannel();
+  }
+
+  public deleteInChannel(branch: Id64String): IModelStatus {
+    // There are only two kinds of elements in BIS: modeled elements and parent elements.
+    // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
+
+    // We perform a post-order traversal down the channel, because we must ensure that every child
+    // is deleted before its parent, and every model before its modeled element.
+
+    let children: Id64String[];
+    let childrenStatus: IModelStatus = IModelStatus.Success;
+
+    const model = this.imodel.models.tryGetSubModel(branch);
+    const isElement = model === undefined;
+
+    if (isElement) {
+      // The element is a parent element.
+      children = this.imodel.elements.queryChildren(branch);
+    } else {
+      // The element is a modeled element.
+      children = childrenOfModel(this.imodel, model.id);
+    }
+
+    children.forEach((child) => {
+      childrenStatus = foldStatus(childrenStatus, this.deleteInChannel(child));
+    });
+
+    // If all elements were deleted successfully, delete the parent.
+
+    // TODO: This if statement throws. We can't recover from this, so we let it explode the
+    // process. Can this leave the iModel in an inconsistent state?
+
+    if (childrenStatus === IModelStatus.Success) {
+      let remainingChildren: Id64String[];
+
+      if (isElement) {
+        remainingChildren = this.imodel.elements.queryChildren(branch);
+      } else {
+        remainingChildren = childrenOfModel(this.imodel, model.id);
+      }
+
+      if (isElement && remainingChildren.length === 0 && !this._seenElements.has(branch)) {
+        const element = this.imodel.elements.getElement(branch);
+        if (element instanceof DefinitionElement) {
+          // TODO: This is inefficient, but I'm trying to avoid prematurely optimizing. If we need
+          // to, we can locate the youngest common ancestor of the definition elements seen in a
+          // definition model and pass the parent.
+          this.imodel.elements.deleteDefinitionElements([branch]);
+        } else {
+          this.imodel.elements.deleteElement(branch);
+        }
+      } else if (!isElement && remainingChildren.length === 0) {
+        // If we've deleted all the immediate children of the model, delete both the modeled
+        // element and the model.
+
+        // TODO: Should we ignore the dictionary model because we can't delete it? This will
+        // explode, just like deleting the repository model.
+
+        this.imodel.models.deleteModel(model.id);
+        this.imodel.elements.deleteElement(branch);
+      }
+    }
+
+    return IModelStatus.Success;
   }
 
   private detectDeletedElementsInChannel() {

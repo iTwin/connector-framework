@@ -108,10 +108,6 @@ export default class TestConnector extends BaseConnector {
 
     this.issueReporter?.reportIssue(physicalModelId, "source", "Warning", "Test", "Test Message", "Type");
 
-    if (this._sourceDataState === ItemState.Unchanged) {
-      return;
-    }
-
     if (this._sourceDataState === ItemState.New) {
       this.insertCategories();
       this.insertMaterials();
@@ -121,6 +117,8 @@ export default class TestConnector extends BaseConnector {
     this.convertGroupElements(groupModelId);
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
+
+    this.synchronizer.deleteInChannel(this.jobSubject.id);
   }
   public getApplicationVersion(): string {
     return "1.0.0.0";
