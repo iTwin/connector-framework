@@ -249,6 +249,7 @@ export class ConnectorRunner {
       "exclusive",
       async () => {
         this.updateProjectExtent();
+        this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
       },
       "Write synchronization finish time and extent."
@@ -359,6 +360,7 @@ export class ConnectorRunner {
     }
 
     this.connector.jobSubject = subject;
+    this.connector.synchronizer.jobSubjectId = subject.id;
     return subject;
   }
 

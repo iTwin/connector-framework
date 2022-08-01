@@ -10,7 +10,7 @@ import { ElementUniqueAspect} from "@itwin/core-backend";
 import type { BriefcaseDb, ECSqlStatement, IModelDb} from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
-import type { AccessToken, GuidString, Id64String} from "@itwin/core-bentley";
+import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
 import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
@@ -34,23 +34,143 @@ export interface ChangeResults {
   id?: Id64String;
   /** State of the item */
   state: ItemState;
+  /** The ExternalSourceAspect, if any, that was found in the iModel. This contains the state of the item from the last time it was synchronized. */
+  existingExternalSourceAspect?: ExternalSourceAspectProps;
 }
 
-/** Interface for presenting an item in the source repository
+type RemoveNullable<T, TKey extends keyof T> = T & {
+  [K in TKey]-?: NonNullable<T[K]>
+};
+
+/** A `SourceItem` identifies an entity in the external source and the state of the content of the entity.
+ * The data provided by the SourceItem is stored in the iModel as the "provenance" of the entity.
+ * This provenance data enables users and applications to trace an element in an iModel back to its native, external source.
+ * Provenance also enables a connector to track and synchronize changes to the entity.
+ * ## Document, external source, and scope
+ *  The external document is the data source that is being read by the connector. This could be a file, a managed document, or a database connection. A document is represented in the iModel by a RepositoryLink element.
+ *  The external source represents either the document as a whole or an area within the document. The external source is represented by an ExternalSource element. See https://www.itwinjs.org/learning/provenence-in-imodels/.
+ *  The scope identifies either the ExternalSource or an area within in.
+ * ## Kind
+ *  A value that the connector uses to classify the entity.
+ * ## Id
+ *  This is the ID assigned to the entity by the external system that creates and manages it.
+ * ## Entity identification
+ *  The (kind, scope, id) triple uniquely identifies the entity in the outside world.
+ *  This triple is what allows the iModel to track the entity.
+ * ## Entity change detection
+ *  The version and checksum values capture the state of the *content* of the entity.
+ *  They are stored in the iModel.
+ *  They allow the Synchronizer to detect if the entity has changed since the last synchronization.
+ *  See below fro details on change-detection.
+ * ## Persistence
+ *  The properties of a SourceItem are stored in the ExternalSourceAspect of the Element in the iModel that represents the entity.
+ *  The ExternalSourceAspect tracks the external source of the element.
+ *  https://www.itwinjs.org/bis/domains/biscore.ecschema/#externalsourceaspect
+ *  The persistence mapping is:
+ * |SourceItem|ExternalSourceAspect|
+ * |----------|--------------------|
+ * |id|identifier|
+ * |scope|scope|
+ * |kind|kind|
+ * |version|version|
+ * |checksum()|checksum|
+ * |externalSourceElementId|source|
+ * ## Change-detection using version and checksum
+ * The connector must call Synchronizer.detectChanges on each entity to determine if there are changes that must be written to the iModel or not.
+ *
+ * The SourceItem's version and/or checksum values must represent the entity's *current* state.
+ * The ExternalSourceAspect records the state of the entity as of the last synchronization.
+ *
+ * Synchronizer.detectChanges compares the SourceItem's current state with the stored state recorded by the aspect.
+ * If they match, the entity is unchanged and should be skipped.
+ * If they do not match, the entity has changed, and the connector should convert the entity and then call Synchronizer.updateIModel.
+ *
+ * Change-detection is based on version and/or checksum values that represent the state of the content of each entity in a summary form.
+ * In principle, we could detect changes by letting the connector convert an entity to BIS format and then comparing the results with the Elements
+ * and Aspects currently in the iModel. That would be a big waste of time in the common case where most entities are unchanged. To avoid this, we
+ * use summary version and/or checksum values to minimize the cost of up-front change-detection.
+ * The connector computes summary version and/or checksum values directly from the source data, without having to convert any data.
+ * One or both of these values may even be stored in the source data and require no computation at all.
+ *
+ * The SourceItem must define version or checksum, and it can define both. There are three options:
+ * 1. Version only - An entity is considered to have changed if the item's version does not equal the aspect's version. Otherwise, the entity is unchanged.
+ * 1. Checksum only - An entity is considered to have changed if the item's checksum does not equal the aspect's checksum. Otherwise, the entity is unchanged.
+ * 1. Version and checksum - An entity is considered to have changed if version and checksum both fail to match the stored values. If version matches, the checksum is not used.
+ *
+ * In more detail:
+ *
+ * 1. Optional version check to screen out unchanged entities
+ *
+ * Synchronizer.detectChanges first tries to use the optional `version` property to detect if the entity is *unchanged* by matching it with the stored version.
+ * If so, the item's checksum function is not called. That can save a lot of time in the common case where most entities are unchanged, since computing a
+ * crytographic hash could be time-consuming and may involve reading additional data.
+ * This optimization can be used only if the entity has a reliable version that changes when any part of the source entity's content changes.
+ *
+ * 2. Compare Checksums
+ *
+ * If the versions do not match (either because the current version is not defined or does not match the stored version),
+ * Synchronizer.detectChanges calls the item's checksum function and compares the result with the stored checksum.
+ * If the checksum values differ, the entity has changed. If not, the entity has not changed.
+ * Note: The SourceItem.checksum function may be called multiple times on a given SourceItem in the course of detecting changes and updating the iModel.
+ * The connector's SourceItem implementation should cache the checksum value the first time that it is called.
+ *
+ * If SourceItem.version is defined and the result of SourceItem.checksum() is undefined, then version is used in place of checksum to detect changes.
+ *
  * @beta
  */
 export interface SourceItem {
-  /** Unique Identity of the source item (relative to its scope and kind). */
+  /** The unique identity of the entity (relative to its scope and kind) in the external source. */
   id: string;
+  /** Identifies an element in the iModel that represents an area of the external source. Defaults to the Job Subject element. */
+  scope?: string;
+  /** Indicates what kind of thing this is in the external source. The value and purpose of this string is known only to the connector. Defaults to "". */
+  kind?: string;
   /** An optional value that is typically a version number or a pseudo version number like last modified time.
-   * It will be used by the synchronization process to detect that a source object is unchanged so that computing a cryptographic hash can be avoided.
-   * If present, this value must be guaranteed to change when any of the source object's content changes. If not defined, checksum must be defined
+   * It will be used by the synchronization process to detect that a source entity is unchanged so that computing a cryptographic hash can be avoided.
+   * If present, this value must be guaranteed to change when any of the source entity's content changes. If not defined, checksum must be defined
    */
   version?: string;
-  /** The optional cryptographic hash (any algorithm) of the source object's content. If defined, it must be guaranteed to change when the source object's content changes.
+  /** The optional cryptographic hash (any algorithm) of the source entity's content. If defined, it must be guaranteed to change when the source entity's content changes.
    * The definition and method of computing this value is known only to the source repository.  If not defined, version must be defined.
+   * This function will not be called if `version` is defined and is not equal to the version property of the stored aspect.
    */
-  checksum?: string;
+  checksum(): string | undefined;
+  /* Identifies the ExternalSource of the entity. See https://www.itwinjs.org/learning/provenence-in-imodels/.
+  * If not specified or empty, then the ExternalSource of the RepositoryLink will be used by default, provided that only
+  * one RepositoryLink has been recorded. That is the common case.
+  */
+  externalSourceElementId?: string;
+}
+
+/** Identifies an external document and its state.
+ * This data is stored in the ExternalSourceAspect of the RepositoryLink Element that represents the document.
+ * The ExternalSourceAspect tracks the source document.
+ * The persistence mapping is:
+ * |SourceItem|ExternalSourceAspect|
+ * |----------|--------------------|
+ * |docid|identifier|
+ * |scope|`IModel.repositoryModelId`|
+ * |kind|"DocumentWithBeGuid"|
+ * |lastModifiedTime|version|
+ * |checksum()|checksum|
+ * ExternalSourceAspect.source is undefined.
+ * Synchronizer.recordDocument calls detectChanges internally and returns the result. See SourceItem for details on the change-detection algorithm.
+*/
+export interface SourceDocument {
+  /** The unique dentity of the document - this could be a GUID that is assigned to it by a document management system, a URN, or a relative filepath. Absolute filepaths should not be used. */
+  docid: string;
+  /** The stable URN of the document. If the document has both a GUID and an URN, `docid` should be the GUID and `urn` should be the URN. If the document has only a stable URN, then `docid` should be the URN. */
+  urn?: string;
+  /** An optional value that is typically the last modified time of the document.
+  * It will be used by the synchronization process to detect that the document is unchanged so that computing a cryptographic hash can be avoided.
+  * If present, this value must be guaranteed to change when any of the document's content changes. If not defined, checksum must be defined
+  */
+  lastModifiedTime?: string;
+  /** The cryptographic hash (any algorithm) of the document's content. If defined, it must be guaranteed to change when the document's content changes.
+  * The method of computing this value is known only to the connector or source repository.  If not defined, version must be defined.
+  * This function will not be called if `lastModifiedTime` is defined and is not equal to the version property of the stored aspect.
+  */
+  checksum(): string | undefined;
 }
 
 /** Properties that may be assigned to a document by its home document control system
@@ -108,6 +228,21 @@ export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String
   return elements;
 }
 
+export interface RecordDocumentResults extends SynchronizationResults {
+  /** Identifies the ExternalSource element that corresponds to to the RepositoryLink. This may be empty or invalid. */
+  externalSourceId: Id64String;
+  /** The RepositoryLink's previously stored state, if any. Will be undefined if the document is new. */
+  preChangeAspect?: ExternalSourceAspectProps;
+  /** The RepositoryLink's current state. Note that this state has not yet been written to the iModel. This is used by updateRepositoryLinks to update the iModel when synchronization is finished. */
+  postChangeAspect: ExternalSourceAspectProps;
+}
+
+type ItemWithScopeAndKind = RemoveNullable<RemoveNullable<SourceItem, "scope">, "kind">;
+
+function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKind {
+  return item.scope !== undefined && item.kind !== undefined;
+}
+
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -115,99 +250,143 @@ export class Synchronizer {
   private _seenElements: Set<Id64String> = new Set<Id64String>();
   private _seenAspects: Set<Id64String> = new Set<Id64String>();
   private _unchangedSources: Id64String[] = new Array<Id64String>();
-  private _links = new Map<string, SynchronizationResults>();
+  private _links = new Map<string, RecordDocumentResults>();
+  private _jobSubjectId: string | undefined;
 
   public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AccessToken) {
-    if (imodel.isBriefcaseDb() && undefined === _requestContext) {
+    if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
-    }
   }
 
-  /** Insert or update a RepositoryLink element to represent the source document.  Also inserts or updates an ExternalSourceAspect for provenance.
-   * @param scope The scope of the RepositoryLink's ExternalSourceAspect
-   * @param sourceItem Identifies the document. The item's version property should the last modified time of the document. The checksum property is optional. It may be a cryptographic hash of the file's contents, or some other metric that is guaranteed to change when the document changes.
-   * @param kind Optional. The document kind. Defaults to "DocumentWithBeGuid"
-   * @param knownUrn Optional. The URN of the master document. Defaults to "".
+  /** @internal */
+  public get linkCount() { return this._links.size; }
+  public get unchangedSources() { return this._unchangedSources; }
+
+  public set jobSubjectId(id: Id64String) { this._jobSubjectId = id; }
+  public get jobSubjectId(): string {
+    if (this._jobSubjectId === undefined)
+      throw new IModelError(IModelStatus.MissingId, "No Job Subject");
+    return this._jobSubjectId;
+  }
+
+  private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
+    const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
+    if (xse !== undefined) {
+      assert(xse.id !== undefined);
+      return xse.id;
+    }
+
+    const xseProps: ExternalSourceProps = {
+      model: modelId,
+      classFullName: ExternalSource.classFullName,
+      repository: { id: repositoryLinkId, relClassName: RepositoryLink.classFullName },
+      code: Code.createEmpty(),
+    };
+
+    return this.imodel.elements.insertElement(xseProps);
+  }
+
+  /** Insert or update a RepositoryLink element to represent the source document. Also inserts or updates an ExternalSourceAspect for provenance.
+   * @param sourceDocument Identifies the document.
    * @throws [[IModelError]] if a RepositoryLink for this document already exists, but there is no matching ExternalSourceAspect.
+   * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
-  public recordDocument(scope: Id64String, sourceItem: SourceItem, kind: string = "DocumentWithBeGuid", knownUrn: string = ""): SynchronizationResults {
-    const key = scope + sourceItem.id.toLowerCase();
+  public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
+    const sourceItem: ItemWithScopeAndKind = {
+      kind: "DocumentWithBeGuid",
+      scope: IModel.repositoryModelId,
+      id: sourceDocument.docid,
+      version: sourceDocument.lastModifiedTime,
+      checksum: () => { return sourceDocument.checksum(); },
+    };
+    const knownUrn = sourceDocument.urn ?? "";
+
+    const key = sourceItem.scope + sourceItem.id.toLowerCase();
     const existing = this._links.get(key);
     if (existing !== undefined) {
       return existing;
     }
 
-    // TODO: This if statement does nothing.
-
-    // if (undefined === knownUrn) {
-    //   // C++ calls GetParams().QueryDocumentURN()
-    // }
-
-    // TODO: Create document with scope pointing to the new RepositoryLink? Currently the scope
-    // must be known before creating the link.
-
-    // By default, assume that the identifier of each document is unique to the repository.
-    // 'Recommended to point to a RepositoryLink when ids are unique per repository.'
-    // https://www.itwinjs.org/bis/domains/biscore.ecschema/#externalsourceaspect
-
     const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
 
-    // TODO: makeRepositoryLink can't return undefined.
+    if (undefined === repositoryLink) {
+      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
+    }
 
-    // if (undefined === repositoryLink) {
-    //   throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
-    // }
-
-    const results: SynchronizationResults = {
+    const results: RecordDocumentResults = {
       elementProps: repositoryLink.toJSON(),
       itemState: ItemState.New,
-    };
+      externalSourceId: "", // see below
+    } as RecordDocumentResults;
 
-    const itemState = this.detectChanges(scope, kind, sourceItem).state;
-    if (Id64.isValidId64(repositoryLink.id) && itemState === ItemState.New) {
+    const changeResults = this.detectChanges(sourceItem);
+    if (Id64.isValidId64(repositoryLink.id) && changeResults.state === ItemState.New) {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
-      However, no ExternalSourceAspect with scope=${scope} and kind=${kind} was found for this element.
+      However, no ExternalSourceAspect with scope=${sourceItem.scope} and kind=${sourceItem.kind} was found for this element.
       Maybe RecordDocument was previously called on this file with a different scope or kind.`;
       throw new IModelError(IModelStatus.NotFound, error);
     }
 
-    results.itemState = itemState;
-    const status = this.updateIModel(results, scope, sourceItem, kind);
+    results.itemState = changeResults.state;
+    results.preChangeAspect = changeResults.existingExternalSourceAspect;
+
+    if (changeResults.state === ItemState.Unchanged) {
+      assert(changeResults.id !== undefined);
+      results.elementProps.id = changeResults.id;
+      results.externalSourceId = this.getOrCreateExternalSource(results.elementProps.id, results.elementProps.model);
+      assert(changeResults.existingExternalSourceAspect !== undefined, "detectChanges must set existingExternalSourceAspect whenever it returns Unchanged or Changed");
+      results.postChangeAspect = changeResults.existingExternalSourceAspect;
+
+      this._unchangedSources.push(changeResults.id);
+      this._links.set(key, results);
+      this.onElementSeen(changeResults.id);
+      return results;
+    }
+
+    // Changed or New
+    const status = this.updateIModel(results, sourceItem);
 
     if (results.elementProps.id === undefined)
       throw new IModelError(status, `Failed to insert repositoryLink ${JSON.stringify(results.elementProps)}`);
 
-    const xseProps: ExternalSourceProps = {
-      model: scope,
-      classFullName: ExternalSource.classFullName,
-      repository: { id: results.elementProps.id, relClassName: RepositoryLink.classFullName },
-      code: Code.createEmpty(),
-    };
-
-    if (this.getExternalSourceElement(repositoryLink) === undefined) {
-      this.imodel.elements.insertElement(xseProps);
-    }
+    results.externalSourceId = this.getOrCreateExternalSource(results.elementProps.id, results.elementProps.model);
 
     this._links.set(key, results);
+
+    // Fail-safety - see updateRepositoryLinks
+    results.postChangeAspect = this.makeExternalSourceAspectPropsFromSourceItem(results.elementProps.id, sourceItem); // this is what we will write in updateRepositoryLinks at the finish
+    const aspectNoVersion: ExternalSourceAspectProps = { ...results.postChangeAspect, version: undefined, checksum: undefined }; // at the start, erase the version and checksum values
+    this.imodel.elements.updateAspect(aspectNoVersion);
 
     return results;
   }
 
+  private setSourceItemDefaults(item: SourceItem) {
+    if (item.scope === undefined)
+      item.scope = this.jobSubjectId;
+    if (item.kind === undefined)
+      item.kind = "";
+    if (item.externalSourceElementId === undefined && this.linkCount === 1)
+      item.externalSourceElementId = this._links.values().next().value.externalSourceId;
+    assert(sourceItemHasScopeAndKind(item));
+  }
+
   /** Detect if the item has changed or is new.
-   * @param scope The scoping item
-   * @param kind the kind of source item
    * @param item the source item
    * @returns the results of looking in the iModelDb and comparing the existing source record, if any, with the item's current state.
    * @beta
    */
-  public detectChanges(scope: Id64String, sourceKind: string, item: SourceItem): ChangeResults {
+  public detectChanges(item: SourceItem): ChangeResults {
+    this.setSourceItemDefaults(item);
+    assert(sourceItemHasScopeAndKind(item));
+
     let ids: any;
     const results: ChangeResults = {
       state: ItemState.New,
     };
 
     if (item.id !== "") {
-      ids = ExternalSourceAspect.findBySource(this.imodel, scope, sourceKind, item.id);
+      ids = ExternalSourceAspect.findBySource(this.imodel, item.scope, item.kind, item.id);
     }
 
     // If we fail to locate the aspect with its unique (kind, identifier) tuple, we consider the
@@ -230,54 +409,41 @@ export class Synchronizer {
       return results;
     }
 
-    // TODO: We know the aspect exists if we still have control at the end of line 186, so this
-    // if statement body is unreachable.
-
-    // if (undefined === aspect) {
-    //   return results;
-    // }
-
-    // TODO: Adam's code to delete external source aspects; shouldn't they be deleted by the iModel
-    // API because of the embedding relationship?
+    if (undefined === aspect)
+      return results;
 
     this._seenAspects.add(aspect.id);
 
-    // A version change takes priority...
-    if (undefined !== aspect.version && undefined !== item.version && aspect.version !== item.version) {
-      results.state = ItemState.Changed;
-      results.id = ids.elementId;
-      return results;
-    }
-    // ...over a checksum change.
-    if (undefined !== aspect.checksum && undefined !== item.checksum && aspect.checksum !== item.checksum) {
-      results.state = ItemState.Changed;
-      results.id = ids.elementId;
-      return results;
-    }
-
+    results.existingExternalSourceAspect = aspect.toJSON();
     results.id = ids.elementId;
-    results.state = ItemState.Unchanged;
 
-    if ("DocumentWithBeGuid" === sourceKind) {
-      this._unchangedSources.push(ids.elementId);
+    if (item.version !== undefined && item.version === aspect.version) {
+      results.state = ItemState.Unchanged;
+      return results;
     }
 
+    if ((item.checksum() ?? item.version) !== (aspect.checksum ?? aspect.version)) {
+      results.state = ItemState.Changed;
+      return results;
+    }
+
+    results.state = ItemState.Unchanged;
     return results;
   }
 
-  /** Update the BIM with the results of converting an item to one or more DgnElements.
-   * If the item is new or changed, the conversion writes are written to the BIM and the associated ExternalSourceAspect is updated.
-   * If the item is known and unchanged, then the BIM is not updated.
+  /** Update the iModel with the results of converting an item to one or more Elements.
+   * If the item is new or changed, the conversion writes are written to the iModel and the associated ExternalSourceAspect is updated.
+   * If the item is known and unchanged, then the iModel is not updated.
    * In either case, this function will record the id of the element as having been seen.
-   * @param element The DgnElement to be inserted or updated
-   * @param itemState Whether the element is new, changed, or unchanged
-   * @param scope Id of the scoping element
-   * @param sourceItem Defines the source item
-   * @param kind The kind of the source item
-   * @param externalSourceElement External source pointing to the Repository Link. Use getExternalSourceElement for this parameter
+   * @param results The Element to be inserted or updated
+   * @param sourceItem Whether the element is new, changed, or unchanged
+   * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked.
    * @beta
    */
-  public updateIModel(results: SynchronizationResults, scope: Id64String, sourceItem: SourceItem, kind: string, externalSourceElement?: ExternalSourceProps): IModelStatus {
+  public updateIModel(results: SynchronizationResults, sourceItem: SourceItem): IModelStatus {
+    this.setSourceItemDefaults(sourceItem);
+    assert(sourceItemHasScopeAndKind(sourceItem));
+
     let status: IModelStatus = IModelStatus.Success;
 
     if (ItemState.Unchanged === results.itemState) {
@@ -290,7 +456,7 @@ export class Synchronizer {
 
     let aspectId: Id64String | undefined;
     if (sourceItem.id !== "") {
-      const xsa = ExternalSourceAspect.findBySource(this.imodel, scope, kind, sourceItem.id);
+      const xsa = ExternalSourceAspect.findBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);
       if (xsa.aspectId !== undefined) {
         aspectId = xsa.aspectId;
       }
@@ -316,36 +482,24 @@ export class Synchronizer {
 
     assert(results.elementProps.id !== undefined && Id64.isValidId64(results.elementProps.id));
 
-    let sourceId;
-    if (externalSourceElement && externalSourceElement.id)
-      sourceId = externalSourceElement.id;
-
-    status = this.setExternalSourceAspect(results.elementProps, results.itemState, scope, sourceItem, kind, sourceId);
+    status = this.setExternalSourceAspect(results.elementProps, results.itemState, sourceItem);
     return status;
   }
 
   /** Adds or updates the external source aspect for the given source item onto the related element
    * @param element The element to attach the ExternalSourceAspect
    * @param itemState The state of the source item
-   * @param scope The id of the scoping element
    * @param sourceItem Defines the source item
-   * @param kind The kind of the source item
-   * @param source The id of the external source element
    * @beta
    */
-  public setExternalSourceAspect(element: ElementProps, itemState: ItemState, scope: Id64String, sourceItem: SourceItem, kind: string, sourceId?: Id64String): IModelStatus {
+  public setExternalSourceAspect(element: ElementProps, itemState: ItemState, sourceItem: SourceItem): IModelStatus {
     assert(element.id !== undefined && Id64.isValidId64(element.id));
-    const source = sourceId ? { id: sourceId } : undefined;
-    const aspectProps: ExternalSourceAspectProps = {
-      classFullName: ExternalSourceAspect.classFullName,
-      element: { id: element.id },
-      scope: { id: scope },
-      identifier: sourceItem.id,
-      kind,
-      checksum: sourceItem.checksum,
-      version: sourceItem.version,
-      source,
-    };
+
+    this.setSourceItemDefaults(sourceItem);
+    assert(sourceItemHasScopeAndKind(sourceItem));
+
+    const aspectProps = this.makeExternalSourceAspectPropsFromSourceItem(element.id, sourceItem);
+
     if (itemState === ItemState.New) {
       this.imodel.elements.insertAspect(aspectProps); // throws on error
     } else {
@@ -378,7 +532,7 @@ export class Synchronizer {
       }
     );
 
-    if(sourceId) {
+    if (sourceId) {
       return this.imodel.elements.getElementProps<ExternalSourceProps>(sourceId);
     }
 
@@ -567,11 +721,11 @@ export class Synchronizer {
 
   private deleteElements(elementIds: Id64String[], defElementIds: Id64String[]) {
     for (const elementId of elementIds) {
-      if (this.imodel.elements.tryGetElement(elementId)){
+      if (this.imodel.elements.tryGetElement(elementId)) {
         this.imodel.elements.deleteElement(elementIds);
         const aspects = this.imodel.elements.getAspects(elementId, ElementUniqueAspect.classFullName);
-        for ( const aspect of aspects){
-          if(!this._seenAspects.has(aspect.id))
+        for (const aspect of aspects) {
+          if (!this._seenAspects.has(aspect.id))
             this.imodel.elements.deleteAspect(aspect.id);
         }
       }
@@ -739,4 +893,25 @@ export class Synchronizer {
     }
     return guid;
   }
+
+  private makeExternalSourceAspectPropsFromSourceItem(elementId: Id64String, sourceItem: ItemWithScopeAndKind): ExternalSourceAspectProps {
+    const source = sourceItem.externalSourceElementId ? { id: sourceItem.externalSourceElementId } : undefined;
+    return {
+      classFullName: ExternalSourceAspect.classFullName,
+      element: { id: elementId },
+      scope: { id: sourceItem.scope },
+      identifier: sourceItem.id,
+      kind: sourceItem.kind,
+      checksum: sourceItem.checksum(),
+      version: sourceItem.version,
+      source,
+    };
+  }
+
+  public updateRepositoryLinks(): void {
+    for (const link of this._links.values()) {
+      this.imodel.elements.updateAspect(link.postChangeAspect);
+    }
+  }
+
 }
