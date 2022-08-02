@@ -85,8 +85,8 @@ type RemoveNullable<T, TKey extends keyof T> = T & {
  *
  * A SourceItem must have a version or a checksum, and it can have both.
  * 1. If a SourceItem defines *both* version and checksum, then the entity is considered to be unchanged if the version is unchanged. If the version has changed, then the checksum is checked.
- * 1. If a SourceItem defines version only, the entity is considered to have changed if the item's version has changed.
- * 1. If a SourceItem defines checksum only, the entity is considered to have changed if the item's checksum has changed.
+ * 2. If a SourceItem defines version only, the entity is considered to have changed if the item's version has changed.
+ * 3. If a SourceItem defines checksum only, the entity is considered to have changed if the item's checksum has changed.
  *
  * If both version and checksum are defined, Synchronizer.detectChanges first tries to use the version to quickly detect if the entity is *unchanged*.
  * If the version is unchanged, then the entity is considered to be unchanged, and the item's checksum function is not called.

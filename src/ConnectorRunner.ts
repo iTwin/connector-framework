@@ -4,14 +4,15 @@
 *--------------------------------------------------------------------------------------------*/
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
-import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
+import { BentleyError, IModelHubStatus } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
-import type { IModelDb, RequestNewBriefcaseArg} from "@itwin/core-backend";
+import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
 import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import type { AllArgsProps} from "./Args";
+import type { AllArgsProps } from "./Args";
 import { HubArgs, JobArgs } from "./Args";
 import { Synchronizer } from "./Synchronizer";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
@@ -91,12 +92,12 @@ export class ConnectorRunner {
 
   // NEEDSWORK - How to check if string version od Access Token is expired
   private get _isAccessTokenExpired(): boolean {
-  //  return this._reqContext.isExpired(5);
+    //  return this._reqContext.isExpired(5);
     return true;
   }
 
   public async getAuthReqContext(): Promise<AccessToken> {
-    if (!this._reqContext )
+    if (!this._reqContext)
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
     if (this._isAccessTokenExpired) {
       this._reqContext = await this.getToken();
@@ -371,9 +372,9 @@ export class ConnectorRunner {
     this._connector = await require(connector).default.create();
   }
 
-  private insertSynchronizationConfigLink(){
+  private insertSynchronizationConfigLink() {
     let synchConfigData = {
-      classFullName:  SynchronizationConfigLink.classFullName,
+      classFullName: SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     };
@@ -384,7 +385,7 @@ export class ConnectorRunner {
       LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
     );
     let idToReturn: string;
-    if(prevSynchConfigId === undefined) {
+    if (prevSynchConfigId === undefined) {
       idToReturn = this.db.elements.insertElement(synchConfigData);
     } else {
       this.updateSynchronizationConfigLink(prevSynchConfigId);
@@ -392,10 +393,10 @@ export class ConnectorRunner {
     }
     return idToReturn;
   }
-  private updateSynchronizationConfigLink(synchConfigId: string){
+  private updateSynchronizationConfigLink(synchConfigId: string) {
     const synchConfigData = {
       id: synchConfigId,
-      classFullName:  SynchronizationConfigLink.classFullName,
+      classFullName: SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
@@ -518,20 +519,50 @@ export class ConnectorRunner {
     const comment = `${revisionHeader} - ${changeDesc}`;
     const isStandalone = this.jobArgs.dbType === "standalone";
     if (!isStandalone && this.db.isBriefcaseDb()) {
-      this._db = this.db ;
+      this._db = this.db;
       await this.db.pullChanges();
       this.db.saveChanges(comment);
-      await this.db.pushChanges({description: comment});
+      await this.db.pushChanges({ description: comment });
+      await this.db.locks.releaseAllLocks(); // in case there were no changes
     } else {
       this.db.saveChanges(comment);
     }
   }
 
+  private shouldRetryAfterError(err: unknown): boolean {
+    if (!(err instanceof BentleyError))
+      return false;
+    return err.errorNumber === IModelHubStatus.LockOwnedByAnotherBriefcase;
+  }
+
+  private async acquireLocks(arg: { shared?: Id64Arg, exclusive?: Id64Arg }): Promise<void> {
+    const isStandalone = this.jobArgs.dbType === "standalone";
+    if (isStandalone || !this.db.isBriefcaseDb())
+      return;
+
+    let count = 0;
+    do {
+      try {
+        await this.db.locks.acquireLocks(arg);
+        return;
+      } catch (err) {
+        if (!this.shouldRetryAfterError(err))
+          throw err;
+        if (++count > this.hubArgs.maxLockRetries)
+          throw err;
+        const sleepms = Math.random() * this.hubArgs.maxLockRetryWaitSeconds * 1000;
+        await new Promise((resolve) => setTimeout(resolve, sleepms));
+        await this.db.pullChanges(); // do not catch!
+        await this.db.pushChanges({ description: "" }); // "
+      }
+    } while (true);
+  }
+
   private async doInChannel<R>(channel: Id64String, grip: "shared" | "exclusive", task: () => Promise<R>, message: string): Promise<R> {
     if (grip === "shared") {
-      await this.db.locks.acquireLocks({ shared: channel });
+      await this.acquireLocks({ shared: channel });
     } else {
-      await this.db.locks.acquireLocks({ exclusive: channel });
+      await this.acquireLocks({ exclusive: channel });
     }
     const result = await task();
     await this.persistChanges(message);
