@@ -86,35 +86,25 @@ type RemoveNullable<T, TKey extends keyof T> = T & {
  * If they do not match, the entity has changed, and the connector should convert the entity and then call Synchronizer.updateIModel.
  *
  * Change-detection is based on version and/or checksum values that represent the state of the content of each entity in a summary form.
- * In principle, we could detect changes by letting the connector convert an entity to BIS format and then comparing the results with the Elements
- * and Aspects currently in the iModel. That would be a big waste of time in the common case where most entities are unchanged. To avoid this, we
- * use summary version and/or checksum values to minimize the cost of up-front change-detection.
- * The connector computes summary version and/or checksum values directly from the source data, without having to convert any data.
- * One or both of these values may even be stored in the source data and require no computation at all.
+ * In principle, Synchronizer could detect changes by letting the connector convert an entity to BIS format and then comparing the results with the Elements
+ * and Aspects currently in the iModel. That would be a waste of time in the common case where most entities are unchanged. To avoid this, Synchronizer
+ * uses version and/or checksum values. This approach minimizes the cost of up-front change-detection. The connector can compute these summary values directly
+ * from the raw source data, without using its conversion logic. One or both of these values may even be directly available in the source data and so may
+ * require no computation at all.
  *
- * The SourceItem must define version or checksum, and it can define both. There are three options:
- * 1. Version only - An entity is considered to have changed if the item's version does not equal the aspect's version. Otherwise, the entity is unchanged.
- * 1. Checksum only - An entity is considered to have changed if the item's checksum does not equal the aspect's checksum. Otherwise, the entity is unchanged.
- * 1. Version and checksum - An entity is considered to have changed if version and checksum both fail to match the stored values. If version matches, the checksum is not used.
+ * A SourceItem must have a version or a checksum, and it can have both.
+ * 1. If a SourceItem defines *both* version and checksum, then the entity is considered to be unchanged if the version is unchanged. If the version has changed, then the checksum is checked.
+ * 1. If a SourceItem defines version only, the entity is considered to have changed if the item's version has changed.
+ * 1. If a SourceItem defines checksum only, the entity is considered to have changed if the item's checksum has changed.
  *
- * In more detail:
+ * If both version and checksum are defined, Synchronizer.detectChanges first tries to use the version to quickly detect if the entity is *unchanged*.
+ * If the version is unchanged, then the entity is considered to be unchanged, and the item's checksum function is not called.
+ * That saves time in the common case where most entities are unchanged, since computing a crytographic hash is more expensive and requires more data
+ * than simply reading a version value. This optimization can be used only if the entity in the external source has a reliable version that changes when any part
+ * of the source entity's content changes. The last-modified time of a file on disk is an example of a reliable "version".
  *
- * 1. Optional version check to screen out unchanged entities
- *
- * Synchronizer.detectChanges first tries to use the optional `version` property to detect if the entity is *unchanged* by matching it with the stored version.
- * If so, the item's checksum function is not called. That can save a lot of time in the common case where most entities are unchanged, since computing a
- * crytographic hash could be time-consuming and may involve reading additional data.
- * This optimization can be used only if the entity has a reliable version that changes when any part of the source entity's content changes.
- *
- * 2. Compare Checksums
- *
- * If the versions do not match (either because the current version is not defined or does not match the stored version),
- * Synchronizer.detectChanges calls the item's checksum function and compares the result with the stored checksum.
- * If the checksum values differ, the entity has changed. If not, the entity has not changed.
- * Note: The SourceItem.checksum function may be called multiple times on a given SourceItem in the course of detecting changes and updating the iModel.
- * The connector's SourceItem implementation should cache the checksum value the first time that it is called.
- *
- * If SourceItem.version is defined and the result of SourceItem.checksum() is undefined, then version is used in place of checksum to detect changes.
+ * If the SourceItem defines a checksum function, Synchronizer.detectChanges may call it multiple times on a given SourceItem in the course of detecting changes and updating the iModel.
+ * The SourceItem's checksum function should cache its return value the first time that it is called.
  *
  * @beta
  */
