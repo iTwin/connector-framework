@@ -10,7 +10,7 @@ import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModel
 import type { InformationPartitionElementProps} from "@itwin/core-common";
 import { IModel, IModelError } from "@itwin/core-common";
 
-import type { SourceDocument, SynchronizationResults } from "../../src/Synchronizer";
+import type { DocumentSource, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
@@ -88,7 +88,7 @@ export default class TestConnector extends BaseConnector {
       timeStamp = stat.mtimeMs;
     }
 
-    const sourceDoc: SourceDocument = {
+    const sourceDoc: DocumentSource = {
       docid: this._sourceData,
       lastModifiedTime: timeStamp.toString(),
       checksum: () => undefined,

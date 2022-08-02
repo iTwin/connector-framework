@@ -14,7 +14,7 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, 
 import type { SolidPrimitive } from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import type { DocumentSource, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
@@ -135,7 +135,7 @@ export default class TestConnector extends BaseConnector {
       timeStamp = stat.mtimeMs;
     }
 
-    const sourceDoc: SourceDocument = {
+    const sourceDoc: DocumentSource = {
       docid: this._sourceData,
       lastModifiedTime: timeStamp.toString(),
       checksum: () => undefined,

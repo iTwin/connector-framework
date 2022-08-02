@@ -146,8 +146,8 @@ export interface SourceItem {
  * ExternalSourceAspect.source is undefined.
  * Synchronizer.recordDocument calls detectChanges internally and returns the result. See SourceItem for details on the change-detection algorithm.
 */
-export interface SourceDocument {
-  /** The unique dentity of the document - this could be a GUID that is assigned to it by a document management system, a URN, or a relative filepath. Absolute filepaths should not be used. */
+export interface DocumentSource {
+  /** The unique identity of the document - this could be a GUID that is assigned to it by a document management system, a URN, or a relative filepath. Absolute filepaths should not be used. */
   docid: string;
   /** The stable URN of the document. If the document has both a GUID and an URN, `docid` should be the GUID and `urn` should be the URN. If the document has only a stable URN, then `docid` should be the URN. */
   urn?: string;
@@ -281,7 +281,7 @@ export class Synchronizer {
    * @throws [[IModelError]] if a RepositoryLink for this document already exists, but there is no matching ExternalSourceAspect.
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
-  public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
+  public recordDocument(sourceDocument: DocumentSource): RecordDocumentResults {
     const sourceItem: ItemWithScopeAndKind = {
       kind: "DocumentWithBeGuid",
       scope: IModel.repositoryModelId,
