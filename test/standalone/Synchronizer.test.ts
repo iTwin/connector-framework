@@ -4,7 +4,8 @@
 *--------------------------------------------------------------------------------------------*/
 import type { Id64String } from "@itwin/core-bentley";
 
-import type { DefinitionElementProps, ElementProps, ExternalSourceAspectProps, ExternalSourceProps,
+import type {
+  DefinitionElementProps, ElementProps, ExternalSourceAspectProps, ExternalSourceProps,
   InformationPartitionElementProps, ModelProps, RepositoryLinkProps, SubjectProps,
 } from "@itwin/core-common";
 
@@ -23,7 +24,7 @@ import * as fs from "node:fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
 
-import type { SourceItem, SynchronizationResults} from "../../src/Synchronizer";
+import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer";
 
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
 
@@ -35,11 +36,7 @@ describe("synchronizer #standalone", () => {
   let imodel: SnapshotDb;
 
   const makeToyDocument = (sync: Synchronizer): ExternalSourceProps => {
-    const results = sync.recordDocument(
-      SnapshotDb.repositoryModelId,
-      { id: "source document" },
-      "json",
-    );
+    const results = sync.recordDocument({ docid: "source document" });
 
     const linkId = results.elementProps.id;
     assert.isOk(linkId);
@@ -83,8 +80,11 @@ describe("synchronizer #standalone", () => {
     return [subjectId, subjectProps, partitionId, modelId];
   };
 
-  const berryGroups = (definitionModel: Id64String): [SourceItem, SynchronizationResults] => {
+  const berryGroups = (source: Id64String, scope: Id64String, kind: string, definitionModel: Id64String): [SourceItem, SynchronizationResults] => {
     const meta: SourceItem = {
+      source,
+      scope,
+      kind,
       id: "berry definition group",
       version: "1.0.0",
     };
@@ -186,11 +186,7 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
       const poke = () =>
-        synchronizer.recordDocument(
-          SnapshotDb.repositoryModelId,
-          { id: "source document"},
-          "json"
-        );
+        synchronizer.recordDocument({ docid: "source document" });
 
       // Access the document again without modifying it. Expect synchronization results to be the same
       // object because the synchronizer maintains a cache.
@@ -213,11 +209,7 @@ describe("synchronizer #standalone", () => {
       imodel.elements.insertElement(linkProps);
 
       const oops = () => {
-        synchronizer.recordDocument(
-          SnapshotDb.repositoryModelId,
-          { id: document },
-          "json"
-        );
+        synchronizer.recordDocument({ docid: document });
       };
 
       // Chai's documentation: https://www.chaijs.com/api/assert/#method_throws
@@ -238,7 +230,7 @@ describe("synchronizer #standalone", () => {
 
       const source = makeToyDocument(synchronizer);
 
-      const [elementId,,,,] = makeToyElement();
+      const [elementId, , , ,] = makeToyElement();
 
       const aspectProps: ExternalSourceAspectProps = {
         classFullName: ExternalSourceAspect.classFullName,
@@ -253,44 +245,76 @@ describe("synchronizer #standalone", () => {
 
       imodel.elements.insertAspect(aspectProps);
 
-      // Version change takes priority over a checksum change.
+      // If both are defined, version is used only to detect *no change*. When versions differ, checksums are compared.
 
+      // case: version unchanged
       let edited: SourceItem = {
-        id: identifier,
-        version: "1.0.1",
-        checksum: "01111010011000010110001101101001",
-      };
-
-      let changes = synchronizer.detectChanges(scope, kind, edited);
-
-      assert.strictEqual(changes.id, elementId);
-      assert.strictEqual(changes.state, ItemState.Changed);
-
-      // Checksum change.
-
-      edited = {
+        scope,
+        kind,
         id: identifier,
         version: "1.0.0",
-        checksum: "01111010011000010110001101101001",
+        checksum: () => { throw new Error("never called"); }, // never called
       };
 
-      changes = synchronizer.detectChanges(scope, kind, edited);
-
-      assert.strictEqual(changes.id, elementId);
-      assert.strictEqual(changes.state, ItemState.Changed);
-
-      // No change.
-
-      edited = {
-        id: identifier,
-        version: "1.0.0",
-        checksum: "01111010011000010110001101101000",
-      };
-
-      changes = synchronizer.detectChanges(scope, kind, edited);
+      let changes = synchronizer.detectChanges(edited);
 
       assert.strictEqual(changes.id, elementId);
       assert.strictEqual(changes.state, ItemState.Unchanged);
+
+      // case: version changed, checksum unchanged
+      edited = {
+        scope,
+        kind,
+        id: identifier,
+        version: "1.0.1",
+        checksum: () => "01111010011000010110001101101000",
+      };
+
+      changes = synchronizer.detectChanges(edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Unchanged);
+
+      // case: both version and checksum changed
+      edited = {
+        scope,
+        kind,
+        id: identifier,
+        version: "1.0.1",
+        checksum: () => "01111010011000010110001101101001",
+      };
+
+      changes = synchronizer.detectChanges(edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Changed);
+
+      // case: no version; checksum changed
+      edited = {
+        scope,
+        kind,
+        id: identifier,
+        version: undefined,
+        checksum: () => "01111010011000010110001101101001",
+      };
+
+      changes = synchronizer.detectChanges(edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Changed);
+
+      // case: version; no checksum
+      edited = {
+        scope,
+        kind,
+        id: identifier,
+        version: "1.0.1",
+      };
+
+      changes = synchronizer.detectChanges(edited);
+
+      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.state, ItemState.Changed);
     });
   });
 
@@ -301,17 +325,18 @@ describe("synchronizer #standalone", () => {
     const scope = SnapshotDb.repositoryModelId;
 
     const setToyProvenance = (source: ExternalSourceProps, sync: Synchronizer): [SourceItem, SubjectProps] => {
-      const [, elementProps,,,] = makeToyElement();
+      const [, elementProps, , ,] = makeToyElement();
 
       const meta: SourceItem = {
+        source: source.id,
+        scope,
+        kind,
         id: identifier,
         version: "1.0.0",
       };
 
       // TODO: Or call `updateIModel`.
-      const status = sync.setExternalSourceAspect(
-        elementProps, ItemState.New, scope, meta, kind, source.id
-      );
+      const status = sync.setExternalSourceAspect(elementProps, ItemState.New, meta);
 
       assert.strictEqual(status, IModelStatus.Success);
 
@@ -323,9 +348,9 @@ describe("synchronizer #standalone", () => {
       const source = makeToyDocument(synchronizer);
 
       const [meta, elementProps] = setToyProvenance(source, synchronizer);
-      const changes = synchronizer.detectChanges(scope, kind, meta);
+      const changes = synchronizer.detectChanges(meta);
       const sync = { elementProps, itemState: changes.state };
-      const status = synchronizer.updateIModel(sync, scope, meta, kind, source);
+      const status = synchronizer.updateIModel(sync, meta);
       const aspect = sourceAspect(scope, kind, identifier);
 
       assert.strictEqual(status, IModelStatus.Success);
@@ -334,7 +359,7 @@ describe("synchronizer #standalone", () => {
       // Butcher element identifier.
       sync.elementProps.id = undefined;
 
-      const oops = () => synchronizer.updateIModel(sync, scope, meta, kind, source);
+      const oops = () => synchronizer.updateIModel(sync, meta);
 
       assert.throws(oops, IModelError, /missing id/i);
     });
@@ -349,9 +374,9 @@ describe("synchronizer #standalone", () => {
       meta.version = "1.0.1";
       elementProps.description = "all about berries 🍓";
 
-      const changes = synchronizer.detectChanges(scope, kind, meta);
+      const changes = synchronizer.detectChanges(meta);
       const sync = { elementProps, itemState: changes.state };
-      const status = synchronizer.updateIModel(sync, scope, meta, kind, source);
+      const status = synchronizer.updateIModel(sync, meta);
 
       assert.strictEqual(status, IModelStatus.Success);
 
@@ -367,8 +392,8 @@ describe("synchronizer #standalone", () => {
     it("insert new child elements", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
-      const [,,, modelId] = makeToyElement();
-      const [, tree] = berryGroups(modelId);
+      const [, , , modelId] = makeToyElement();
+      const [, tree] = berryGroups("", "", "", modelId);
 
       const status = synchronizer.insertResultsIntoIModel(tree);
 
@@ -378,18 +403,21 @@ describe("synchronizer #standalone", () => {
     });
   });
 
+  const makeDocumentAndDefinitionGroup = (synchronizer: Synchronizer): [SourceItem, SynchronizationResults, Id64String] => {
+    const source = makeToyDocument(synchronizer);
+    const scope = SnapshotDb.repositoryModelId;
+    const kind = "definition group";
+
+    const [, , , modelId] = makeToyElement();
+    return [...berryGroups(source.id!, scope, kind, modelId), modelId];
+  };
+
   describe("update results in imodel", () => {
     it("update modified root element with children, one-to-one", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const source = makeToyDocument(synchronizer);
+      const [meta, tree] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       // Change the external identifier of the root definition group. The synchronizer will consider
       // the root group (berry) and the children groups (strawberry, raspberry) modified even though
@@ -407,7 +435,7 @@ describe("synchronizer #standalone", () => {
       // Synchronizer does not care if we've actually changed the element, it will just look at what
       // we've specified here.
       //                                           vvvv
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -420,15 +448,9 @@ describe("synchronizer #standalone", () => {
     // vvvv
     it.skip("update modified root element with children, larger source set", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const source = makeToyDocument(synchronizer);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const blueberryProps = new DefinitionGroup({
         classFullName: DefinitionGroup.classFullName,
@@ -451,7 +473,7 @@ describe("synchronizer #standalone", () => {
       // Patch berry definition group.
       meta.version = "1.0.1";
 
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -464,15 +486,9 @@ describe("synchronizer #standalone", () => {
   describe("detect deleted elements", () => {
     it("deletes child that is not visited", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      let source = makeToyDocument(synchronizer);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -483,12 +499,10 @@ describe("synchronizer #standalone", () => {
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
-      source = makeToyDocument(synchronizer);
-
       // Delete an element in the source file.
       tree.childElements!.pop();
 
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
 
@@ -499,15 +513,9 @@ describe("synchronizer #standalone", () => {
 
     it("does not delete a parent if its children exist", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      let source = makeToyDocument(synchronizer);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -517,8 +525,6 @@ describe("synchronizer #standalone", () => {
 
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
-
-      source = makeToyDocument(synchronizer);
 
       // Oops, somehow we haven't visited the parent this run!
       synchronizer.onElementSeen(tree.childElements![0].elementProps.id!);
@@ -533,15 +539,9 @@ describe("synchronizer #standalone", () => {
 
     it("deletes all children of an element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      let source = makeToyDocument(synchronizer);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -552,12 +552,10 @@ describe("synchronizer #standalone", () => {
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
-      source = makeToyDocument(synchronizer);
-
       // Delete an element in the source file.
       tree.childElements = [];
 
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
 
@@ -568,17 +566,9 @@ describe("synchronizer #standalone", () => {
 
     it("deletes a model with no children elements", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      let source = makeToyDocument(synchronizer);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
-      const [,, partitionId, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
-
-      assert.strictEqual(partitionId, modelId);
-
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -589,8 +579,6 @@ describe("synchronizer #standalone", () => {
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
-      source = makeToyDocument(synchronizer);
-
       // Delete an element in the source file.
       // tree = *poof!*;
 
@@ -600,7 +588,7 @@ describe("synchronizer #standalone", () => {
       count(query("strawberries"), 0);
       count(query("raspberries"), 0);
 
-      const deletedModeledElement = imodel.elements.tryGetElement(partitionId);
+      const deletedModeledElement = imodel.elements.tryGetElement(modelId);
       const deletedModel = imodel.models.tryGetModel(modelId);
 
       assert.isNotOk(deletedModeledElement);
@@ -609,10 +597,7 @@ describe("synchronizer #standalone", () => {
 
     it("deletes element referred to by other element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      let source = makeToyDocument(synchronizer);
-
-      const [,,, modelId] = makeToyElement();
-      const [meta, tree] = berryGroups(modelId);
+      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
 
       const berryBasket: ElementProps = {
         classFullName: Group.classFullName,
@@ -632,10 +617,7 @@ describe("synchronizer #standalone", () => {
       ElementGroupsMembers.create(imodel, basketId, tree.elementProps.id!).insert();
       ElementGroupsMembers.create(imodel, basketId, berry).insert();
 
-      const scope = SnapshotDb.repositoryModelId;
-      const kind = "definition group";
-
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
 
@@ -646,12 +628,10 @@ describe("synchronizer #standalone", () => {
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
-      source = makeToyDocument(synchronizer);
-
       // Delete an element in the source file.
       tree.childElements = [];
 
-      assert.strictEqual(synchronizer.updateIModel(tree, scope, meta, kind, source), IModelStatus.Success);
+      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
 

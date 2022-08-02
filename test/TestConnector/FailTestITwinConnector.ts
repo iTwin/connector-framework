@@ -6,11 +6,11 @@
 import type { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
 import type { RelationshipProps} from "@itwin/core-backend";
-import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelDb, IModelJsFs, PhysicalModel, PhysicalPartition, SubjectOwnsPartitionElements } from "@itwin/core-backend";
+import { DefinitionModel, DefinitionPartition, GroupInformationPartition, IModelJsFs, PhysicalModel, PhysicalPartition, SubjectOwnsPartitionElements } from "@itwin/core-backend";
 import type { InformationPartitionElementProps} from "@itwin/core-common";
 import { IModel, IModelError } from "@itwin/core-common";
 
-import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import type { SourceDocument, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
@@ -88,11 +88,12 @@ export default class TestConnector extends BaseConnector {
       timeStamp = stat.mtimeMs;
     }
 
-    const sourceItem: SourceItem = {
-      id: this._sourceData,
-      version: timeStamp.toString(),
+    const sourceDoc: SourceDocument = {
+      docid: this._sourceData,
+      lastModifiedTime: timeStamp.toString(),
+      checksum: () => undefined,
     };
-    const documentStatus = this.synchronizer.recordDocument(IModelDb.rootSubjectId, sourceItem);
+    const documentStatus = this.synchronizer.recordDocument(sourceDoc);
     if (undefined === documentStatus) {
       const error = `Failed to retrieve a RepositoryLink for ${this._sourceData}`;
       throw new IModelError(IModelStatus.BadArg, error);
