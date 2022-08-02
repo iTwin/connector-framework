@@ -36,7 +36,7 @@ describe("synchronizer #standalone", () => {
   let imodel: SnapshotDb;
 
   const makeToyDocument = (sync: Synchronizer): ExternalSourceProps => {
-    const results = sync.recordDocument({ docid: "source document" });
+    const results = sync.recordDocument({ docProps: { desktopURN: "source document" } });
 
     const linkId = results.elementProps.id;
     assert.isOk(linkId);
@@ -186,7 +186,7 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
       const poke = () =>
-        synchronizer.recordDocument({ docid: "source document" });
+        synchronizer.recordDocument({ docProps: { desktopURN: "source document" } });
 
       // Access the document again without modifying it. Expect synchronization results to be the same
       // object because the synchronizer maintains a cache.
@@ -209,7 +209,7 @@ describe("synchronizer #standalone", () => {
       imodel.elements.insertElement(linkProps);
 
       const oops = () => {
-        synchronizer.recordDocument({ docid: document });
+        synchronizer.recordDocument({ docProps: { desktopURN: document } });
       };
 
       // Chai's documentation: https://www.chaijs.com/api/assert/#method_throws

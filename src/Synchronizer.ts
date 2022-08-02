@@ -132,25 +132,23 @@ export interface SourceItem {
   source?: string;
 }
 
+export interface HasDocGuid { docGuid: string }
+export interface HasDesktopURN { desktopURN: string }
+export type StableDocumentId = HasDocGuid | HasDesktopURN;
+
+export function hasDocGuid(id: StableDocumentId): id is HasDocGuid {
+  return (id as HasDocGuid).docGuid !== undefined && (id as HasDocGuid).docGuid !== "";
+}
+
 /** Identifies an external document and its state.
  * This data is stored in the ExternalSourceAspect of the RepositoryLink Element that represents the document.
  * The ExternalSourceAspect tracks the source document.
- * The persistence mapping is:
- * |SourceItem|ExternalSourceAspect|
- * |----------|--------------------|
- * |docid|identifier|
- * |scope|`IModel.repositoryModelId`|
- * |kind|"DocumentWithBeGuid"|
- * |lastModifiedTime|version|
- * |checksum()|checksum|
- * ExternalSourceAspect.source is undefined.
- * Synchronizer.recordDocument calls detectChanges internally and returns the result. See SourceItem for details on the change-detection algorithm.
 */
-export interface DocumentSource {
-  /** The unique identity of the document - this could be a GUID that is assigned to it by a document management system, a URN, or a relative filepath. Absolute filepaths should not be used. */
-  docid: string;
-  /** The stable URN of the document. If the document has both a GUID and an URN, `docid` should be the GUID and `urn` should be the URN. If the document has only a stable URN, then `docid` should be the URN. */
-  urn?: string;
+export interface SourceDocument {
+  /** A human-readable description of the source document. */
+  description?: string;
+  /** The document's properties. The document's stable unique ID is docProps.docGuid or, failing that, docProps.desktopURN. One of these properties must be defined. */
+  docProps: StableDocumentId & DocumentProperties;
   /** An optional value that is typically the last modified time of the document.
   * It will be used by the synchronization process to detect that the document is unchanged so that computing a cryptographic hash can be avoided.
   * If present, this value must be guaranteed to change when any of the document's content changes. If not defined, checksum must be defined
@@ -173,11 +171,11 @@ export interface DocumentProperties {
   webURN?: string;
   /** The URN to use when referring to this document from a desktop program */
   desktopURN?: string;
-  /** Document attributes, in JSON format */
+  /** Document attributes, in JSON format. These are additional attributes that may be assigned to the document by the external document management system. */
   attributesJson?: string;
-  /** Spatial data transform for root document, in JSON format */
+  /** Spatial data transform for root document, in JSON format. This is normally set by the user to correct the spatial location of an external source. */
   spatialRootTransformJson?: string;
-  /** Change history information, in Json format */
+  /** Change history information, in Json format, maintained by the external document management system. */
   changeHistoryJson?: string;
 }
 
@@ -277,19 +275,22 @@ export class Synchronizer {
   }
 
   /** Insert or update a RepositoryLink element to represent the source document. Also inserts or updates an ExternalSourceAspect for provenance.
+   * The document's ID is sourceDocument.docProps.docGuid, if defined; else, sourceDocument.docProps.desktopUrn, if defined; else, sourceDocument.description.
+   * The document's ID is stored in the code value of the RepositoryLink and the identity of its ExternalSourceAspect.
    * @param sourceDocument Identifies the document.
    * @throws [[IModelError]] if a RepositoryLink for this document already exists, but there is no matching ExternalSourceAspect.
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
-  public recordDocument(sourceDocument: DocumentSource): RecordDocumentResults {
+  public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
+    const code = this.createRepositoryLinkCode(sourceDocument.docProps);
+
     const sourceItem: ItemWithScopeAndKind = {
       kind: "DocumentWithBeGuid",
       scope: IModel.repositoryModelId,
-      id: sourceDocument.docid,
+      id: code.value,
       version: sourceDocument.lastModifiedTime,
-      checksum: () => { return sourceDocument.checksum !== undefined ? sourceDocument.checksum() : undefined; },
+      checksum: () => { return sourceDocument.checksum?.(); },
     };
-    const knownUrn = sourceDocument.urn ?? "";
 
     const key = sourceItem.scope + sourceItem.id.toLowerCase();
     const existing = this._links.get(key);
@@ -297,13 +298,13 @@ export class Synchronizer {
       return existing;
     }
 
-    const repositoryLink = this.makeRepositoryLink(sourceItem.id, "", knownUrn);
+    const repositoryLink = this.makeRepositoryLink(code, sourceDocument.description, sourceDocument.docProps);
 
     if (undefined === repositoryLink) {
-      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${knownUrn}`);
+      throw new IModelError(IModelStatus.BadElement, `Failed to create repositoryLink for ${JSON.stringify(sourceDocument)}`);
     }
 
-    const results: RecordDocumentResults = {
+    const results = {
       elementProps: repositoryLink.toJSON(),
       itemState: ItemState.New,
       source: "", // see below
@@ -800,8 +801,7 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private makeRepositoryLink(document: string, defaultCode: string, defaultURN: string, preferDefaultCode: boolean = false): Element {
-    const [docProps, code] = this.getRepositoryLinkInfo(document, defaultCode, defaultURN, preferDefaultCode);
+  private makeRepositoryLink(code: Code, userLabel: string | undefined, docProps: DocumentProperties): Element {
     let repositoryLink = this.imodel.elements.tryGetElement(code) as RepositoryLink;
     if (undefined === repositoryLink) {
       const elementProps: RepositoryLinkProps = {
@@ -809,7 +809,7 @@ export class Synchronizer {
         model: IModel.repositoryModelId,
         code,
         url: docProps.desktopURN,
-        userLabel: document,
+        userLabel,
         repositoryGuid: docProps.docGuid,
         // eslint-disable-next-line @typescript-eslint/naming-convention
         jsonProperties: { DocumentProperties: { desktopURN: docProps.desktopURN, webURN: docProps.webURN, attributes: docProps.attributesJson } },
@@ -817,46 +817,6 @@ export class Synchronizer {
       repositoryLink = this.imodel.elements.createElement(elementProps);
     }
     return repositoryLink;
-  }
-
-  private getRepositoryLinkInfo(document: string, defaultCode: string, defaultURN: string, preferDefaultCode: boolean): [DocumentProperties, Code] {
-    const docProps: DocumentProperties = {};
-    // If we have a documentPropertyAccessor, call it here
-
-    if (docProps.desktopURN === undefined) {
-      docProps.desktopURN = defaultURN;
-    }
-
-    if (docProps.docGuid === undefined) {
-      const guid = this.parseDocGuidFromPwUri(docProps.desktopURN);
-      if (Guid.isV4Guid(guid)) {
-        docProps.docGuid = guid;
-      }
-    }
-
-    let firstChoice: string | undefined;
-    let secondChoice: string | undefined;
-    if (preferDefaultCode) {
-      firstChoice = defaultCode;
-      secondChoice = docProps.docGuid;
-    } else {
-      firstChoice = docProps.docGuid;
-      secondChoice = defaultCode;
-    }
-
-    let codeStr = firstChoice;
-    if (undefined === codeStr || "" === codeStr) {
-      if (undefined === (codeStr = secondChoice) || "" === codeStr) {
-        if (undefined === (codeStr = docProps.desktopURN) || "" === codeStr) {
-          codeStr = document;
-        }
-      }
-    }
-    if (undefined === docProps.desktopURN || "" === docProps.desktopURN) {
-      docProps.desktopURN = document;
-    }
-    const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, codeStr);
-    return [docProps, code];
   }
 
   private parseDocGuidFromPwUri(pwUri: string): GuidString {
@@ -882,6 +842,24 @@ export class Synchronizer {
       return guidStr;
     }
     return guid;
+  }
+
+  private createRepositoryLinkCode(docProps: StableDocumentId): Code {
+    let codeStr: string;
+    if (hasDocGuid(docProps))
+      codeStr = docProps.docGuid;
+    else {
+      const guid = this.parseDocGuidFromPwUri(docProps.desktopURN);
+      if (Guid.isV4Guid(guid))
+        codeStr = guid;
+      else
+        codeStr = docProps.desktopURN;
+    }
+
+    if (undefined === codeStr || "" === codeStr)
+      throw new IModelError(IModelStatus.InvalidCode, "Cannot create code for RepositoryLink, because both DocumentProperties.docGuid and DocumentProperties.desktopURN are undefined or empty. One or both must be a stable, unique value.");
+
+    return RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, codeStr);
   }
 
   private makeExternalSourceAspectPropsFromSourceItem(elementId: Id64String, sourceItem: ItemWithScopeAndKind): ExternalSourceAspectProps {
