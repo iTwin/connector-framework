@@ -42,55 +42,46 @@ type RemoveNullable<T, TKey extends keyof T> = T & {
   [K in TKey]-?: NonNullable<T[K]>
 };
 
-/** A `SourceItem` identifies an entity in the external source and the state of the content of the entity.
+/** A `SourceItem` identifies an entity in an external source and the state of the content of the entity.
  * The data provided by the SourceItem is stored in the iModel as the "provenance" of the entity.
  * This provenance data enables users and applications to trace an element in an iModel back to its native, external source.
  * Provenance also enables a connector to track and synchronize changes to the entity.
  * ## Document, external source, and scope
- *  The external document is the data source that is being read by the connector. This could be a file, a managed document, or a database connection. A document is represented in the iModel by a RepositoryLink element.
- *  The external source represents either the document as a whole or an area within the document. The external source is represented by an ExternalSource element. See https://www.itwinjs.org/learning/provenence-in-imodels/.
- *  The scope identifies either the ExternalSource or an area within in.
+ *  The "document" is the data source that is being read by the connector. This could be a file, a managed document, or a database connection. A document is represented in the iModel by a RepositoryLink element.
+ *  The "external source" represents either the document as a whole or an area within the document. (Also see ExternalSourceGroup.) The external source is represented by an ExternalSource element. See https://www.itwinjs.org/learning/provenence-in-imodels/.
+ *  The "scope" identifies either the ExternalSource or an area within in.
  * ## Kind
  *  A value that the connector uses to classify the entity.
  * ## Id
- *  This is the ID assigned to the entity by the external system that creates and manages it.
+ *  The ID that was assigned to the entity by the external system that creates and manages it. This ID must be stable -- a given entity must have the same ID each time it is synchronized.
  * ## Entity identification
- *  The (kind, scope, id) triple uniquely identifies the entity in the outside world.
+ *  The (kind, scope, id) triple must uniquely identify the entity in the outside world.
  *  This triple is what allows the iModel to track the entity.
  * ## Entity change detection
- *  The version and checksum values capture the state of the *content* of the entity.
- *  They are stored in the iModel.
+ *  The version and/or checksum values capture the state of the content of the entity.
+ *  These values are stored in the iModel.
  *  They allow the Synchronizer to detect if the entity has changed since the last synchronization.
- *  See below fro details on change-detection.
+ *  See below for details on change-detection.
  * ## Persistence
  *  The properties of a SourceItem are stored in the ExternalSourceAspect of the Element in the iModel that represents the entity.
  *  The ExternalSourceAspect tracks the external source of the element.
  *  https://www.itwinjs.org/bis/domains/biscore.ecschema/#externalsourceaspect
- *  The persistence mapping is:
- * |SourceItem|ExternalSourceAspect|
- * |----------|--------------------|
- * |id|identifier|
- * |scope|scope|
- * |kind|kind|
- * |version|version|
- * |checksum()|checksum|
- * |source|source|
+ *
  * ## Change-detection using version and checksum
  * The connector must call Synchronizer.detectChanges on each entity to determine if there are changes that must be written to the iModel or not.
  *
- * The SourceItem's version and/or checksum values must represent the entity's *current* state.
+ * The SourceItem's version and/or checksum values must capture the entity's *current* state in the external source.
  * The ExternalSourceAspect records the state of the entity as of the last synchronization.
  *
  * Synchronizer.detectChanges compares the SourceItem's current state with the stored state recorded by the aspect.
  * If they match, the entity is unchanged and should be skipped.
  * If they do not match, the entity has changed, and the connector should convert the entity and then call Synchronizer.updateIModel.
  *
- * Change-detection is based on version and/or checksum values that represent the state of the content of each entity in a summary form.
+ * Change-detection is based on version and/or checksum values that capture the state of the content of each entity in a summary form.
  * In principle, Synchronizer could detect changes by letting the connector convert an entity to BIS format and then comparing the results with the Elements
  * and Aspects currently in the iModel. That would be a waste of time in the common case where most entities are unchanged. To avoid this, Synchronizer
- * uses version and/or checksum values. This approach minimizes the cost of up-front change-detection. The connector can compute these summary values directly
- * from the raw source data, without using its conversion logic. One or both of these values may even be directly available in the source data and so may
- * require no computation at all.
+ * uses version and/or checksum values instead. This approach minimizes the cost of up-front change-detection. The connector can compute these summary values directly
+ * from the raw source data, without using its conversion logic. One or both of these values may even be directly available in the source data.
  *
  * A SourceItem must have a version or a checksum, and it can have both.
  * 1. If a SourceItem defines *both* version and checksum, then the entity is considered to be unchanged if the version is unchanged. If the version has changed, then the checksum is checked.
