@@ -136,7 +136,7 @@ export default class TestConnector extends BaseConnector {
     }
 
     const sourceDoc: SourceDocument = {
-      docProps: { desktopURN: this._sourceData },
+      docid: this._sourceData,
       lastModifiedTime: timeStamp.toString(),
       checksum: () => undefined,
     };

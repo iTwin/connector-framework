@@ -88,15 +88,6 @@ type RemoveNullable<T, TKey extends keyof T> = T & {
  * 2. If a SourceItem defines version only, the entity is considered to have changed if the item's version has changed.
  * 3. If a SourceItem defines checksum only, the entity is considered to have changed if the item's checksum has changed.
  *
- * If both version and checksum are defined, Synchronizer.detectChanges first tries to use the version to quickly detect if the entity is *unchanged*.
- * If the version is unchanged, then the entity is considered to be unchanged, and the item's checksum function is not called.
- * That saves time in the common case where most entities are unchanged, since computing a crytographic hash is more expensive and requires more data
- * than simply reading a version value. This optimization can be used only if the entity in the external source has a reliable version that changes when any part
- * of the source entity's content changes. The last-modified time of a file on disk is an example of a reliable "version".
- *
- * If the SourceItem defines a checksum function, Synchronizer.detectChanges may call it multiple times on a given SourceItem in the course of detecting changes and updating the iModel.
- * The SourceItem's checksum function should cache its return value the first time that it is called.
- *
  * @beta
  */
 export interface SourceItem {
@@ -112,8 +103,7 @@ export interface SourceItem {
    */
   version?: string;
   /** The optional cryptographic hash (any algorithm) of the source entity's content. If defined, it must be guaranteed to change when the source entity's content changes.
-   * The definition and method of computing this value is known only to the source repository.  If not defined, version must be defined.
-   * This function will not be called if `version` is defined and is not equal to the version property of the stored aspect.
+   * If defined, this function should cache its return value the first time that it is called, because it may be called multiple times.
    */
   checksum?(): string | undefined;
   /* Identifies the ExternalSource of the entity. See https://www.itwinjs.org/learning/provenence-in-imodels/.
@@ -121,35 +111,6 @@ export interface SourceItem {
   * one RepositoryLink has been recorded. That is the common case.
   */
   source?: string;
-}
-
-export interface HasDocGuid { docGuid: string }
-export interface HasDesktopURN { desktopURN: string }
-export type StableDocumentId = HasDocGuid | HasDesktopURN;
-
-export function hasDocGuid(id: StableDocumentId): id is HasDocGuid {
-  return (id as HasDocGuid).docGuid !== undefined && (id as HasDocGuid).docGuid !== "";
-}
-
-/** Identifies an external document and its state.
- * This data is stored in the ExternalSourceAspect of the RepositoryLink Element that represents the document.
- * The ExternalSourceAspect tracks the source document.
-*/
-export interface SourceDocument {
-  /** A human-readable description of the source document. */
-  description?: string;
-  /** The document's properties. The document's stable unique ID is docProps.docGuid or, failing that, docProps.desktopURN. One of these properties must be defined. */
-  docProps: StableDocumentId & DocumentProperties;
-  /** An optional value that is typically the last modified time of the document.
-  * It will be used by the synchronization process to detect that the document is unchanged so that computing a cryptographic hash can be avoided.
-  * If present, this value must be guaranteed to change when any of the document's content changes. If not defined, checksum must be defined
-  */
-  lastModifiedTime?: string;
-  /** The cryptographic hash (any algorithm) of the document's content. If defined, it must be guaranteed to change when the document's content changes.
-  * The method of computing this value is known only to the connector or source repository.  If not defined, version must be defined.
-  * This function will not be called if `lastModifiedTime` is defined and is not equal to the version property of the stored aspect.
-  */
-  checksum?(): string | undefined;
 }
 
 /** Properties that may be assigned to a document by its home document control system
@@ -164,10 +125,31 @@ export interface DocumentProperties {
   desktopURN?: string;
   /** Document attributes, in JSON format. These are additional attributes that may be assigned to the document by the external document management system. */
   attributesJson?: string;
-  /** Spatial data transform for root document, in JSON format. This is normally set by the user to correct the spatial location of an external source. */
-  spatialRootTransformJson?: string;
-  /** Change history information, in Json format, maintained by the external document management system. */
-  changeHistoryJson?: string;
+}
+
+/** Identifies an external document and its state.
+ * This data is stored in the ExternalSourceAspect of the RepositoryLink Element that represents the document.
+ * The ExternalSourceAspect tracks the source document.
+*/
+export interface SourceDocument {
+  /** The stable unique ID of the source document. This must never change. Preferably this should be a GUID that is assigned once and for all to the document
+   * by an external document management system. If the document is an unmanaged file, then a lower-cased, relative filename should be used.
+   */
+  docid: string;
+  /** Additional properties that may be assigned to the document by the document management system. */
+  docProps?: DocumentProperties;
+  /** A human-readable description of the source document. */
+  description?: string;
+  /** An optional value that is typically the last modified time of the document.
+  * It will be used by the synchronization process to detect that the document is unchanged so that computing a cryptographic hash can be avoided.
+  * If present, this value must be guaranteed to change when any of the document's content changes. If not defined, checksum must be defined
+  */
+  lastModifiedTime?: string;
+  /** The cryptographic hash (any algorithm) of the document's content. If defined, it must be guaranteed to change when the document's content changes.
+  * The method of computing this value is known only to the connector or source repository.  If not defined, version must be defined.
+  * This function will not be called if `lastModifiedTime` is defined and is not equal to the version property of the stored aspect.
+  */
+  checksum?(): string | undefined;
 }
 
 /** @beta */
@@ -273,7 +255,7 @@ export class Synchronizer {
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
   public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
-    const code = this.createRepositoryLinkCode(sourceDocument.docProps);
+    const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, sourceDocument.docid);
 
     const sourceItem: ItemWithScopeAndKind = {
       kind: "DocumentWithBeGuid",
@@ -792,28 +774,32 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private makeRepositoryLink(code: Code, userLabel: string | undefined, docProps: DocumentProperties): Element {
+  private makeRepositoryLink(code: Code, userLabel: string | undefined, docProps: DocumentProperties | undefined): Element {
     let repositoryLink = this.imodel.elements.tryGetElement(code) as RepositoryLink;
     if (undefined === repositoryLink) {
       const elementProps: RepositoryLinkProps = {
         classFullName: RepositoryLink.classFullName,
         model: IModel.repositoryModelId,
         code,
-        url: docProps.desktopURN,
+        url: docProps?.desktopURN,
         userLabel,
-        repositoryGuid: docProps.docGuid,
-        // eslint-disable-next-line @typescript-eslint/naming-convention
-        jsonProperties: { DocumentProperties: { desktopURN: docProps.desktopURN, webURN: docProps.webURN, attributes: docProps.attributesJson } },
+        description: userLabel,
+        repositoryGuid: docProps?.docGuid,
       };
+      if (docProps !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        elementProps.jsonProperties = { DocumentProperties: { desktopURN: docProps.desktopURN, webURN: docProps.webURN, attributes: docProps.attributesJson } };
+      }
       repositoryLink = this.imodel.elements.createElement(elementProps);
     }
     return repositoryLink;
   }
 
-  private parseDocGuidFromPwUri(pwUri: string): GuidString {
-    const guid: GuidString = Guid.empty;
+  /** Utility function to parse the GUID portion of a ProjectWise URI. Returns an empty GUID if the parse fails. */
+  public static parseDocGuidFromPwUri(pwUri: string): GuidString {
+    const emptyGuid: GuidString = Guid.empty;
     if (!pwUri.startsWith("pw://")) {
-      return guid;
+      return emptyGuid;
     }
 
     let startDguid = pwUri.indexOf("/D{");
@@ -822,35 +808,17 @@ export class Synchronizer {
     }
 
     if (-1 === startDguid)
-      return guid;
+      return emptyGuid;
     const endDguid = pwUri.indexOf("}", startDguid);
     if (-1 === endDguid)
-      return guid;
+      return emptyGuid;
 
     const startGuid = startDguid + 3;
     const guidStr = pwUri.substring(startGuid, endDguid);
     if (Guid.isV4Guid(guidStr)) {
       return guidStr;
     }
-    return guid;
-  }
-
-  private createRepositoryLinkCode(docProps: StableDocumentId): Code {
-    let codeStr: string;
-    if (hasDocGuid(docProps))
-      codeStr = docProps.docGuid;
-    else {
-      const guid = this.parseDocGuidFromPwUri(docProps.desktopURN);
-      if (Guid.isV4Guid(guid))
-        codeStr = guid;
-      else
-        codeStr = docProps.desktopURN;
-    }
-
-    if (undefined === codeStr || "" === codeStr)
-      throw new IModelError(IModelStatus.InvalidCode, "Cannot create code for RepositoryLink, because both DocumentProperties.docGuid and DocumentProperties.desktopURN are undefined or empty. One or both must be a stable, unique value.");
-
-    return RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, codeStr);
+    return emptyGuid;
   }
 
   private makeExternalSourceAspectPropsFromSourceItem(elementId: Id64String, sourceItem: ItemWithScopeAndKind): ExternalSourceAspectProps {
