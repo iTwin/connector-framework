@@ -7,7 +7,7 @@
  */
 
 import { ElementUniqueAspect } from "@itwin/core-backend";
-import type { BriefcaseDb, ECSqlStatement, IModelDb } from "@itwin/core-backend";
+import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
 import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
@@ -15,6 +15,7 @@ import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
 import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
+import { deleteElementSubTrees } from "./ElementTreeWalker";
 
 /** The state of the given SourceItem against the iModelDb
  * @beta
@@ -630,26 +631,24 @@ export class Synchronizer {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;
-    const sql = `SELECT aspect.Element.Id FROM ${ExternalSourceAspect.classFullName} aspect WHERE aspect.Kind !='DocumentWithBeGuid'`;
-    const elementsToDelete: Id64String[] = [];
-    const defElementsToDelete: Id64String[] = [];
-    const db = this.imodel as BriefcaseDb;
-    this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
-      while (DbResult.BE_SQLITE_ROW === statement.step()) {
-        const elementId = statement.getValue(0).getId();
-        // const elementChannelRoot = db.channel.getChannelOfElement(db.elements.getElement(elementId)); // not sure how to retrieve the channel of an element with these changes, need to ask monday
-        // const isInChannelRoot = elementChannelRoot.channelRoot === db.concurrencyControl.channel.channelRoot;
-        const hasSeenElement = this._seenElements.has(elementId);
-        if (!hasSeenElement) {
-          const element = db.elements.getElement(elementId);
-          if (element instanceof DefinitionElement)
-            defElementsToDelete.push(elementId);
-          else
-            elementsToDelete.push(elementId);
-        }
-      }
+
+    deleteElementSubTrees(this.imodel, this.jobSubjectId, (elid, scope) => {
+      if ((elid === this.jobSubjectId) || this._seenElements.has(elid))
+        return false;
+
+      // This element was not seen.
+
+      // If the element is in a model that is private to the job, it's certainly garbage. Delete it.
+      if (!scope.inRepositoryModel)
+        return true;
+
+      // If the element is in the repositoryModel, we can't be sure.
+      // Connectors create various kinds of control elements in the repository model under the Job Subject,
+      // and they don't bother adding them to this._seenElements or putting XSAs on them.
+      // To avoid deleting them, we will only delete elements that do have an XSA.
+      // This is how the native-code connector framework works.
+      return this.imodel.elements.getAspects(elid, ExternalSourceAspect.classFullName).length !== 0;
     });
-    this.deleteElements(elementsToDelete, defElementsToDelete);
   }
 
   private detectDeletedElementsInFiles() {

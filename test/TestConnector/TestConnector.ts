@@ -118,7 +118,8 @@ export default class TestConnector extends BaseConnector {
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
 
-    this.synchronizer.deleteInChannel(this.jobSubject.id);
+    // this.synchronizer.deleteInChannel(this.jobSubject.id);
+    this.synchronizer.detectDeletedElements();
   }
   public getApplicationVersion(): string {
     return "1.0.0.0";
@@ -397,6 +398,9 @@ export default class TestConnector extends BaseConnector {
   }
 
   private convertPhysicalElements(physicalModelId: Id64String, definitionModelId: Id64String, groupModelId: Id64String) {
+    if ("testConnector_skipTiles" in process.env)
+      return;
+
     for (const shape of Object.keys(this._data.Tiles)) {
       if (Array.isArray(this._data.Tiles[shape])) {
         for (const tile of this._data.Tiles[shape]) {

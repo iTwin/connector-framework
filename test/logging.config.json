@@ -2,7 +2,7 @@
   "defaultLevel": "Error",
   "categoryLevels": [
     {
-      "category": "imodeljs-backend.IModelDb",
+      "category": "core-backend.IModelDb",
       "logLevel": "Trace"
     },
     {
@@ -18,16 +18,24 @@
       "logLevel": "Warning"
     },
     {
-      "category": "imodeljs-native.DgnCore",
+      "category": "DgnCore",
       "logLevel": "Warning"
     },
     {
-      "category": "imodeljs-native.BeSQLite",
+      "category": "BeSQLite",
       "logLevel": "Warning"
     },
     {
-      "category": "imodeljs-native.Licensing",
+      "category": "Licensing",
       "logLevel": "Warning"
+    },
+    {
+      "category": "ECObjectsNative",
+      "logLevel": "Error"
+    },
+    {
+      "category": "Performance",
+      "logLevel": "None"
     }
   ]
 }

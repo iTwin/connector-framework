@@ -10,6 +10,7 @@ import { KnownTestLocations } from "../KnownTestLocations";
 import { HubMock2 } from "../HubMock2";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
+import * as fs from "fs";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 
 import * as chai from "chai";
@@ -18,7 +19,7 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-describe("iTwin Connector Fwk (#standalone)", () => {
+describe.only("iTwin Connector Fwk (#standalone)", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
@@ -26,8 +27,6 @@ describe("iTwin Connector Fwk (#standalone)", () => {
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
   before(async () => {
-    utils.setupLogging();
-
     if (IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
     else
@@ -36,6 +35,7 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     jobArgs = new JobArgs({
       source: assetPath,
+      loggerConfigJSONFile: process.env.imjs_test_logging_config || path.join(__dirname, "..", "logging.config.json"),
     });
 
     hubArgs = new HubArgs({
@@ -81,6 +81,13 @@ describe("iTwin Connector Fwk (#standalone)", () => {
 
   it("test connector with HubMock locks and briefcase manager", async () => {
     await runConnector();
+
+    fs.utimesSync(jobArgs.source, new Date(), new Date()); // touch the input file, so that the connector will re-process it
+    process.env.testConnector_skipTiles = "1"; // tell the connector to leave out some elements
+    const runner = new ConnectorRunner(jobArgs, hubArgs);
+    await runner.run(testConnector);
+
+    delete process.env.testConnector_skipTiles;
   });
 
   it("retries should handle lock errors", async () => {
