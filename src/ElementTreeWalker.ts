@@ -8,7 +8,7 @@
 
 import { DefinitionElement, DefinitionModel, DefinitionPartition, Element, IModelDb, Model, Subject } from "@itwin/core-backend";
 import type { Id64Array, Id64String } from "@itwin/core-bentley";
-import { assert as beAssert, DbResult } from "@itwin/core-bentley";
+import { assert, DbResult } from "@itwin/core-bentley";
 import { IModel } from "@itwin/core-common";
 
 interface ElementTreeWalkerModelInfo { model: Model, isDefinitionModel: boolean }
@@ -50,12 +50,12 @@ export class ElementTreeWalkerScope {
   constructor(arg1: Id64String | ElementTreeWalkerScope, arg2: Model | Id64String) {
     if (typeof arg1 === "string") {
       // normal constructor
-      beAssert(arg2 instanceof Model);
+      assert(arg2 instanceof Model);
       this.topElement = arg1;
       this.path.push(this.enclosingModelInfo = { model: arg2, isDefinitionModel: isDefinitionModel(arg2) });
     } else if (arg1 instanceof ElementTreeWalkerScope) {
       // copy-like constructor
-      beAssert(this.topElement !== "", "must call normal constructor first");
+      assert(this.topElement !== "", "must call normal constructor first");
       this.path = [...arg1.path];
       if (typeof arg2 === "string") {
         // with new parent
