@@ -504,7 +504,8 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+      synchronizer.jobSubjectId = modelId;
+      synchronizer.detectDeletedElements();
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);
@@ -530,7 +531,8 @@ describe("synchronizer #standalone", () => {
       synchronizer.onElementSeen(tree.childElements![0].elementProps.id!);
       synchronizer.onElementSeen(tree.childElements![1].elementProps.id!);
 
-      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+      synchronizer.jobSubjectId = modelId;
+      synchronizer.detectDeletedElements();
 
       count(query("berries"), 1);      // <-- Still alive!
       count(query("strawberries"), 1); // <-- Seen!
@@ -557,7 +559,8 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+      synchronizer.jobSubjectId = modelId;
+      synchronizer.detectDeletedElements();
 
       count(query("berries"), 1);
       count(query("strawberries"), 0);
@@ -582,7 +585,8 @@ describe("synchronizer #standalone", () => {
       // Delete an element in the source file.
       // tree = *poof!*;
 
-      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+      synchronizer.jobSubjectId = modelId;
+      synchronizer.detectDeletedElements();
 
       count(query("berries"), 0);
       count(query("strawberries"), 0);
@@ -633,7 +637,8 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      assert.strictEqual(synchronizer.deleteInChannel(modelId), IModelStatus.Success);
+      synchronizer.jobSubjectId = modelId;
+      synchronizer.detectDeletedElements();
 
       // Assert that the berry basket still exists.
       assert.isOk(imodel.elements.tryGetElement(basketId));

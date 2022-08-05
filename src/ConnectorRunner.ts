@@ -21,6 +21,8 @@ import * as path from "path";
 
 type Path = string;
 
+enum BeforeRetry { Nothing = 0, PullMergePush = 1 }
+
 export class ConnectorRunner {
 
   private _jobArgs: JobArgs;
@@ -499,8 +501,9 @@ export class ConnectorRunner {
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
       const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
-      if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
-        await BriefcaseDb.upgradeSchemas(bcProps);
+      if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas) {
+        await this.doWithRetries(async () => BriefcaseDb.upgradeSchemas(bcProps), BeforeRetry.Nothing);
+      }
 
       openProps = { fileName: bcProps.fileName };
     }
@@ -529,21 +532,25 @@ export class ConnectorRunner {
     }
   }
 
+  private async acquireLocks(arg: { shared?: Id64Arg, exclusive?: Id64Arg }): Promise<void> {
+    const isStandalone = this.jobArgs.dbType === "standalone";
+    if (isStandalone || !this.db.isBriefcaseDb())
+      return;
+
+    return this.doWithRetries(async () => this.db.locks.acquireLocks(arg), BeforeRetry.PullMergePush);
+  }
+
   private shouldRetryAfterError(err: unknown): boolean {
     if (!(err instanceof BentleyError))
       return false;
     return err.errorNumber === IModelHubStatus.LockOwnedByAnotherBriefcase;
   }
 
-  private async acquireLocks(arg: { shared?: Id64Arg, exclusive?: Id64Arg }): Promise<void> {
-    const isStandalone = this.jobArgs.dbType === "standalone";
-    if (isStandalone || !this.db.isBriefcaseDb())
-      return;
-
+  private async doWithRetries(task: () => Promise<void>, beforeRetry: BeforeRetry): Promise<void> {
     let count = 0;
     do {
       try {
-        await this.db.locks.acquireLocks(arg);
+        await task();
         return;
       } catch (err) {
         if (!this.shouldRetryAfterError(err))
@@ -552,8 +559,12 @@ export class ConnectorRunner {
           throw err;
         const sleepms = Math.random() * this.hubArgs.maxLockRetryWaitSeconds * 1000;
         await new Promise((resolve) => setTimeout(resolve, sleepms));
-        await this.db.pullChanges(); // do not catch!
-        await this.db.pushChanges({ description: "" }); // "
+
+        if (beforeRetry === BeforeRetry.PullMergePush) {
+          assert(this.db.isBriefcaseDb());
+          await this.db.pullChanges(); // do not catch!
+          await this.db.pushChanges({ description: "" }); // "
+        }
       }
     } while (true);
   }

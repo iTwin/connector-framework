@@ -26,7 +26,7 @@ describe.only("iTwin Connector Fwk (#standalone)", () => {
 
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
-  before(async () => {
+  beforeEach(async () => {
     if (IModelJsFs.existsSync(KnownTestLocations.outputDir))
       IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
     else
@@ -55,7 +55,7 @@ describe.only("iTwin Connector Fwk (#standalone)", () => {
     HubMock2.createOrOpenIModel({ iTwinId: hubArgs.projectGuid, iModelId: hubArgs.iModelGuid, iModelName: "Test" });
   });
 
-  after(async () => {
+  afterEach(async () => {
     HubMock2.acquireLocksShouldFail = 0;
     HubMock2.shutdown();
     await IModelHost.shutdown();

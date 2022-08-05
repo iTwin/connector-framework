@@ -163,13 +163,6 @@ export interface SynchronizationResults {
   itemState: ItemState;
 }
 
-function foldStatus(folded: IModelStatus, addition: IModelStatus) {
-  if (folded !== IModelStatus.Success) {
-    return folded;
-  }
-  return addition;
-}
-
 /**
  * Return the iModel IDs of the immediate children of a model.
  * @param imodel The iModel containing the model.
@@ -563,70 +556,6 @@ export class Synchronizer {
       this.detectDeletedElementsInChannel();
   }
 
-  public deleteInChannel(branch: Id64String): IModelStatus {
-    // There are only two kinds of elements in BIS: modeled elements and parent elements.
-    // See also: https://www.itwinjs.org/bis/intro/modeling-with-bis/#relationships
-
-    // We perform a post-order traversal down the channel, because we must ensure that every child
-    // is deleted before its parent, and every model before its modeled element.
-
-    let children: Id64String[];
-    let childrenStatus: IModelStatus = IModelStatus.Success;
-
-    const model = this.imodel.models.tryGetSubModel(branch);
-    const isElement = model === undefined;
-
-    if (isElement) {
-      // The element is a parent element.
-      children = this.imodel.elements.queryChildren(branch);
-    } else {
-      // The element is a modeled element.
-      children = childrenOfModel(this.imodel, model.id);
-    }
-
-    children.forEach((child) => {
-      childrenStatus = foldStatus(childrenStatus, this.deleteInChannel(child));
-    });
-
-    // If all elements were deleted successfully, delete the parent.
-
-    // TODO: This if statement throws. We can't recover from this, so we let it explode the
-    // process. Can this leave the iModel in an inconsistent state?
-
-    if (childrenStatus === IModelStatus.Success) {
-      let remainingChildren: Id64String[];
-
-      if (isElement) {
-        remainingChildren = this.imodel.elements.queryChildren(branch);
-      } else {
-        remainingChildren = childrenOfModel(this.imodel, model.id);
-      }
-
-      if (isElement && remainingChildren.length === 0 && !this._seenElements.has(branch)) {
-        const element = this.imodel.elements.getElement(branch);
-        if (element instanceof DefinitionElement) {
-          // TODO: This is inefficient, but I'm trying to avoid prematurely optimizing. If we need
-          // to, we can locate the youngest common ancestor of the definition elements seen in a
-          // definition model and pass the parent.
-          this.imodel.elements.deleteDefinitionElements([branch]);
-        } else {
-          this.imodel.elements.deleteElement(branch);
-        }
-      } else if (!isElement && remainingChildren.length === 0) {
-        // If we've deleted all the immediate children of the model, delete both the modeled
-        // element and the model.
-
-        // TODO: Should we ignore the dictionary model because we can't delete it? This will
-        // explode, just like deleting the repository model.
-
-        this.imodel.models.deleteModel(model.id);
-        this.imodel.elements.deleteElement(branch);
-      }
-    }
-
-    return IModelStatus.Success;
-  }
-
   private detectDeletedElementsInChannel() {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
@@ -636,16 +565,14 @@ export class Synchronizer {
       if ((elid === this.jobSubjectId) || this._seenElements.has(elid))
         return false;
 
-      // This element was not seen.
-
-      // If the element is in a model that is private to the job, it's certainly garbage. Delete it.
+      // An unseen element is in a model that is private to the job, it's certainly garbage. Delete it.
       if (!scope.inRepositoryModel)
         return true;
 
-      // If the element is in the repositoryModel, we can't be sure.
-      // Connectors create various kinds of control elements in the repository model under the Job Subject,
-      // and they don't bother adding them to this._seenElements or putting XSAs on them.
-      // To avoid deleting them, we will only delete elements that do have an XSA.
+      // An unseen element in the repositoryModel ... we can't be sure.
+      // Connectors create various kinds of control elements in the repository model under the Job Subject.
+      // They don't always bother to add them to this._seenElements or to put ExternalSourceAspects on them.
+      // We will take the presence of an ExternalSourceAspect as an indication that the element is to be tracked.
       // This is how the native-code connector framework works.
       return this.imodel.elements.getAspects(elid, ExternalSourceAspect.classFullName).length !== 0;
     });
