@@ -163,26 +163,6 @@ export interface SynchronizationResults {
   itemState: ItemState;
 }
 
-/**
- * Return the iModel IDs of the immediate children of a model.
- * @param imodel The iModel containing the model.
- * @param model The model containing the children.
- * @returns A list of iModel IDs of the immediate children.
- */
-export function childrenOfModel(imodel: IModelDb, model: Id64String): Id64String[] {
-  const elements: Id64String[] = [];
-  const query = `select ECInstanceId from bis:Element where Model.id=? and Parent is NULL`;
-
-  imodel.withPreparedStatement<void>(query, (statement) => {
-    statement.bindId(1, model);
-    for (const row of statement) {
-      elements.push(row.id);
-    }
-  });
-
-  return elements;
-}
-
 export interface RecordDocumentResults extends SynchronizationResults {
   /** Identifies the ExternalSource element that corresponds to to the RepositoryLink. This may be empty or invalid. */
   source: Id64String;
@@ -198,6 +178,8 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
   return item.scope !== undefined && item.kind !== undefined;
 }
 
+export type SchemaImporter = (fileNames: string[]) => Promise<void>;
+
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -208,9 +190,20 @@ export class Synchronizer {
   private _links = new Map<string, RecordDocumentResults>();
   private _jobSubjectId: string | undefined;
 
-  public constructor(public readonly imodel: IModelDb, private _supportsMultipleFilesPerChannel: boolean, protected _requestContext?: AccessToken) {
+  public constructor(
+    public readonly imodel: IModelDb,
+    private _supportsMultipleFilesPerChannel: boolean,
+    protected _requestContext?: AccessToken,
+    private _schemaImporter?: SchemaImporter) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
+  }
+
+  /** Import the specified schemas. This function will retry the operation in case of lock contention. */
+  public async importSchemas(files: string[]): Promise<void> {
+    if (this._schemaImporter === undefined)
+      throw new Error("no schema importer"); // this must be a test
+    return this._schemaImporter(files);
   }
 
   /** @internal */

@@ -81,10 +81,7 @@ export default class TestConnector extends BaseConnector {
     // const fileName = TestConnectorSchema.schemaFilePath;
     const fileName = path.join(__dirname, "..", "..", "..", "test", "assets", "TestConnector.ecschema.xml");
 
-    // ***
-    // *** NEEDS WORK! Must do this with retries!
-    // ***
-    await this.synchronizer.imodel.importSchemas([fileName]);
+    await this.synchronizer.importSchemas([fileName]);
   }
 
   public async importDynamicSchema(requestContext: AccessToken): Promise<any> {

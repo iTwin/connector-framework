@@ -265,8 +265,8 @@ export class ConnectorRunner {
     try {
       if (this._db && this._db.isBriefcaseDb()) {
         this._db.abandonChanges();
+        await this.db.locks.releaseAllLocks();
       }
-      await this.db.locks.releaseAllLocks();
     } catch (err1) {
       // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
       // eslint-disable-next-line no-console
@@ -513,7 +513,8 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
+    const schemaImporter = async (files: string[]) => { return this.doWithRetries(async () => this.db.importSchemas(files), BeforeRetry.PullMergePush); };
+    const synchronizer = new Synchronizer(this.db, false, this._reqContext, schemaImporter);
     this.connector.synchronizer = synchronizer;
   }
 
