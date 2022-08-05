@@ -48,7 +48,7 @@ describe("synchronizer #standalone", () => {
     return source!;
   };
 
-  const makeToyElement = (): [Id64String, SubjectProps, Id64String, Id64String] => {
+  const makeToyElement = (): { subjectId: Id64String, subjectProps: SubjectProps, partitionId: Id64String, modelId: Id64String } => {
     const subjectProps: SubjectProps = {
       classFullName: Subject.classFullName,
       code: Subject.createCode(imodel, SnapshotDb.rootSubjectId, "fruits"),
@@ -77,10 +77,10 @@ describe("synchronizer #standalone", () => {
 
     const modelId = imodel.models.insertModel(modelProps);
 
-    return [subjectId, subjectProps, partitionId, modelId];
+    return { subjectId, subjectProps, partitionId, modelId };
   };
 
-  const berryGroups = (source: Id64String, scope: Id64String, kind: string, definitionModel: Id64String): [SourceItem, SynchronizationResults] => {
+  const berryGroups = (source: Id64String, scope: Id64String, kind: string, definitionModel: Id64String): { meta: SourceItem, tree: SynchronizationResults } => {
     const meta: SourceItem = {
       source,
       scope,
@@ -138,7 +138,7 @@ describe("synchronizer #standalone", () => {
       ],
     };
 
-    return [meta, tree];
+    return { meta, tree };
   };
 
   const sourceAspect = (scope: Id64String, kind: string, externalIdentifier: Id64String) => {
@@ -209,7 +209,7 @@ describe("synchronizer #standalone", () => {
       imodel.elements.insertElement(linkProps);
 
       const oops = () => {
-        synchronizer.recordDocument({ docid: document } );
+        synchronizer.recordDocument({ docid: document });
       };
 
       // Chai's documentation: https://www.chaijs.com/api/assert/#method_throws
@@ -230,11 +230,11 @@ describe("synchronizer #standalone", () => {
 
       const source = makeToyDocument(synchronizer);
 
-      const [elementId, , , ,] = makeToyElement();
+      const { subjectId } = makeToyElement();
 
       const aspectProps: ExternalSourceAspectProps = {
         classFullName: ExternalSourceAspect.classFullName,
-        element: { id: elementId },  // The bis:Element that owns this bis:ElementMultiAspect.
+        element: { id: subjectId },  // The bis:Element that owns this bis:ElementMultiAspect.
         identifier,                  // The document's external identifier.
         kind,                        // TODO: This information is duplicated by the element relationship?
         source: { id: source.id! },  // The external source from which this element originated.
@@ -258,7 +258,7 @@ describe("synchronizer #standalone", () => {
 
       let changes = synchronizer.detectChanges(edited);
 
-      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.id, subjectId);
       assert.strictEqual(changes.state, ItemState.Unchanged);
 
       // case: version changed, checksum unchanged
@@ -272,7 +272,7 @@ describe("synchronizer #standalone", () => {
 
       changes = synchronizer.detectChanges(edited);
 
-      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.id, subjectId);
       assert.strictEqual(changes.state, ItemState.Unchanged);
 
       // case: both version and checksum changed
@@ -286,7 +286,7 @@ describe("synchronizer #standalone", () => {
 
       changes = synchronizer.detectChanges(edited);
 
-      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.id, subjectId);
       assert.strictEqual(changes.state, ItemState.Changed);
 
       // case: no version; checksum changed
@@ -300,7 +300,7 @@ describe("synchronizer #standalone", () => {
 
       changes = synchronizer.detectChanges(edited);
 
-      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.id, subjectId);
       assert.strictEqual(changes.state, ItemState.Changed);
 
       // case: version; no checksum
@@ -313,7 +313,7 @@ describe("synchronizer #standalone", () => {
 
       changes = synchronizer.detectChanges(edited);
 
-      assert.strictEqual(changes.id, elementId);
+      assert.strictEqual(changes.id, subjectId);
       assert.strictEqual(changes.state, ItemState.Changed);
     });
   });
@@ -324,8 +324,8 @@ describe("synchronizer #standalone", () => {
     const kind = "subject";
     const scope = SnapshotDb.repositoryModelId;
 
-    const setToyProvenance = (source: ExternalSourceProps, sync: Synchronizer): [SourceItem, SubjectProps] => {
-      const [, elementProps, , ,] = makeToyElement();
+    const setToyProvenance = (source: ExternalSourceProps, sync: Synchronizer): { meta: SourceItem, subjectProps: SubjectProps } => {
+      const { subjectProps } = makeToyElement();
 
       const meta: SourceItem = {
         source: source.id,
@@ -336,20 +336,20 @@ describe("synchronizer #standalone", () => {
       };
 
       // TODO: Or call `updateIModel`.
-      const status = sync.setExternalSourceAspect(elementProps, ItemState.New, meta);
+      const status = sync.setExternalSourceAspect(subjectProps, ItemState.New, meta);
 
       assert.strictEqual(status, IModelStatus.Success);
 
-      return [meta, elementProps];
+      return { meta, subjectProps };
     };
 
     it("update imodel with unchanged element", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const source = makeToyDocument(synchronizer);
 
-      const [meta, elementProps] = setToyProvenance(source, synchronizer);
+      const { meta, subjectProps } = setToyProvenance(source, synchronizer);
       const changes = synchronizer.detectChanges(meta);
-      const sync = { elementProps, itemState: changes.state };
+      const sync = { elementProps: subjectProps, itemState: changes.state };
       const status = synchronizer.updateIModel(sync, meta);
       const aspect = sourceAspect(scope, kind, identifier);
 
@@ -368,19 +368,19 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const source = makeToyDocument(synchronizer);
 
-      const [meta, elementProps] = setToyProvenance(source, synchronizer);
+      const { meta, subjectProps } = setToyProvenance(source, synchronizer);
 
       // New patch for our subject element from the source document!
       meta.version = "1.0.1";
-      elementProps.description = "all about berries 🍓";
+      subjectProps.description = "all about berries 🍓";
 
       const changes = synchronizer.detectChanges(meta);
-      const sync = { elementProps, itemState: changes.state };
+      const sync = { elementProps: subjectProps, itemState: changes.state };
       const status = synchronizer.updateIModel(sync, meta);
 
       assert.strictEqual(status, IModelStatus.Success);
 
-      const subject = imodel.elements.getElement<Subject>(elementProps.id!);
+      const subject = imodel.elements.getElement<Subject>(subjectProps.id!);
       const aspect = sourceAspect(scope, kind, identifier);
 
       assert.strictEqual(subject.description!, "all about berries 🍓");
@@ -392,8 +392,8 @@ describe("synchronizer #standalone", () => {
     it("insert new child elements", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
-      const [, , , modelId] = makeToyElement();
-      const [, tree] = berryGroups("", "", "", modelId);
+      const { modelId } = makeToyElement();
+      const { tree } = berryGroups("", "", "", modelId);
 
       const status = synchronizer.insertResultsIntoIModel(tree);
 
@@ -403,19 +403,19 @@ describe("synchronizer #standalone", () => {
     });
   });
 
-  const makeDocumentAndDefinitionGroup = (synchronizer: Synchronizer): [SourceItem, SynchronizationResults, Id64String] => {
+  const makeDocumentAndDefinitionGroup = (synchronizer: Synchronizer): { meta: SourceItem, tree: SynchronizationResults, subjectId: Id64String, modelId: Id64String } => {
     const source = makeToyDocument(synchronizer);
     const scope = SnapshotDb.repositoryModelId;
     const kind = "definition group";
 
-    const [, , , modelId] = makeToyElement();
-    return [...berryGroups(source.id!, scope, kind, modelId), modelId];
+    const toy = makeToyElement();
+    return { ...berryGroups(source.id!, scope, kind, toy.modelId), ...toy };
   };
 
   describe("update results in imodel", () => {
     it("update modified root element with children, one-to-one", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree } = makeDocumentAndDefinitionGroup(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -448,7 +448,7 @@ describe("synchronizer #standalone", () => {
     // vvvv
     it.skip("update modified root element with children, larger source set", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, modelId } = makeDocumentAndDefinitionGroup(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -486,7 +486,7 @@ describe("synchronizer #standalone", () => {
   describe("detect deleted elements", () => {
     it("deletes child that is not visited", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -504,7 +504,7 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      synchronizer.jobSubjectId = modelId;
+      synchronizer.jobSubjectId = subjectId;
       synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 1);
@@ -512,36 +512,9 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 0);
     });
 
-    it("does not delete a parent if its children exist", () => {
-      let synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
-
-      assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
-
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
-
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 1);
-
-      // We construct a new synchronizer to simulate another run.
-      synchronizer = new Synchronizer(imodel, false);
-
-      // Oops, somehow we haven't visited the parent this run!
-      synchronizer.onElementSeen(tree.childElements![0].elementProps.id!);
-      synchronizer.onElementSeen(tree.childElements![1].elementProps.id!);
-
-      synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElementsInChannel();
-
-      count(query("berries"), 1);      // <-- Still alive!
-      count(query("strawberries"), 1); // <-- Seen!
-      count(query("raspberries"), 1);  // <-- Seen!
-    });
-
     it("deletes all children of an element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -559,7 +532,7 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      synchronizer.jobSubjectId = modelId;
+      synchronizer.jobSubjectId = subjectId;
       synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 1);
@@ -567,9 +540,10 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 0);
     });
 
-    it("deletes a model with no children elements", () => {
+    // *** Jackson - what does this test do?
+    it.skip("deletes a model with no children elements", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, modelId, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -582,10 +556,12 @@ describe("synchronizer #standalone", () => {
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
+      // const source = makeToyDocument(synchronizer);
+
       // Delete an element in the source file.
       // tree = *poof!*;
 
-      synchronizer.jobSubjectId = modelId;
+      synchronizer.jobSubjectId = subjectId;
       synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 0);
@@ -601,7 +577,7 @@ describe("synchronizer #standalone", () => {
 
     it("deletes element referred to by other element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const [meta, tree, modelId] = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
 
       const berryBasket: ElementProps = {
         classFullName: Group.classFullName,
@@ -637,7 +613,7 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      synchronizer.jobSubjectId = modelId;
+      synchronizer.jobSubjectId = subjectId;
       synchronizer.detectDeletedElementsInChannel();
 
       // Assert that the berry basket still exists.
