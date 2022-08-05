@@ -539,7 +539,7 @@ export class Synchronizer {
       this.detectDeletedElementsInChannel();
   }
 
-  private detectDeletedElementsInChannel() {
+  public detectDeletedElementsInChannel() {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;

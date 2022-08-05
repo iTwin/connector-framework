@@ -505,7 +505,7 @@ describe("synchronizer #standalone", () => {
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElements();
+      synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);
@@ -532,7 +532,7 @@ describe("synchronizer #standalone", () => {
       synchronizer.onElementSeen(tree.childElements![1].elementProps.id!);
 
       synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElements();
+      synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 1);      // <-- Still alive!
       count(query("strawberries"), 1); // <-- Seen!
@@ -560,7 +560,7 @@ describe("synchronizer #standalone", () => {
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElements();
+      synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 1);
       count(query("strawberries"), 0);
@@ -586,7 +586,7 @@ describe("synchronizer #standalone", () => {
       // tree = *poof!*;
 
       synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElements();
+      synchronizer.detectDeletedElementsInChannel();
 
       count(query("berries"), 0);
       count(query("strawberries"), 0);
@@ -638,7 +638,7 @@ describe("synchronizer #standalone", () => {
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
       synchronizer.jobSubjectId = modelId;
-      synchronizer.detectDeletedElements();
+      synchronizer.detectDeletedElementsInChannel();
 
       // Assert that the berry basket still exists.
       assert.isOk(imodel.elements.tryGetElement(basketId));
