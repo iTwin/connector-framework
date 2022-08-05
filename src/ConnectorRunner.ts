@@ -209,18 +209,31 @@ export class ConnectorRunner {
       "Write configuration and open source data."
     );
 
-    // We don't batch the schema upgrades because the schema lock needs to be released first?
-    // https://www.itwinjs.org/reference/core-backend/imodels/imodeldb/acquireschemalock
-    // > Note: To acquire the schema lock, all other briefcases must first release all their locks.
-    // > No other briefcases will be able to acquire any locks while the schema lock is held.
-
+    // ***
+    // *** NEEDS WORK - this API should be changed - The connector should return
+    // *** schema *strings* from both importDomainSchema and importDynamicSchema. The connector should not import them.
+    // *** (Or, these two connector methods should be combined into a single method that returns an array of strings.)
+    // *** Then ConnectorRunner should get the schema lock and import all schemas in one shot.
+    // ***
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
-    await this.connector.importDomainSchema(await this.getReqContext());
-    await this.persistChanges("Write domain schema.");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      "exclusive",
+      async () => {
+        return this.connector.importDomainSchema(await this.getReqContext());
+      },
+      "Write domain schema."
+    );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
-    await this.connector.importDynamicSchema(await this.getReqContext());
-    await this.persistChanges("Write dynamic schema.");
+    await this.doInChannel(
+      IModel.rootSubjectId,
+      "exclusive",
+      async () => {
+        return this.connector.importDynamicSchema(await this.getReqContext());
+      },
+      "Write dynamic schema."
+    );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
     const jobSubject = await this.doInChannel(
@@ -513,8 +526,7 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    const schemaImporter = async (files: string[]) => { return this.doWithRetries(async () => this.db.importSchemas(files), BeforeRetry.PullMergePush); };
-    const synchronizer = new Synchronizer(this.db, false, this._reqContext, schemaImporter);
+    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
     this.connector.synchronizer = synchronizer;
   }
 

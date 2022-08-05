@@ -178,8 +178,6 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
   return item.scope !== undefined && item.kind !== undefined;
 }
 
-export type SchemaImporter = (fileNames: string[]) => Promise<void>;
-
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -193,17 +191,9 @@ export class Synchronizer {
   public constructor(
     public readonly imodel: IModelDb,
     private _supportsMultipleFilesPerChannel: boolean,
-    protected _requestContext?: AccessToken,
-    private _schemaImporter?: SchemaImporter) {
+    protected _requestContext?: AccessToken) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
-  }
-
-  /** Import the specified schemas. This function will retry the operation in case of lock contention. */
-  public async importSchemas(files: string[]): Promise<void> {
-    if (this._schemaImporter === undefined)
-      throw new Error("no schema importer"); // this must be a test
-    return this._schemaImporter(files);
   }
 
   /** @internal */
