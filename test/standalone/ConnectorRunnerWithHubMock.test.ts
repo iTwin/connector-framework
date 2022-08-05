@@ -19,7 +19,7 @@ import * as chaiAsPromised from "chai-as-promised";
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
-describe.only("iTwin Connector Fwk (#standalone)", () => {
+describe("iTwin Connector Fwk (#standalone)", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
