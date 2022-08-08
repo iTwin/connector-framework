@@ -28,6 +28,45 @@ import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer"
 
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
 
+// un-comment this if you want to see what's being created for debugging purposes
+// const loggerCategory = `${BackendLoggerCategory.IModelDb}.ElementTreeWalker`;
+
+// function fmtElement(iModel: IModelDb, elementId: Id64String): string {
+//   const el = iModel.elements.getElement(elementId);
+//   return `${el.id} ${el.classFullName} ${el.getDisplayLabel()}`;
+// }
+
+// function fmtModel(model: Model): string {
+//   return `${model.id} ${model.classFullName} ${model.name}`;
+// }
+
+// function printElementTree(seen: Set<Id64String>, iModel: IModelDb, elementId: Id64String, indent: number) {
+//   if (seen.has(elementId)) {
+//     Logger.logTrace(loggerCategory, `${"\t".repeat(indent)}${fmtElement(iModel, elementId)} (SEEN)`);
+//     return;
+//   }
+
+//   seen.add(elementId);
+
+//   Logger.logTrace(loggerCategory, `${"\t".repeat(indent)}${fmtElement(iModel, elementId)}`);
+
+//   for (const child of iModel.elements.queryChildren(elementId)) {
+//     printElementTree(seen, iModel, child, indent + 1);
+//   }
+
+//   const subModel = iModel.models.tryGetModel<Model>(elementId);
+//   if (subModel !== undefined) {
+//     Logger.logTrace(loggerCategory, `${"\t".repeat(indent)} subModel ${fmtModel(subModel)}:`);
+
+//     iModel.withPreparedStatement(`select ecinstanceid from ${Element.classFullName} where Model.Id = ?`, (stmt) => {
+//       stmt.bindId(1, subModel.id);
+//       while (stmt.step() === DbResult.BE_SQLITE_ROW) {
+//         printElementTree(seen, iModel, stmt.getValue(0).getId(), indent + 1);
+//       }
+//     });
+//   }
+// }
+
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
   const path = join(KnownTestLocations.outputDir, `${name}.bim`);
@@ -168,6 +207,8 @@ describe("synchronizer #standalone", () => {
   });
 
   beforeEach(() => {
+    if (fs.existsSync(path))
+      fs.rmSync(path);
     imodel = SnapshotDb.createEmpty(path, { name, rootSubject: { name: root } });
   });
 
@@ -393,9 +434,9 @@ describe("synchronizer #standalone", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
       const { modelId } = makeToyElement();
-      const { tree } = berryGroups("", "", "", modelId);
+      const { meta, tree } = berryGroups("", "", "", modelId);
 
-      const status = synchronizer.insertResultsIntoIModel(tree);
+      const status = synchronizer.insertResultsIntoIModel(tree, synchronizer.makeExternalSourceAspectProps(meta));
 
       assert.strictEqual(status, IModelStatus.Success);
 
@@ -403,7 +444,7 @@ describe("synchronizer #standalone", () => {
     });
   });
 
-  const makeDocumentAndDefinitionGroup = (synchronizer: Synchronizer): { meta: SourceItem, tree: SynchronizationResults, subjectId: Id64String, modelId: Id64String } => {
+  const makeToyAndBerryGroups = (synchronizer: Synchronizer): { meta: SourceItem, tree: SynchronizationResults, subjectId: Id64String, modelId: Id64String } => {
     const source = makeToyDocument(synchronizer);
     const scope = SnapshotDb.repositoryModelId;
     const kind = "definition group";
@@ -415,7 +456,7 @@ describe("synchronizer #standalone", () => {
   describe("update results in imodel", () => {
     it("update modified root element with children, one-to-one", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree } = makeToyAndBerryGroups(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -437,7 +478,7 @@ describe("synchronizer #standalone", () => {
       //                                           vvvv
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("boysenberries"), 1);
       count(query("raspberries"), 1);
@@ -448,7 +489,7 @@ describe("synchronizer #standalone", () => {
     // vvvv
     it.skip("update modified root element with children, larger source set", () => {
       const synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree, modelId } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, modelId } = makeToyAndBerryGroups(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
@@ -475,7 +516,7 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
@@ -486,11 +527,11 @@ describe("synchronizer #standalone", () => {
   describe("detect deleted elements", () => {
     it("deletes child that is not visited", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeToyAndBerryGroups(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);
@@ -514,11 +555,11 @@ describe("synchronizer #standalone", () => {
 
     it("deletes all children of an element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeToyAndBerryGroups(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);
@@ -540,26 +581,27 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 0);
     });
 
-    // *** Jackson - what does this test do?
-    it.skip("deletes a model with no children elements", () => {
+    it("deletes a model with no children elements", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree, modelId, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeToyAndBerryGroups(synchronizer);
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
 
+      // un-comment this if you want to see what's being created for debugging purposes
+      // printElementTree(new Set<Id64String>(), imodel, subjectId, 0);
+
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
 
-      // const source = makeToyDocument(synchronizer);
+      // makeToyDocument(synchronizer);
 
-      // Delete an element in the source file.
-      // tree = *poof!*;
+      // Don't update any elements => no elements are seen => all will be detected as deleted
 
       synchronizer.jobSubjectId = subjectId;
       synchronizer.detectDeletedElementsInChannel();
@@ -568,16 +610,17 @@ describe("synchronizer #standalone", () => {
       count(query("strawberries"), 0);
       count(query("raspberries"), 0);
 
-      const deletedModeledElement = imodel.elements.tryGetElement(modelId);
-      const deletedModel = imodel.models.tryGetModel(modelId);
+      // *** NEEDS WORK: If you want Synchronizer.detectDeletedElementsInChannel to delete a model, then you must add an ExternalSourceAspect to the modeled element to indicate that the model is tracked.
+      // const deletedModeledElement = imodel.elements.tryGetElement(modelId);
+      // const deletedModel = imodel.models.tryGetModel(modelId);
 
-      assert.isNotOk(deletedModeledElement);
-      assert.isNotOk(deletedModel);
+      // assert.isNotOk(deletedModeledElement);
+      // assert.isNotOk(deletedModel);
     });
 
     it("deletes element referred to by other element", () => {
       let synchronizer = new Synchronizer(imodel, false);
-      const { meta, tree, subjectId } = makeDocumentAndDefinitionGroup(synchronizer);
+      const { meta, tree, subjectId } = makeToyAndBerryGroups(synchronizer);
 
       const berryBasket: ElementProps = {
         classFullName: Group.classFullName,
@@ -599,7 +642,7 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(tree, meta), IModelStatus.Success);
 
-      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel='definitions of ${label}'`;
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
       count(query("berries"), 1);
       count(query("strawberries"), 1);

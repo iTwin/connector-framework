@@ -15,9 +15,18 @@ import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
+import { getCount } from "../ConnectorTestUtils";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
+
+async function openBriefcase(hubArgs: HubArgs) {
+  const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
+  const briefcaseEntry = briefcases[0];
+  expect(briefcaseEntry).is.not.undefined;
+  const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
+  return db;
+}
 
 describe("iTwin Connector Fwk (#standalone)", () => {
 
@@ -68,10 +77,7 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 
-    const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
-    const briefcaseEntry = briefcases[0];
-    expect(briefcaseEntry).is.not.undefined;
-    const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
+    const db = await openBriefcase(hubArgs);
     try {
       utils.verifyIModel(db, jobArgs, false);
     } finally {
@@ -86,8 +92,15 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     process.env.testConnector_skipTiles = "1"; // tell the connector to leave out some elements
     const runner = new ConnectorRunner(jobArgs, hubArgs);
     await runner.run(testConnector);
-
     delete process.env.testConnector_skipTiles;
+
+    const db = await openBriefcase(hubArgs);
+    try {
+      expect(0).not.eq(getCount(db, "TestConnector:TestConnectorGroup"));
+      expect(0).eq(getCount(db, "TestConnector:TestConnectorPhysicalElement"));
+    } finally {
+      db.close();
+    }
   });
 
   it("retries should handle lock errors", async () => {

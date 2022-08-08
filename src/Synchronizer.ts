@@ -295,7 +295,7 @@ export class Synchronizer {
     this._links.set(key, results);
 
     // Fail-safety - see updateRepositoryLinks
-    results.postChangeAspect = this.makeExternalSourceAspectPropsFromSourceItem(results.elementProps.id, sourceItem); // this is what we will write in updateRepositoryLinks at the finish
+    results.postChangeAspect = this.makeExternalSourceAspectPropsFromSourceItem(sourceItem, results.elementProps.id); // this is what we will write in updateRepositoryLinks at the finish
     const aspectNoVersion: ExternalSourceAspectProps = { ...results.postChangeAspect, version: undefined, checksum: undefined }; // at the start, erase the version and checksum values
     this.imodel.elements.updateAspect(aspectNoVersion);
 
@@ -411,20 +411,31 @@ export class Synchronizer {
     //   }
     // }
 
+    const aspectProps = this.makeExternalSourceAspectPropsFromSourceItem(sourceItem);
+
     if (undefined !== aspectId) {
-      if (IModelStatus.Success !== (status = this.updateResultsInIModel(results))) {
+      if (IModelStatus.Success !== (status = this.updateResultsInIModel(results, aspectProps))) {
         return status;
       }
     } else {
-      if (IModelStatus.Success !== (status = this.insertResultsIntoIModel(results))) {
+      if (IModelStatus.Success !== (status = this.insertResultsIntoIModel(results, aspectProps))) {
         return status;
       }
     }
 
     assert(results.elementProps.id !== undefined && Id64.isValidId64(results.elementProps.id));
 
-    status = this.setExternalSourceAspect(results.elementProps, results.itemState, sourceItem);
     return status;
+  }
+
+  private insertOrUpdateExternalSourceAspect(element: ElementProps, itemState: ItemState, aspectProps: ExternalSourceAspectProps): void {
+    assert(element.id !== undefined && Id64.isValidId64(element.id));
+
+    if (itemState === ItemState.New) {
+      this.imodel.elements.insertAspect(aspectProps); // throws on error
+    } else {
+      this.imodel.elements.updateAspect(aspectProps);
+    }
   }
 
   /** Adds or updates the external source aspect for the given source item onto the related element
@@ -439,13 +450,10 @@ export class Synchronizer {
     this.setSourceItemDefaults(sourceItem);
     assert(sourceItemHasScopeAndKind(sourceItem));
 
-    const aspectProps = this.makeExternalSourceAspectPropsFromSourceItem(element.id, sourceItem);
+    const aspectProps = this.makeExternalSourceAspectPropsFromSourceItem(sourceItem, element.id);
 
-    if (itemState === ItemState.New) {
-      this.imodel.elements.insertAspect(aspectProps); // throws on error
-    } else {
-      this.imodel.elements.updateAspect(aspectProps);
-    }
+    this.insertOrUpdateExternalSourceAspect(element, itemState, aspectProps);
+
     return IModelStatus.Success;
   }
 
@@ -484,11 +492,13 @@ export class Synchronizer {
    * @param results The result set to insert
    * @beta
    */
-  public insertResultsIntoIModel(results: SynchronizationResults): IModelStatus {
+  public insertResultsIntoIModel(results: SynchronizationResults, aspectProps: ExternalSourceAspectProps): IModelStatus {
     const elementProps = results.elementProps;
     const elid = this.imodel.elements.insertElement(elementProps); // throws on error
 
     results.elementProps.id = elid;
+
+    this.insertOrUpdateExternalSourceAspect(results.elementProps, ItemState.New, { ...aspectProps, element: { id: elid } });
 
     this.onElementSeen(elid);
     if (undefined === results.childElements) {
@@ -498,7 +508,7 @@ export class Synchronizer {
     for (const child of results.childElements) {
       const parent = new RelatedElement({ id: elid, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
-      const status = this.insertResultsIntoIModel(child);
+      const status = this.insertResultsIntoIModel(child, aspectProps);
       if (status !== IModelStatus.Success) {
         return status;
       }
@@ -510,12 +520,13 @@ export class Synchronizer {
    * @param results The result set to insert
    * @beta
    */
-  public updateResultsInIModel(results: SynchronizationResults): IModelStatus {
+  public updateResultsInIModel(results: SynchronizationResults, aspectProps: ExternalSourceAspectProps): IModelStatus {
     const status = this.updateResultInIModelForOneElement(results);
     if (IModelStatus.Success !== status) {
       return status;
     }
-    return this.updateResultsInIModelForChildren(results);
+    this.insertOrUpdateExternalSourceAspect(results.elementProps, ItemState.New, { ...aspectProps, element: { id: results.elementProps.id! } });
+    return this.updateResultsInIModelForChildren(results, aspectProps);
   }
 
   /** Records that this particular element was visited during this synchronization. This information will later be used to determine which
@@ -539,25 +550,31 @@ export class Synchronizer {
       this.detectDeletedElementsInChannel();
   }
 
+  /** Detect and delete all elements and models that meet the following conditions:
+   * a) are under the Job Subject,
+   * b) were not "seen" by the Synchronizer, and
+   * c) have an ExternalSourceAspect.
+   * @see [[Synchronizer.onElementSeen]]
+   */
   public detectDeletedElementsInChannel() {
     // This detection only is called for connectors that support a single source file per channel. If we skipped that file because it was unchanged, then we don't need to delete anything
     if (this._unchangedSources.length !== 0)
       return;
 
-    deleteElementSubTrees(this.imodel, this.jobSubjectId, (elid, scope) => {
-      if ((elid === this.jobSubjectId) || this._seenElements.has(elid))
+    deleteElementSubTrees(this.imodel, this.jobSubjectId, (elementId) => {
+      if ((elementId === this.jobSubjectId) || this._seenElements.has(elementId))
         return false;
 
-      // An unseen element is in a model that is private to the job, it's certainly garbage. Delete it.
-      if (!scope.inRepositoryModel)
-        return true;
+      // The element was not marked as having been seen.
 
-      // An unseen element in the repositoryModel ... we can't be sure.
+      // Don't delete it unless we know that it is tracked.
       // Connectors create various kinds of control elements in the repository model under the Job Subject.
+      // They also create definition models full of definition elements.
       // They don't always bother to add them to this._seenElements or to put ExternalSourceAspects on them.
       // We will take the presence of an ExternalSourceAspect as an indication that the element is to be tracked.
       // This is how the native-code connector framework works.
-      return this.imodel.elements.getAspects(elid, ExternalSourceAspect.classFullName).length !== 0;
+      // It's up to the connector to do GC on untracked elements.
+      return this.imodel.elements.getAspects(elementId, ExternalSourceAspect.classFullName).length !== 0;
     });
   }
 
@@ -632,7 +649,7 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private updateResultsInIModelForChildren(results: SynchronizationResults): IModelStatus {
+  private updateResultsInIModelForChildren(results: SynchronizationResults, parentAspectProps: ExternalSourceAspectProps): IModelStatus {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
@@ -654,7 +671,8 @@ export class Synchronizer {
     // Instead, we just refrain from calling the change detector's _OnElementSeen method on unmatched child elements.
     // That will allow the updater in its final phase to infer that they should be deleted.
 
-    // The best way is if an extension sets up the DgnElementId of the child elements in parentConversionResults.
+    // If the specified children have ElementIds, then match existing child elements by ElementId.
+    // This is generally the case only when updating an existing parent element.
     if (undefined !== results.childElements[0].elementProps && results.childElements[0].elementProps.id !== undefined && Id64.isValidId64(results.childElements[0].elementProps.id)) {
       for (const childRes of results.childElements) {
         if (undefined === childRes.elementProps) {
@@ -662,7 +680,7 @@ export class Synchronizer {
         }
         const index = existingChildren.findIndex((c) => c === childRes.elementProps.id);
         if (-1 !== index) {
-          const stat = this.updateResultsInIModel(childRes);
+          const stat = this.updateResultsInIModel(childRes, parentAspectProps);
           if (stat !== IModelStatus.Success) {
             return stat;
           }
@@ -671,14 +689,14 @@ export class Synchronizer {
       return IModelStatus.Success;
     }
 
-    // If we have to guess, we just try to match them up 1:1 in sequence.
+    // The specified children do not have ElementIds.
     const count = Math.min(existingChildren.length, results.childElements.length);
     let i = 0;
     for (; i < count; i++) {
-      this.updateResultsInIModel(results.childElements[i]);
+      this.updateResultsInIModel(results.childElements[i], parentAspectProps);
     }
     for (; i < results.childElements.length; i++) {
-      this.insertResultsIntoIModel(results.childElements[i]);
+      this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
     }
     return IModelStatus.Success;
   }
@@ -730,11 +748,11 @@ export class Synchronizer {
     return emptyGuid;
   }
 
-  private makeExternalSourceAspectPropsFromSourceItem(elementId: Id64String, sourceItem: ItemWithScopeAndKind): ExternalSourceAspectProps {
+  private makeExternalSourceAspectPropsFromSourceItem(sourceItem: ItemWithScopeAndKind, elementId?: Id64String): ExternalSourceAspectProps {
     const source = sourceItem.source ? { id: sourceItem.source } : undefined;
     return {
       classFullName: ExternalSourceAspect.classFullName,
-      element: { id: elementId },
+      element: { id: elementId ?? "" },
       scope: { id: sourceItem.scope },
       identifier: sourceItem.id,
       kind: sourceItem.kind,
@@ -742,6 +760,12 @@ export class Synchronizer {
       version: sourceItem.version,
       source,
     };
+  }
+
+  public makeExternalSourceAspectProps(sourceItem: SourceItem): ExternalSourceAspectProps {
+    this.setSourceItemDefaults(sourceItem);
+    assert(sourceItemHasScopeAndKind(sourceItem));
+    return this.makeExternalSourceAspectPropsFromSourceItem(sourceItem);
   }
 
   public updateRepositoryLinks(): void {
