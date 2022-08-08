@@ -428,17 +428,8 @@ export class Synchronizer {
     return status;
   }
 
-  private insertOrUpdateExternalSourceAspect(element: ElementProps, itemState: ItemState, aspectProps: ExternalSourceAspectProps): void {
-    assert(element.id !== undefined && Id64.isValidId64(element.id));
-
-    if (itemState === ItemState.New) {
-      this.imodel.elements.insertAspect(aspectProps); // throws on error
-    } else {
-      this.imodel.elements.updateAspect(aspectProps);
-    }
-  }
-
-  /** Adds or updates the external source aspect for the given source item onto the related element
+  /** Adds or updates the external source aspect for the given source item onto the related element - this function is rarely needed,
+   * because updateIModel automatically inserts or updates ExternalSourceAspects for the elements that it processes.
    * @param element The element to attach the ExternalSourceAspect
    * @param itemState The state of the source item
    * @param sourceItem Defines the source item
@@ -452,7 +443,11 @@ export class Synchronizer {
 
     const aspectProps = this.makeExternalSourceAspectPropsFromSourceItem(sourceItem, element.id);
 
-    this.insertOrUpdateExternalSourceAspect(element, itemState, aspectProps);
+    if (itemState === ItemState.New) {
+      this.imodel.elements.insertAspect(aspectProps); // throws on error
+    } else {
+      this.imodel.elements.updateAspect(aspectProps);
+    }
 
     return IModelStatus.Success;
   }
@@ -498,7 +493,7 @@ export class Synchronizer {
 
     results.elementProps.id = elid;
 
-    this.insertOrUpdateExternalSourceAspect(results.elementProps, ItemState.New, { ...aspectProps, element: { id: elid } });
+    this.imodel.elements.insertAspect({ ...aspectProps, element: { id: elid } }); // throws on error
 
     this.onElementSeen(elid);
     if (undefined === results.childElements) {
@@ -525,7 +520,9 @@ export class Synchronizer {
     if (IModelStatus.Success !== status) {
       return status;
     }
-    this.insertOrUpdateExternalSourceAspect(results.elementProps, ItemState.New, { ...aspectProps, element: { id: results.elementProps.id! } });
+
+    this.imodel.elements.updateAspect({ ...aspectProps, element: { id: results.elementProps.id! } }); // throws on error
+
     return this.updateResultsInIModelForChildren(results, aspectProps);
   }
 
