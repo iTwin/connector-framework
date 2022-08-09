@@ -138,6 +138,9 @@ describe("synchronizer #standalone", () => {
       ],
     };
 
+    // FYI parent/child relationships between definition groups is not what makes them groups.
+    // See DefinitionGroupGroupsDefinitions. That doesn't matter for this test.
+
     return { meta, tree };
   };
 
