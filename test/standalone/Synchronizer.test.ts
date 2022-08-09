@@ -28,45 +28,6 @@ import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer"
 
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
 
-// un-comment this if you want to see what's being created for debugging purposes
-// const loggerCategory = `${BackendLoggerCategory.IModelDb}.ElementTreeWalker`;
-
-// function fmtElement(iModel: IModelDb, elementId: Id64String): string {
-//   const el = iModel.elements.getElement(elementId);
-//   return `${el.id} ${el.classFullName} ${el.getDisplayLabel()}`;
-// }
-
-// function fmtModel(model: Model): string {
-//   return `${model.id} ${model.classFullName} ${model.name}`;
-// }
-
-// function printElementTree(seen: Set<Id64String>, iModel: IModelDb, elementId: Id64String, indent: number) {
-//   if (seen.has(elementId)) {
-//     Logger.logTrace(loggerCategory, `${"\t".repeat(indent)}${fmtElement(iModel, elementId)} (SEEN)`);
-//     return;
-//   }
-
-//   seen.add(elementId);
-
-//   Logger.logTrace(loggerCategory, `${"\t".repeat(indent)}${fmtElement(iModel, elementId)}`);
-
-//   for (const child of iModel.elements.queryChildren(elementId)) {
-//     printElementTree(seen, iModel, child, indent + 1);
-//   }
-
-//   const subModel = iModel.models.tryGetModel<Model>(elementId);
-//   if (subModel !== undefined) {
-//     Logger.logTrace(loggerCategory, `${"\t".repeat(indent)} subModel ${fmtModel(subModel)}:`);
-
-//     iModel.withPreparedStatement(`select ecinstanceid from ${Element.classFullName} where Model.Id = ?`, (stmt) => {
-//       stmt.bindId(1, subModel.id);
-//       while (stmt.step() === DbResult.BE_SQLITE_ROW) {
-//         printElementTree(seen, iModel, stmt.getValue(0).getId(), indent + 1);
-//       }
-//     });
-//   }
-// }
-
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
   const path = join(KnownTestLocations.outputDir, `${name}.bim`);
@@ -592,9 +553,6 @@ describe("synchronizer #standalone", () => {
       count(query("berries"), 1);
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
-
-      // un-comment this if you want to see what's being created for debugging purposes
-      // printElementTree(new Set<Id64String>(), imodel, subjectId, 0);
 
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
