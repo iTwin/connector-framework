@@ -172,7 +172,7 @@ export interface RecordDocumentResults extends SynchronizationResults {
   postChangeAspect: ExternalSourceAspectProps;
 }
 
-type ItemWithScopeAndKind = RemoveNullable<RemoveNullable<SourceItem, "scope">, "kind">;
+type ItemWithScopeAndKind = RemoveNullable<SourceItem, "scope" | "kind">;
 
 function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKind {
   return item.scope !== undefined && item.kind !== undefined;
