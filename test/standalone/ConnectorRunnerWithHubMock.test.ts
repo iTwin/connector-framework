@@ -85,7 +85,7 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     }
   }
 
-  it("test connector with HubMock locks and briefcase manager", async () => {
+  it("test connector update", async () => {
     await runConnector();
 
     fs.utimesSync(jobArgs.source, new Date(), new Date()); // touch the input file, so that the connector will re-process it

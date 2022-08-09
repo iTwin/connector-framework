@@ -197,9 +197,7 @@ export class ConnectorRunner {
     await this.loadSynchronizer();
 
     Logger.logInfo(LoggerCategories.Framework, "Writing configuration and opening source data...");
-    const synchConfig = await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    const synchConfig = await this.doInRepositoryChannel(
       async () => {
         const config = this.insertSynchronizationConfigLink();
         await this.connector.openSourceData(this.jobArgs.source);
@@ -216,9 +214,7 @@ export class ConnectorRunner {
     // *** Then ConnectorRunner should get the schema lock and import all schemas in one shot.
     // ***
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    await this.doInRepositoryChannel(
       async () => {
         return this.connector.importDomainSchema(await this.getReqContext());
       },
@@ -226,9 +222,7 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    await this.doInRepositoryChannel(
       async () => {
         return this.connector.importDynamicSchema(await this.getReqContext());
       },
@@ -236,9 +230,7 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
-    const jobSubject = await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    const jobSubject = await this.doInRepositoryChannel(
       async () => {
         const job = await this.updateJobSubject();
         await this.connector.initializeJob();
@@ -249,9 +241,7 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
-    await this.doInChannel(
-      jobSubject.id,
-      "exclusive",
+    await this.doInConnectorChannel(jobSubject.id,
       async () => {
         await this.connector.updateExistingData();
         // this.updateDeletedElements();
@@ -260,9 +250,7 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    await this.doInRepositoryChannel(
       async () => {
         this.updateProjectExtent();
         this.connector.synchronizer.updateRepositoryLinks();
@@ -582,12 +570,15 @@ export class ConnectorRunner {
     } while (true);
   }
 
-  private async doInChannel<R>(channel: Id64String, grip: "shared" | "exclusive", task: () => Promise<R>, message: string): Promise<R> {
-    if (grip === "shared") {
-      await this.acquireLocks({ shared: channel });
-    } else {
-      await this.acquireLocks({ exclusive: channel });
-    }
+  private async doInRepositoryChannel<R>(task: () => Promise<R>, message: string): Promise<R> {
+    await this.acquireLocks({ exclusive: IModel.rootSubjectId });
+    const result = await task();
+    await this.persistChanges(message);
+    return result;
+  }
+
+  private async doInConnectorChannel<R>(jobSubject: Id64String, task: () => Promise<R>, message: string): Promise<R> {
+    await this.acquireLocks({ exclusive: jobSubject });  // automatically acquires shared lock on root subject (the parent/model)
     const result = await task();
     await this.persistChanges(message);
     return result;

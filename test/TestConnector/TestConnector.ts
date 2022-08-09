@@ -4,7 +4,8 @@
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken, Id64String } from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
-import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps } from "@itwin/core-backend";
+import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
+import { Subject } from "@itwin/core-backend";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelJsFs,
   ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
@@ -112,6 +113,14 @@ export default class TestConnector extends BaseConnector {
       this.insertCategories();
       this.insertMaterials();
       this.insertGeometryParts();
+
+      // Create this (unused) Subject here just to generate the following code path for the tests:
+      // While running in its own private channel ...
+      // ... a connector inserts an element that is a child of its channel parent ...
+      // ... and that element is inserted into the repository model.
+      // That is perfectly legal ... as long as the correct locks are held. The HubMock and integration
+      // tests should fail if the correct locks are not held.
+      Subject.insert(this.synchronizer.imodel, this.jobSubject.id, "Child Subject");
     }
 
     this.convertGroupElements(groupModelId);
