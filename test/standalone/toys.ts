@@ -8,6 +8,7 @@ import type {
 } from "@itwin/core-bentley";
 
 import type {
+  CategoryProps,
   DefinitionElementProps,
   ElementProps,
   ExternalSourceProps,
@@ -25,11 +26,14 @@ import {
 } from "@itwin/core-common";
 
 import {
+  DefinitionContainer,
   DefinitionGroup,
   DefinitionModel,
   DefinitionPartition,
+  ElementOwnsChildElements,
   ExternalSourceAspect,
   SnapshotDb,
+  SpatialCategory,
   Subject,
   SubjectOwnsPartitionElements,
   SubjectOwnsSubjects,
@@ -45,6 +49,26 @@ import {
   ItemState,
 } from "../../src/Synchronizer";
 
+function put(sync: Synchronizer, props: ElementProps, meta: SourceItem): Id64String {
+  const changes = sync.detectChanges(meta);
+  const tree = { elementProps: props, itemState: changes.state };
+  sync.updateIModel(tree, meta);
+
+  if (!(meta.scope && meta.kind && meta.id)) {
+    throw Error("fatal: incomplete external source aspect");
+  }
+
+  const found =  ExternalSourceAspect.findBySource(
+    sync.imodel, meta.scope, meta.kind, meta.id
+  );
+
+  if (!found.elementId) {
+    throw Error("fatal: element as given to the synchronizer but not inserted");
+  }
+
+  return found.elementId;
+}
+
 interface BerryGroups {
   repository: RepositoryLinkProps;
   source: ExternalSourceProps;
@@ -58,31 +82,21 @@ interface BerryGroups {
 }
 
 export function berryGroups(sync: Synchronizer): BerryGroups {
+  //                         o - subject
+  //                         |
+  //    repository - o       o - partition
+  //                         |
+  //        source - o       o - model
+  //                         |
+  //   (link-table           o - definition group
+  //    relationships not   / \
+  //    shown)             o   o - child definition groups
+
   const imodel = sync.imodel;
 
   const results = sync.recordDocument({ docid: "source document" });
   const repository = results.elementProps;
   const source = sync.getExternalSourceElementByLinkId(repository.id!) as ExternalSourceProps;
-
-  function put(props: ElementProps, meta: SourceItem): Id64String {
-    const changes = sync.detectChanges(meta);
-    const tree = { elementProps: props, itemState: changes.state };
-    sync.updateIModel(tree, meta);
-
-    if (!(meta.scope && meta.kind && meta.id)) {
-      throw Error("fatal: incomplete external source aspect");
-    }
-
-    const found =  ExternalSourceAspect.findBySource(
-      sync.imodel, meta.scope, meta.kind, meta.id
-    );
-
-    if (!found.elementId) {
-      throw Error("fatal: element as given to the synchronizer but not inserted");
-    }
-
-    return found.elementId;
-  }
 
   const subject: SubjectProps = {
     classFullName: Subject.classFullName,
@@ -100,24 +114,24 @@ export function berryGroups(sync: Synchronizer): BerryGroups {
     version: "1.0.0",
   };
 
-  const subjectId = put(subject, subjectMeta);
+  const subjectId = put(sync, subject, subjectMeta);
 
   const partition: InformationPartitionElementProps = {
     classFullName: DefinitionPartition.classFullName,
-    code: DefinitionPartition.createCode(imodel, subjectId, "fruit definitions partition"),
+    code: DefinitionPartition.createCode(imodel, subjectId, "definitions"),
     model: SnapshotDb.repositoryModelId,
     parent: new SubjectOwnsPartitionElements(subjectId),
   };
 
   const partitionMeta = {
-    scope: IModel.rootSubjectId,
+    scope: subjectId,
     source: repository.id,
     id: "partition",
     kind: "json",
     version: "1.0.0",
   };
 
-  const partitionId = put(partition, partitionMeta);
+  const partitionId = put(sync, partition, partitionMeta);
 
   const model: ModelProps = {
     classFullName: DefinitionModel.classFullName,
@@ -204,4 +218,143 @@ export function berryGroups(sync: Synchronizer): BerryGroups {
     berryTree,
     berryTreeMeta,
   };
+}
+
+interface NestedDefinitionModels {
+  subject: SubjectProps;
+}
+
+export function nestedDefinitionModels(sync: Synchronizer): NestedDefinitionModels {
+  //                 o - subject
+  //                 |
+  //                 o - partition
+  //                 |
+  //                 o - model
+  //                 |
+  //                 o - definition container
+  //                / \
+  //    category - o   o - definition container
+  //                   |
+  //                   o - nested definition model
+  //                   |
+  //                   o - category
+
+  const imodel = sync.imodel;
+
+  const subject: SubjectProps = {
+    classFullName: Subject.classFullName,
+    code: Code.createEmpty(),
+    model: SnapshotDb.repositoryModelId,
+    parent: new SubjectOwnsSubjects(SnapshotDb.rootSubjectId),
+  };
+
+  const subjectMeta = {
+    scope: IModel.rootSubjectId,
+    id: "subject",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  const subjectId = put(sync, subject, subjectMeta);
+
+  const partition: InformationPartitionElementProps = {
+    classFullName: DefinitionPartition.classFullName,
+    code: Code.createEmpty(),
+    model: SnapshotDb.repositoryModelId,
+    parent: new SubjectOwnsPartitionElements(subjectId),
+  };
+
+  const partitionMeta = {
+    scope: subjectId,
+    id: "partition",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  const partitionId = put(sync, partition, partitionMeta);
+
+  const model: ModelProps = {
+    classFullName: DefinitionModel.classFullName,
+    modeledElement: { id: partitionId },
+    parentModel: IModel.repositoryModelId,
+  };
+
+  const modelId = imodel.models.insertModel(model);
+
+  const containerSpec = CodeSpec.create(imodel, "bis:DefinitionContainer", CodeScopeSpec.Type.Model);
+
+  const rootContainer: DefinitionElementProps = {
+    ...DefinitionContainer.create(
+      imodel,
+      modelId,
+      new Code({scope: modelId, spec: containerSpec.id, value: "root container"}),
+    ).toJSON(),
+  };
+
+  const rootContainerMeta = {
+    scope: partitionId,
+    id: "root container",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  const rootContainerId = put(sync, rootContainer, rootContainerMeta);
+
+  const firstCategory: CategoryProps = {
+    classFullName: SpatialCategory.classFullName,
+    code: SpatialCategory.createCode(imodel, modelId, "first category"),
+    model: modelId,
+    parent: new ElementOwnsChildElements(rootContainerId),
+  };
+
+  const firstCategoryMeta = {
+    scope: modelId,
+    id: "first category",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  put(sync, firstCategory, firstCategoryMeta);
+
+  const childContainer: DefinitionElementProps = {
+    ...DefinitionContainer.create(
+      imodel,
+      modelId,
+      new Code({scope: modelId, spec: containerSpec.id, value: "child container"}),
+    ).toJSON(),
+  };
+
+  const childContainerMeta = {
+    scope: rootContainerId,
+    id: "child container",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  const childContainerId = put(sync, childContainer, childContainerMeta);
+
+  const nestedModel: ModelProps = {
+    classFullName: DefinitionModel.classFullName,
+    modeledElement: { id: childContainerId },
+    parentModel: modelId,
+  };
+
+  const nestedModelId = imodel.models.insertModel(nestedModel);
+
+  const childCategory: CategoryProps = {
+    classFullName: SpatialCategory.classFullName,
+    code: SpatialCategory.createCode(imodel, modelId, "second category"),
+    model: nestedModelId,
+  };
+
+  const childCategoryMeta = {
+    scope: modelId,
+    id: "second category",
+    kind: "json",
+    version: "1.0.0",
+  };
+
+  put(sync, childCategory, childCategoryMeta);
+
+  return { subject };
 }

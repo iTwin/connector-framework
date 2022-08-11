@@ -12,6 +12,18 @@ import {
   IModelStatus,
 } from "@itwin/core-common";
 
+import type {
+  IModelDb,
+} from "@itwin/core-backend";
+
+import {
+  Category,
+  DefinitionContainer,
+  DefinitionModel,
+  DefinitionPartition,
+  Subject,
+} from "@itwin/core-backend";
+
 import {
   ElementGroupsMembers,
   Group,
@@ -28,21 +40,21 @@ import { KnownTestLocations } from "../KnownTestLocations";
 
 import { Synchronizer } from "../../src/Synchronizer";
 
-import { berryGroups } from "./toys";
+import { berryGroups, nestedDefinitionModels } from "./toys";
+
+const count = (imodel: IModelDb, query: string, times: number): void => {
+  imodel.withStatement<void>(query, (statement) => {
+    statement.step();
+    assert.strictEqual(statement.getValue(0).getInteger(), times);
+  });
+};
 
 describe("trimming #standalone", () => {
-  const name = "my-fruits";
+  const name = "trimming";
   const path = join(KnownTestLocations.outputDir, `${name}.bim`);
   const root = "root";
 
   let imodel: SnapshotDb;
-
-  const count = (query: string, times: number): void => {
-    imodel.withStatement<void>(query, (statement) => {
-      statement.step();
-      assert.strictEqual(statement.getValue(0).getInteger(), times);
-    });
-  };
 
   before(async () => {
     if (!fs.existsSync(KnownTestLocations.outputDir)) {
@@ -65,6 +77,7 @@ describe("trimming #standalone", () => {
   });
 
   afterEach(() => {
+    imodel.saveChanges("unit test complete");
     imodel.close();
     fs.rmSync(path, { maxRetries: 2, retryDelay: 2 * 1000 });
   });
@@ -78,9 +91,9 @@ describe("trimming #standalone", () => {
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 1);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 1);
+      count(imodel, query("raspberries"), 1);
 
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
@@ -101,9 +114,9 @@ describe("trimming #standalone", () => {
       synchronizer.jobSubjectId = subject.id!;
       synchronizer.detectDeletedElementsInChannel();
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 0);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 1);
+      count(imodel, query("raspberries"), 0);
     });
 
     it("deletes all children of an element", () => {
@@ -114,9 +127,9 @@ describe("trimming #standalone", () => {
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 1);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 1);
+      count(imodel, query("raspberries"), 1);
 
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
@@ -132,9 +145,9 @@ describe("trimming #standalone", () => {
       synchronizer.jobSubjectId = subject.id!;
       synchronizer.detectDeletedElementsInChannel();
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 0);
-      count(query("raspberries"), 0);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 0);
+      count(imodel, query("raspberries"), 0);
     });
 
     it("deletes a model with no children elements", () => {
@@ -145,9 +158,9 @@ describe("trimming #standalone", () => {
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 1);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 1);
+      count(imodel, query("raspberries"), 1);
 
       // We construct a new synchronizer to simulate another run.
       // Delete all elements in the source file. I.e.,
@@ -157,9 +170,9 @@ describe("trimming #standalone", () => {
       synchronizer.jobSubjectId = subject.id!;
       synchronizer.detectDeletedElementsInChannel();
 
-      count(query("berries"), 0);
-      count(query("strawberries"), 0);
-      count(query("raspberries"), 0);
+      count(imodel, query("berries"), 0);
+      count(imodel, query("strawberries"), 0);
+      count(imodel, query("raspberries"), 0);
 
       const deletedModeledElement = imodel.elements.tryGetElement(model.id!);
       const deletedModel = imodel.models.tryGetModel(model.id!);
@@ -193,9 +206,9 @@ describe("trimming #standalone", () => {
 
       const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 1);
-      count(query("raspberries"), 1);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 1);
+      count(imodel, query("raspberries"), 1);
 
       // We construct a new synchronizer to simulate another run.
       synchronizer = new Synchronizer(imodel, false);
@@ -214,9 +227,36 @@ describe("trimming #standalone", () => {
       // Assert that the berry basket still exists.
       assert.exists(imodel.elements.tryGetElement(basketId));
 
-      count(query("berries"), 1);
-      count(query("strawberries"), 0);
-      count(query("raspberries"), 0);
+      count(imodel, query("berries"), 1);
+      count(imodel, query("strawberries"), 0);
+      count(imodel, query("raspberries"), 0);
     });
+  });
+
+  it("fail nested definition models", () => {
+    let sync = new Synchronizer(imodel, false);
+
+    // Write to the iModel!
+    const { subject } = nestedDefinitionModels(sync);
+
+    const query = (fullClass: string) => `select count(*) from ${fullClass}`;
+
+    // Assert that the synchronizer inserted everything as intended.
+    count(imodel, query(Subject.classFullName), 2);             // +1 for root subject
+    count(imodel, query(DefinitionPartition.classFullName), 2); // +1 for dictionary partition
+    count(imodel, query(DefinitionModel.classFullName), 4);     // +1 for dictionary model, +1 for repository model
+    count(imodel, query(DefinitionContainer.classFullName), 2);
+    count(imodel, query(Category.classFullName), 2);
+
+    // Okay, let's move this definition model to a different subject in the source file. We expect
+    // everything to be deleted.
+
+    sync = new Synchronizer(imodel, false);
+
+    sync.jobSubjectId = subject.id!;
+    assert.throws(
+      () => sync.detectDeletedElementsInChannel(),
+      /Error deleting element/i
+    );
   });
 });
