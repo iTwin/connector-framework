@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken} from "@itwin/core-bentley";
+import type { AccessToken } from "@itwin/core-bentley";
 import { Logger } from "@itwin/core-bentley";
 import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
 import { LoggerCategories } from "./LoggerCategory";
@@ -87,6 +87,8 @@ export interface HubArgsProps {
   region?: ConnectRegion;
   tokenCallbackUrl?: string;
   doInteractiveSignIn?: boolean;
+  maxLockRetries?: number;
+  maxLockRetryWaitSeconds?: number;
 }
 
 /**
@@ -105,6 +107,9 @@ export class HubArgs implements HubArgsProps, Validatable {
   public tokenCallback?: () => Promise<AccessToken>;
   public doInteractiveSignIn: boolean = false;
 
+  public maxLockRetries = 3;
+  public maxLockRetryWaitSeconds = 5;
+
   constructor(props: HubArgsProps) {
     this.briefcaseFile = props.briefcaseFile;
     this.briefcaseId = props.briefcaseId;
@@ -112,6 +117,10 @@ export class HubArgs implements HubArgsProps, Validatable {
     this.iModelGuid = props.iModelGuid;
     this.region = props.region ?? this.region;
     this.tokenCallbackUrl = props.tokenCallbackUrl;
+    if (props.maxLockRetries !== undefined)
+      this.maxLockRetries = props.maxLockRetries;
+    if (props.maxLockRetryWaitSeconds !== undefined)
+      this.maxLockRetryWaitSeconds = props.maxLockRetryWaitSeconds;
     if (props.doInteractiveSignIn !== undefined)
       this.doInteractiveSignIn = props.doInteractiveSignIn;
   }

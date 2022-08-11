@@ -62,6 +62,11 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     this.createDBSchema();
   }
 
+  public close(): void {
+    if (this._reportDb !== undefined)
+      this._reportDb.closeDb();
+  }
+
   public setBriefcaseId(briefcaseId: number) {
     this._contextInfo.briefcaseId = briefcaseId;
   }

@@ -2,19 +2,20 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import type { AccessToken, Id64String } from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
 import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
+import { Subject } from "@itwin/core-backend";
 import {
-  CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelDb, IModelJsFs,
+  CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelJsFs,
   ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
 } from "@itwin/core-backend";
-import type { ColorDefProps, GeometryPartProps, InformationPartitionElementProps, SubCategoryAppearance} from "@itwin/core-common";
+import type { ColorDefProps, GeometryPartProps, InformationPartitionElementProps, SubCategoryAppearance } from "@itwin/core-common";
 import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, IModel, IModelError, RenderMode, ViewFlags } from "@itwin/core-common";
-import type { SolidPrimitive} from "@itwin/core-geometry";
+import type { SolidPrimitive } from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
@@ -112,13 +113,22 @@ export default class TestConnector extends BaseConnector {
       this.insertCategories();
       this.insertMaterials();
       this.insertGeometryParts();
+
+      // Create this (unused) Subject here just to generate the following code path for the tests:
+      // While running in its own private channel ...
+      // ... a connector inserts an element that is a child of its channel parent ...
+      // ... and that element is inserted into the repository model.
+      // That is perfectly legal ... as long as the correct locks are held. The HubMock and integration
+      // tests should fail if the correct locks are not held.
+      Subject.insert(this.synchronizer.imodel, this.jobSubject.id, "Child Subject");
     }
 
     this.convertGroupElements(groupModelId);
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
 
-    this.synchronizer.deleteInChannel(this.jobSubject.id);
+    // this.synchronizer.deleteInChannel(this.jobSubject.id);
+    this.synchronizer.detectDeletedElements();
   }
   public getApplicationVersion(): string {
     return "1.0.0.0";
@@ -135,11 +145,12 @@ export default class TestConnector extends BaseConnector {
       timeStamp = stat.mtimeMs;
     }
 
-    const sourceItem: SourceItem = {
-      id: this._sourceData,
-      version: timeStamp.toString(),
+    const sourceDoc: SourceDocument = {
+      docid: this._sourceData,
+      lastModifiedTime: timeStamp.toString(),
+      checksum: () => undefined,
     };
-    const documentStatus = this.synchronizer.recordDocument(IModelDb.rootSubjectId, sourceItem);
+    const documentStatus = this.synchronizer.recordDocument(sourceDoc);
     if (undefined === documentStatus) {
       const error = `Failed to retrieve a RepositoryLink for ${this._sourceData}`;
       throw new IModelError(IModelStatus.BadArg, error);
@@ -357,12 +368,17 @@ export default class TestConnector extends BaseConnector {
 
   private convertGroupElements(groupModelId: Id64String) {
     for (const group of this._data.Groups) {
+      const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
+
       const str = JSON.stringify(group);
       const sourceItem: SourceItem = {
+        source: xse?.id,
+        scope: groupModelId,
+        kind: "Group",
         id: group.guid,
-        checksum: hash.MD5(str),
+        checksum: () => hash.MD5(str),
       };
-      const results = this.synchronizer.detectChanges(groupModelId, "Group", sourceItem);
+      const results = this.synchronizer.detectChanges(sourceItem);
       if (results.state === ItemState.Unchanged) {
         this.synchronizer.onElementSeen(results.id!);
         continue;
@@ -386,12 +402,14 @@ export default class TestConnector extends BaseConnector {
       };
       if (results.id !== undefined) // in case this is an update
         sync.elementProps.id = results.id;
-      const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
-      this.synchronizer.updateIModel(sync, groupModelId, sourceItem, "Group", xse);
+      this.synchronizer.updateIModel(sync, sourceItem);
     }
   }
 
   private convertPhysicalElements(physicalModelId: Id64String, definitionModelId: Id64String, groupModelId: Id64String) {
+    if ("testConnector_skipTiles" in process.env)
+      return;
+
     for (const shape of Object.keys(this._data.Tiles)) {
       if (Array.isArray(this._data.Tiles[shape])) {
         for (const tile of this._data.Tiles[shape]) {
@@ -404,12 +422,16 @@ export default class TestConnector extends BaseConnector {
   }
 
   private convertTile(physicalModelId: Id64String, definitionModelId: Id64String, groupModelId: Id64String, tile: any, shape: string) {
+    const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
     const str = JSON.stringify(tile);
     const sourceItem: SourceItem = {
+      source: xse?.id,
+      scope: physicalModelId,
+      kind: "Tile",
       id: tile.guid,
-      checksum: hash.MD5(str),
+      checksum: () => hash.MD5(str),
     };
-    const results = this.synchronizer.detectChanges(physicalModelId, "Tile", sourceItem);
+    const results = this.synchronizer.detectChanges(sourceItem);
     if (results.state === ItemState.Unchanged) {
       this.synchronizer.onElementSeen(results.id!);
       return;
@@ -448,8 +470,7 @@ export default class TestConnector extends BaseConnector {
       elementProps: element.toJSON(),
       itemState: results.state,
     };
-    const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
-    this.synchronizer.updateIModel(sync, physicalModelId, sourceItem, "Tile", xse);
+    this.synchronizer.updateIModel(sync, sourceItem);
     if (!tile.hasOwnProperty("Group")) {
       return;
     }
@@ -521,7 +542,7 @@ export default class TestConnector extends BaseConnector {
     if (undefined !== displayStyleId) {
       return displayStyleId;
     }
-    const viewFlags: ViewFlags = new ViewFlags({renderMode: RenderMode.SmoothShade});
+    const viewFlags: ViewFlags = new ViewFlags({ renderMode: RenderMode.SmoothShade });
     const options: DisplayStyleCreationOptions = {
       backgroundColor: ColorDef.fromTbgr(ColorByName.white),
       viewFlags,

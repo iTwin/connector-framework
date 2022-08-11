@@ -4,14 +4,15 @@
 *--------------------------------------------------------------------------------------------*/
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
-import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
+import { BentleyError, IModelHubStatus } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
-import type { IModelDb, RequestNewBriefcaseArg} from "@itwin/core-backend";
+import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
 import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
-import type { AllArgsProps} from "./Args";
+import type { AllArgsProps } from "./Args";
 import { HubArgs, JobArgs } from "./Args";
 import { Synchronizer } from "./Synchronizer";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
@@ -19,6 +20,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 type Path = string;
+
+enum BeforeRetry { Nothing = 0, PullMergePush = 1 }
 
 export class ConnectorRunner {
 
@@ -91,12 +94,12 @@ export class ConnectorRunner {
 
   // NEEDSWORK - How to check if string version od Access Token is expired
   private get _isAccessTokenExpired(): boolean {
-  //  return this._reqContext.isExpired(5);
+    //  return this._reqContext.isExpired(5);
     return true;
   }
 
   public async getAuthReqContext(): Promise<AccessToken> {
-    if (!this._reqContext )
+    if (!this._reqContext)
       throw new Error("AuthorizedClientRequestContext has not been loaded.");
     if (this._isAccessTokenExpired) {
       this._reqContext = await this.getToken();
@@ -194,9 +197,7 @@ export class ConnectorRunner {
     await this.loadSynchronizer();
 
     Logger.logInfo(LoggerCategories.Framework, "Writing configuration and opening source data...");
-    const synchConfig = await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    const synchConfig = await this.doInRepositoryChannel(
       async () => {
         const config = this.insertSynchronizationConfigLink();
         await this.connector.openSourceData(this.jobArgs.source);
@@ -206,23 +207,30 @@ export class ConnectorRunner {
       "Write configuration and open source data."
     );
 
-    // We don't batch the schema upgrades because the schema lock needs to be released first?
-    // https://www.itwinjs.org/reference/core-backend/imodels/imodeldb/acquireschemalock
-    // > Note: To acquire the schema lock, all other briefcases must first release all their locks.
-    // > No other briefcases will be able to acquire any locks while the schema lock is held.
-
+    // ***
+    // *** NEEDS WORK - this API should be changed - The connector should return
+    // *** schema *strings* from both importDomainSchema and importDynamicSchema. The connector should not import them.
+    // *** (Or, these two connector methods should be combined into a single method that returns an array of strings.)
+    // *** Then ConnectorRunner should get the schema lock and import all schemas in one shot.
+    // ***
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
-    await this.connector.importDomainSchema(await this.getReqContext());
-    await this.persistChanges("Write domain schema.");
+    await this.doInRepositoryChannel(
+      async () => {
+        return this.connector.importDomainSchema(await this.getReqContext());
+      },
+      "Write domain schema."
+    );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
-    await this.connector.importDynamicSchema(await this.getReqContext());
-    await this.persistChanges("Write dynamic schema.");
+    await this.doInRepositoryChannel(
+      async () => {
+        return this.connector.importDynamicSchema(await this.getReqContext());
+      },
+      "Write dynamic schema."
+    );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
-    const jobSubject = await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    const jobSubject = await this.doInRepositoryChannel(
       async () => {
         const job = await this.updateJobSubject();
         await this.connector.initializeJob();
@@ -233,9 +241,7 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
-    await this.doInChannel(
-      jobSubject.id,
-      "exclusive",
+    await this.doInConnectorChannel(jobSubject.id,
       async () => {
         await this.connector.updateExistingData();
         // this.updateDeletedElements();
@@ -244,11 +250,10 @@ export class ConnectorRunner {
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
-    await this.doInChannel(
-      IModel.rootSubjectId,
-      "exclusive",
+    await this.doInRepositoryChannel(
       async () => {
         this.updateProjectExtent();
+        this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
       },
       "Write synchronization finish time and extent."
@@ -261,8 +266,8 @@ export class ConnectorRunner {
     try {
       if (this._db && this._db.isBriefcaseDb()) {
         this._db.abandonChanges();
+        await this.db.locks.releaseAllLocks();
       }
-      await this.db.locks.releaseAllLocks();
     } catch (err1) {
       // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
       // eslint-disable-next-line no-console
@@ -359,6 +364,7 @@ export class ConnectorRunner {
     }
 
     this.connector.jobSubject = subject;
+    this.connector.synchronizer.jobSubjectId = subject.id;
     return subject;
   }
 
@@ -369,9 +375,9 @@ export class ConnectorRunner {
     this._connector = await require(connector).default.create();
   }
 
-  private insertSynchronizationConfigLink(){
+  private insertSynchronizationConfigLink() {
     let synchConfigData = {
-      classFullName:  SynchronizationConfigLink.classFullName,
+      classFullName: SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     };
@@ -382,7 +388,7 @@ export class ConnectorRunner {
       LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
     );
     let idToReturn: string;
-    if(prevSynchConfigId === undefined) {
+    if (prevSynchConfigId === undefined) {
       idToReturn = this.db.elements.insertElement(synchConfigData);
     } else {
       this.updateSynchronizationConfigLink(prevSynchConfigId);
@@ -390,10 +396,10 @@ export class ConnectorRunner {
     }
     return idToReturn;
   }
-  private updateSynchronizationConfigLink(synchConfigId: string){
+  private updateSynchronizationConfigLink(synchConfigId: string) {
     const synchConfigData = {
       id: synchConfigId,
-      classFullName:  SynchronizationConfigLink.classFullName,
+      classFullName: SynchronizationConfigLink.classFullName,
       model: IModel.repositoryModelId,
       code: LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
       lastSuccessfulRun: Date.now().toString(),
@@ -496,8 +502,9 @@ export class ConnectorRunner {
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
       const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
-      if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas)
-        await BriefcaseDb.upgradeSchemas(bcProps);
+      if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas) {
+        await this.doWithRetries(async () => BriefcaseDb.upgradeSchemas(bcProps), BeforeRetry.Nothing);
+      }
 
       openProps = { fileName: bcProps.fileName };
     }
@@ -516,21 +523,62 @@ export class ConnectorRunner {
     const comment = `${revisionHeader} - ${changeDesc}`;
     const isStandalone = this.jobArgs.dbType === "standalone";
     if (!isStandalone && this.db.isBriefcaseDb()) {
-      this._db = this.db ;
+      this._db = this.db;
       await this.db.pullChanges();
       this.db.saveChanges(comment);
-      await this.db.pushChanges({description: comment});
+      await this.db.pushChanges({ description: comment });
+      await this.db.locks.releaseAllLocks(); // in case there were no changes
     } else {
       this.db.saveChanges(comment);
     }
   }
 
-  private async doInChannel<R>(channel: Id64String, grip: "shared" | "exclusive", task: () => Promise<R>, message: string): Promise<R> {
-    if (grip === "shared") {
-      await this.db.locks.acquireLocks({ shared: channel });
-    } else {
-      await this.db.locks.acquireLocks({ exclusive: channel });
-    }
+  private async acquireLocks(arg: { shared?: Id64Arg, exclusive?: Id64Arg }): Promise<void> {
+    const isStandalone = this.jobArgs.dbType === "standalone";
+    if (isStandalone || !this.db.isBriefcaseDb())
+      return;
+
+    return this.doWithRetries(async () => this.db.locks.acquireLocks(arg), BeforeRetry.PullMergePush);
+  }
+
+  private shouldRetryAfterError(err: unknown): boolean {
+    if (!(err instanceof BentleyError))
+      return false;
+    return err.errorNumber === IModelHubStatus.LockOwnedByAnotherBriefcase;
+  }
+
+  private async doWithRetries(task: () => Promise<void>, beforeRetry: BeforeRetry): Promise<void> {
+    let count = 0;
+    do {
+      try {
+        await task();
+        return;
+      } catch (err) {
+        if (!this.shouldRetryAfterError(err))
+          throw err;
+        if (++count > this.hubArgs.maxLockRetries)
+          throw err;
+        const sleepms = Math.random() * this.hubArgs.maxLockRetryWaitSeconds * 1000;
+        await new Promise((resolve) => setTimeout(resolve, sleepms));
+
+        if (beforeRetry === BeforeRetry.PullMergePush) {
+          assert(this.db.isBriefcaseDb());
+          await this.db.pullChanges(); // do not catch!
+          await this.db.pushChanges({ description: "" }); // "
+        }
+      }
+    } while (true);
+  }
+
+  private async doInRepositoryChannel<R>(task: () => Promise<R>, message: string): Promise<R> {
+    await this.acquireLocks({ exclusive: IModel.rootSubjectId });
+    const result = await task();
+    await this.persistChanges(message);
+    return result;
+  }
+
+  private async doInConnectorChannel<R>(jobSubject: Id64String, task: () => Promise<R>, message: string): Promise<R> {
+    await this.acquireLocks({ exclusive: jobSubject });  // automatically acquires shared lock on root subject (the parent/model)
     const result = await task();
     await this.persistChanges(message);
     return result;
