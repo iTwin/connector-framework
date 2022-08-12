@@ -6,8 +6,8 @@
 
 ## 0.2.0
 
-- Add code coverage tooling
-- Improve test coverage
+- Add code coverage tooling with nyc and mocha
 - Updates to locking to better implement pattern used in iTwinjs
-- Major changes to both deletion of elements and synchronizer.ts
-- Changes to method signatures Synchronizer.recordDocument, Synchronizer.detectChanges, and Synchronizer.updateIModel (Breaking API Change)
+- Changes to default behavior of deletion as well as a new opt-in deletion procedure using the ElementSubTreeDeleter
+- Major changes to synchronizer.ts
+- Changes to method signatures Synchronizer.recordDocument, Synchronizer.detectChanges, and Synchronizer.updateIModel to consolidate the 'kind' and 'scope' parameters into the SourceItem object (Breaking API Change)
