@@ -5,7 +5,7 @@
 /* eslint-disable no-console */
 import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { BentleyStatus } from "@itwin/core-bentley";
-import * as path from "node:path";
+import * as path from "path";
 import * as utils from "../ConnectorTestUtils";
 
 async function main() {

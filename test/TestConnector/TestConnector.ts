@@ -26,7 +26,7 @@ import type { QuadCasing, TriangleCasing } from "./TestConnectorGeometry";
 import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing } from "./TestConnectorGeometry";
 import * as hash from "object-hash";
 import * as fs from "fs";
-import * as path from "node:path";
+import * as path from "path";
 
 export default class TestConnector extends BaseConnector {
 
