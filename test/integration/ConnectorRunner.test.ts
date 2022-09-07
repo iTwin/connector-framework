@@ -77,8 +77,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
     // briefcases.forEach(async b => {
     //   await IModelHost.hubAccess.releaseBriefcase({briefcaseId: b, accessToken: token!, iModelId: updateIModelId!});
     // });
-    IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
     await utils.shutdownBackend();
+    IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs) {

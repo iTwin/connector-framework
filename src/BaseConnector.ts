@@ -8,7 +8,7 @@ import type { Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import type { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
-import * as path from "node:path";
+import * as path from "path";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta

@@ -3,39 +3,17 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import type {
-  ExternalSourceAspectProps,
-  RepositoryLinkProps,
-} from "@itwin/core-common";
-
-import {
-  Code,
-  IModelError,
-  IModelStatus,
-} from "@itwin/core-common";
-
-import type {
-  Subject,
-} from "@itwin/core-backend";
-
-import {
-  DefinitionGroup,
-  ExternalSourceAspect,
-  RepositoryLink,
-  SnapshotDb,
-} from "@itwin/core-backend";
-
+import type { ExternalSourceAspectProps, RepositoryLinkProps } from "@itwin/core-common";
+import { Code, IModelError, IModelStatus } from "@itwin/core-common";
+import type { Subject } from "@itwin/core-backend";
+import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb } from "@itwin/core-backend";
 import { assert } from "chai";
-import { join } from "node:path";
-
-import * as fs from "node:fs";
-
+import { join } from "path";
+import * as fs from "fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
-
 import type { SourceItem } from "../../src/Synchronizer";
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
-
 import { berryGroups } from "./toys";
 
 describe("synchronizer #standalone", () => {

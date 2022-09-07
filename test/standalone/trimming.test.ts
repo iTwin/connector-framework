@@ -3,43 +3,17 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import type {
-  ElementProps,
-} from "@itwin/core-common";
-
-import {
-  Code,
-  IModelStatus,
-} from "@itwin/core-common";
-
-import type {
-  IModelDb,
-} from "@itwin/core-backend";
-
-import {
-  Category,
-  DefinitionContainer,
-  DefinitionModel,
-  DefinitionPartition,
-  Subject,
-} from "@itwin/core-backend";
-
-import {
-  ElementGroupsMembers,
-  Group,
-  SnapshotDb,
-} from "@itwin/core-backend";
-
+import type { ElementProps } from "@itwin/core-common";
+import { Code, IModelStatus } from "@itwin/core-common";
+import type { IModelDb } from "@itwin/core-backend";
+import { Category, DefinitionContainer, DefinitionModel, DefinitionPartition, Subject } from "@itwin/core-backend";
+import { ElementGroupsMembers, Group, SnapshotDb } from "@itwin/core-backend";
 import { assert } from "chai";
-import { join } from "node:path";
-
-import * as fs from "node:fs";
-
+import { join } from "path";
+import * as fs from "fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
-
 import { Synchronizer } from "../../src/Synchronizer";
-
 import { berryGroups, nestedDefinitionModels } from "./toys";
 
 const count = (imodel: IModelDb, query: string, times: number): void => {
