@@ -3,18 +3,19 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import type { ExternalSourceAspectProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModelError, IModelStatus } from "@itwin/core-common";
-import type { Subject } from "@itwin/core-backend";
-import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb } from "@itwin/core-backend";
+import type { ExternalSourceAspectProps, RepositoryLinkProps, UrlLinkProps } from "@itwin/core-common";
+import { Code, IModel, IModelError, IModelStatus } from "@itwin/core-common";
+import type { Subject} from "@itwin/core-backend";
+import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb, UrlLink } from "@itwin/core-backend";
 import { assert } from "chai";
 import { join } from "path";
 import * as fs from "fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
-import type { SourceItem } from "../../src/Synchronizer";
+import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
 import { berryGroups } from "./toys";
+import type { Id64String } from "@itwin/core-bentley";
 
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
@@ -253,21 +254,26 @@ describe("synchronizer #standalone", () => {
     it("update element with more than one external source", () => {
       const synchronizer = new Synchronizer(imodel, false);
 
-      const meta = (anchor: string, version: string): SourceItem => ({
-        id: anchor,
-        version,
+      const meta = (anchor: string, source: Id64String, scope: Id64String, kind: string, version: string): SourceItem => ({
+        scope, source,
+        id: anchor, kind, version,
+      });
+
+      const document = (anchor: string, modified: string): SourceDocument => ({
+        docid: anchor,
+        lastModifiedTime: modified,
       });
 
       // Make two repositories.
 
       const some = synchronizer.recordDocument(
-        IModel.rootSubjectId, meta("some repository", "1.0.0"), "json"
+        document("some repository", "1.0.0")
       ).elementProps.id;
 
       assert.exists(some);
 
       const other = synchronizer.recordDocument(
-        IModel.rootSubjectId, meta("other repository", "1.0.0"), "json"
+        document("other repository", "1.0.0")
       ).elementProps.id;
 
       assert.exists(other);
@@ -288,25 +294,25 @@ describe("synchronizer #standalone", () => {
 
       // Sync the two source aspects.
 
-      synchronizer.updateIModel(
-        sync, some!,
-        meta("some url", "1.0.0"),
-        "json",
-        synchronizer.getExternalSourceElementByLinkId(some!),
+      const someMeta = meta(
+        "some url", synchronizer.getExternalSourceElementByLinkId(some!)!.id!,
+        some!, "json", "1.0.0"
       );
 
-      synchronizer.updateIModel(
-        sync, other!,
-        meta("some url", "1.0.0"), // <- Same identifier, different scope!
-        "json",
-        synchronizer.getExternalSourceElementByLinkId(other!),
-      );
+      synchronizer.updateIModel(sync, someMeta);
+
+      const otherMeta = meta(
+        "some url", synchronizer.getExternalSourceElementByLinkId(other!)!.id!,
+        other!, "json", "1.0.0"
+      ); // <- Same identifier, different scope!
+
+      synchronizer.updateIModel(sync, otherMeta);
 
       assert.strictEqual(
-        sourceAspect(some!, "json", "some url").version, "1.0.0"
+        sourceAspect(someMeta).version, "1.0.0"
       );
 
-      let otherAspect = sourceAspect(other!, "json", "some url");
+      let otherAspect = sourceAspect(otherMeta);
 
       assert.strictEqual(
         imodel.elements.getElement<UrlLink>(otherAspect.element.id).url,
@@ -323,18 +329,13 @@ describe("synchronizer #standalone", () => {
 
       sync.itemState = ItemState.Changed;
 
-      synchronizer.updateIModel(
-        sync, other!,
-        meta("some url", "1.0.1"), // <- Update!
-        "json",
-        synchronizer.getExternalSourceElementByLinkId(other!),
-      );
+      otherMeta.version = "1.0.1"; // <- Update!
 
-      assert.strictEqual(
-        sourceAspect(some!, "json", "some url").version, "1.0.0"
-      );
+      synchronizer.updateIModel(sync, otherMeta);
 
-      otherAspect = sourceAspect(other!, "json", "some url");
+      assert.strictEqual(sourceAspect(someMeta).version, "1.0.0");
+
+      otherAspect = sourceAspect(otherMeta);
 
       assert.strictEqual(
         imodel.elements.getElement<UrlLink>(otherAspect.element.id).url,
