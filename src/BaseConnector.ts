@@ -86,6 +86,15 @@ export abstract class BaseConnector {
     return false;
   }
 
+  /**
+   * Returns boolean flag to toggle deletion. Defaults to true where elements not marked by onElementSeen
+   * deleted by ConnectorRunner. If this flag is set to false, the connector author is responsible for
+   * deletion and cleaning up unused elements.
+   */
+  public shouldDeleteElements(): boolean {
+    return true;
+  }
+
   /** Returns the name to be used for the job subject. This only needs to be overridden if the connector supports multiple files per channel, in which case it must be overridden. */
   public getJobSubjectName(sourcePath: string): string {
     return `${this.getConnectorName()}:${sourcePath}`;

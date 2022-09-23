@@ -46,7 +46,6 @@ export class JobArgs implements JobArgsProps, Validatable {
   public issuesDbFile?: string;
   public loggerConfigJSONFile?: string;
   public errorFile: string;
-  public doDetectDeletedElements: boolean = true;
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
   public synchConfigFile?: string;
