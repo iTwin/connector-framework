@@ -37,6 +37,9 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 
 ### Refer to [write-a-connector](https://www.itwinjs.org/learning/writeaconnector/) documentation for more details
 
+### Note:
+NPM version 7.X and up is recommended. If you are using a lower version, you will have to manually install Peer Dependencies.
+
 ## Changelog
 
 For any PR with changes beyond something exceedingly minor, an update changelog will be required for a pull request. This changelog can be added to CHANGELOG.md manually in a similar format to what is already there.
