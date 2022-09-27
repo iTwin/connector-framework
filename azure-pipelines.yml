@@ -165,6 +165,5 @@ stages:
         path: '*.tgz'
         artifactName: connector-framework
         name: ConnectorFramework
-        releaseTag: 'beta'
         dryrun: false
 
