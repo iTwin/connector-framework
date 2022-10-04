@@ -80,6 +80,8 @@ export class ConnectorRunner {
     const supportedVersion = "0.0.1";
     if (!json.version || json.version !== supportedVersion)
       throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
+
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.example-code
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
@@ -89,6 +91,8 @@ export class ConnectorRunner {
       hubArgs = new HubArgs(json.hubArgs);
 
     const runner = new ConnectorRunner(jobArgs, hubArgs);
+    // __PUBLISH_EXTRACT_END__
+
     return runner;
   }
 
