@@ -13,14 +13,12 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 
 1. The word `"itwin"` replaces `"imodel"` and `"connector"` replaces `"bridge"`.
 
-    e.g. the class `iModelBridge` becomes `iTwinConnector`
-
 2. TypeScript source files should import the new classes from `@itwin/connector-framework`.
 
     e.g.
 
     ``` javascript
-    import { iTwinConnector } from "@itwin/connector-framework";
+    import { BaseConnector } from "@itwin/connector-framework";
     ```
 
 3. package.json should include a dependency for `@itwin/connector-framework`
