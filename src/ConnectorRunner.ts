@@ -138,9 +138,9 @@ export class ConnectorRunner {
   public get jobSubjectName(): string {
     let name = this.jobArgs.source;
 
-    const moreArgs = this.jobArgs.moreArgs;
-    if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
-      name = moreArgs.pcf.subjectNode;
+    const userArgs = this.jobArgs.userArgs;
+    if (userArgs && userArgs.pcf && userArgs.pcf.subjectNode)
+      name = userArgs.pcf.subjectNode;
 
     return name;
   }
@@ -200,6 +200,7 @@ export class ConnectorRunner {
     const synchConfig = await this.doInRepositoryChannel(
       async () => {
         const config = this.insertSynchronizationConfigLink();
+        this.connector.userArgs = this.jobArgs.userArgs;
         await this.connector.openSourceData(this.jobArgs.source);
         await this.connector.onOpenIModel();
         return config;
