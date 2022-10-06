@@ -18,6 +18,7 @@ export abstract class BaseConnector {
   private _synchronizer?: Synchronizer;
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
+  private _connectorArgs?: { [otherArg: string]: any };
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
@@ -116,6 +117,14 @@ export abstract class BaseConnector {
 
   public get issueReporter(): ConnectorIssueReporter | undefined {
     return this._issueReporter;
+  }
+
+  public set connectorArgs(args: { [otherArg: string]: any } | undefined) {
+    this._connectorArgs = args;
+  }
+
+  public get connectorArgs(): { [otherArg: string]: any } | undefined {
+    return this._connectorArgs;
   }
 
   public set jobSubject(subject: Subject) {

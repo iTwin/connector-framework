@@ -31,7 +31,7 @@ export interface JobArgsProps {
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
   errorFile?: string;
-  moreArgs?: { [otherArg: string]: any };
+  connectorArgs?: { [otherArg: string]: any };
 }
 
 /**
@@ -49,7 +49,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
   public synchConfigFile?: string;
-  public moreArgs?: { [otherArg: string]: any };
+  public connectorArgs?: { [otherArg: string]: any };
 
   constructor(props: JobArgsProps) {
     this.source = props.source;
@@ -58,7 +58,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.dbType = props.dbType ?? this.dbType;
     this.issuesDbFile = props.issuesDbFile ?? path.join(this.stagingDir, "issues.db");
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
-    this.moreArgs = props.moreArgs;
+    this.connectorArgs = props.connectorArgs;
     this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");
     this.synchConfigFile = props.synchConfigFile;
   }
