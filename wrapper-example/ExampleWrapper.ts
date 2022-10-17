@@ -1,3 +1,7 @@
+/*---------------------------------------------------------------------------------------------
+* Copyright (c) Bentley Systems, Incorporated. All rights reserved.
+* See LICENSE.md in the project root for license terms and full copyright notice.
+*--------------------------------------------------------------------------------------------*/
 // This is an example file that a typescript based connector could pass to an orchestrator that executes the connector.
 // This particular example is assuming that the orchestrator being used is the file "app.ts" in the iModelBridgeAPIServer, link to that repo: https://dev.azure.com/bentleycs/iModelTechnologies/_git/iModelBridgeFramework?path=/iModelBridgeApiServer/src&version=GBmaster&_a=contents
 // All configuration values coming from process would be setup in the dockerfile that creates your container, and anything coming from the "configuration" object conform to the JSON schema found here: https://dev.azure.com/bentleycs/beconnect/_git/iModelBridgeService?path=/assets/connectorconfig.json
