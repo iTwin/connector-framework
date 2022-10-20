@@ -16,9 +16,20 @@ import { get } from "request-promise-native";
 
 async function runConnector() {
   console.log("Wrapper launched successfully");
-  
-  const jsonFilePath = process.argv[3];
-  const connectorPath = process.argv[2];
+  // These argument positions are based on what is used in the current orchestrator, if your execution strategy is not the same you will need to edit these to match how you are ordering your arguments
+  let jsonFilePath: string;
+  let connectorPath: string;
+  if(process.argv[2] && process.argv[3]) {
+    jsonFilePath = process.argv[3];
+    connectorPath = process.argv[2];
+  }
+  else {
+      console.log(`The arguments for file paths for the jsonConfiguration or the Connector are missing, check that the index for both are accurate.`);
+      console.log(`process.argv[2] = ${process.argv[2]}(should be the path to your connector), process.argv[3] = ${process.argv[3]}(should be the path to your json configuration)`);
+      process.exitCode = 1;
+      return;
+  }
+
   const configuration = require(jsonFilePath); //json should conform to schema found here: https://dev.azure.com/bentleycs/beconnect/_git/iModelBridgeService?path=/assets/connectorconfig.json
   const config = new IModelHostConfiguration();
   console.log(`parsed staging dir from configuration: ${configuration["connector/run"].stagingDirectory}`);
