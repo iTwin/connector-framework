@@ -28,7 +28,9 @@ import * as hash from "object-hash";
 import * as fs from "fs";
 import * as path from "path";
 
+// __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
 export default class TestConnector extends BaseConnector {
+// __PUBLISH_EXTRACT_END__
 
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
@@ -45,6 +47,7 @@ export default class TestConnector extends BaseConnector {
     return this._repositoryLinkId;
   }
 
+  // __PUBLISH_EXTRACT_START__ TestConnector-initializeJob.example-code
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
       this.createGroupModel();
@@ -53,6 +56,9 @@ export default class TestConnector extends BaseConnector {
     }
   }
 
+  // __PUBLISH_EXTRACT_END__
+
+  // __PUBLISH_EXTRACT_START__ TestConnector-openSourceData.example-code
   public async openSourceData(sourcePath: string): Promise<void> {
     // ignore the passed in source and open the test file
     const json = fs.readFileSync(sourcePath, "utf8");
@@ -64,7 +70,9 @@ export default class TestConnector extends BaseConnector {
     assert(documentStatus.elementProps.id !== undefined);
     this._repositoryLinkId = documentStatus.elementProps.id;
   }
+  // __PUBLISH_EXTRACT_END__
 
+  // __PUBLISH_EXTRACT_START__ TestConnector-importDomainSchema.example-code
   public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
 
     if (this._sourceDataState === ItemState.Unchanged) {
@@ -84,11 +92,14 @@ export default class TestConnector extends BaseConnector {
 
     await this.synchronizer.imodel.importSchemas([fileName]);
   }
+  // __PUBLISH_EXTRACT_END__
 
   public async importDynamicSchema(requestContext: AccessToken): Promise<any> {
     if (null === requestContext)
       return;
   }
+
+  // __PUBLISH_EXTRACT_START__ TestConnector-importDefinitions.example-code
 
   // importDefinitions is for definitions that are written to shared models such as DictionaryModel
   public async importDefinitions(): Promise<any> {
@@ -97,7 +108,9 @@ export default class TestConnector extends BaseConnector {
     }
     this.insertCodeSpecs();
   }
+  // __PUBLISH_EXTRACT_END__
 
+  // __PUBLISH_EXTRACT_START__ TestConnector-updateExistingData.example-code
   public async updateExistingData() {
     const groupModelId = this.queryGroupModel();
     const physicalModelId = this.queryPhysicalModel();
@@ -126,10 +139,9 @@ export default class TestConnector extends BaseConnector {
     this.convertGroupElements(groupModelId);
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
-
-    // this.synchronizer.deleteInChannel(this.jobSubject.id);
-    this.synchronizer.detectDeletedElements();
   }
+  // __PUBLISH_EXTRACT_END__
+
   public getApplicationVersion(): string {
     return "1.0.0.0";
   }

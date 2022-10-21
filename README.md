@@ -13,14 +13,12 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 
 1. The word `"itwin"` replaces `"imodel"` and `"connector"` replaces `"bridge"`.
 
-    e.g. the class `iModelBridge` becomes `iTwinConnector`
-
 2. TypeScript source files should import the new classes from `@itwin/connector-framework`.
 
     e.g.
 
     ``` javascript
-    import { iTwinConnector } from "@itwin/connector-framework";
+    import { BaseConnector } from "@itwin/connector-framework";
     ```
 
 3. package.json should include a dependency for `@itwin/connector-framework`
@@ -36,6 +34,9 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 4. The following scopes are required: `imodels:modify` `imodels:read`
 
 ### Refer to [write-a-connector](https://www.itwinjs.org/learning/writeaconnector/) documentation for more details
+
+### Note:
+NPM version 7.X and up is recommended. If you are using a lower version, you will have to manually install Peer Dependencies.
 
 ## Changelog
 

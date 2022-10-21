@@ -207,6 +207,7 @@ export class Synchronizer {
     return this._jobSubjectId;
   }
 
+  // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.example-code
   private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
     const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
     if (xse !== undefined) {
@@ -223,6 +224,7 @@ export class Synchronizer {
 
     return this.imodel.elements.insertElement(xseProps);
   }
+  // __PUBLISH_EXTRACT_END__
 
   /** Insert or update a RepositoryLink element to represent the source document. Also inserts or updates an ExternalSourceAspect for provenance.
    * The document's ID is sourceDocument.docProps.docGuid, if defined; else, sourceDocument.docProps.desktopUrn, if defined; else, sourceDocument.description.
@@ -231,6 +233,8 @@ export class Synchronizer {
    * @throws [[IModelError]] if a RepositoryLink for this document already exists, but there is no matching ExternalSourceAspect.
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
+
+  // __PUBLISH_EXTRACT_START__ Synchronizer-recordDocument.example-code
   public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, sourceDocument.docid);
 
@@ -247,7 +251,7 @@ export class Synchronizer {
     if (existing !== undefined) {
       return existing;
     }
-
+    // __PUBLISH_EXTRACT_END__
     const repositoryLink = this.makeRepositoryLink(code, sourceDocument.description, sourceDocument.docProps);
 
     if (undefined === repositoryLink) {
@@ -260,6 +264,7 @@ export class Synchronizer {
       source: "", // see below
     } as RecordDocumentResults;
 
+    // __PUBLISH_EXTRACT_START__ Synchronizer-detectChanges.example-code
     const changeResults = this.detectChanges(sourceItem);
     if (Id64.isValidId64(repositoryLink.id) && changeResults.state === ItemState.New) {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
@@ -270,7 +275,9 @@ export class Synchronizer {
 
     results.itemState = changeResults.state;
     results.preChangeAspect = changeResults.existingExternalSourceAspect;
+    // __PUBLISH_EXTRACT_END__
 
+    // __PUBLISH_EXTRACT_START__ Synchronizer-onElementsSeen.example-code
     if (changeResults.state === ItemState.Unchanged) {
       assert(changeResults.id !== undefined);
       results.elementProps.id = changeResults.id;
@@ -283,7 +290,9 @@ export class Synchronizer {
       this.onElementSeen(changeResults.id);
       return results;
     }
+    // __PUBLISH_EXTRACT_END__
 
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
     // Changed or New
     const status = this.updateIModel(results, sourceItem);
 
@@ -300,6 +309,7 @@ export class Synchronizer {
     this.imodel.elements.updateAspect(aspectNoVersion);
 
     return results;
+    // __PUBLISH_EXTRACT_END__
   }
 
   private setSourceItemDefaults(item: SourceItem) {
@@ -395,12 +405,14 @@ export class Synchronizer {
       return status;
     }
 
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
     let aspectId: Id64String | undefined;
     if (sourceItem.id !== "") {
       const xsa = ExternalSourceAspect.findBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);
       if (xsa.aspectId !== undefined) {
         aspectId = xsa.aspectId;
       }
+    // __PUBLISH_EXTRACT_END__
     }
 
     // WIP: Handle the case where we are doing a delete + insert and are re-using the old element's id

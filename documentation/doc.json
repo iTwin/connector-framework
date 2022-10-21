@@ -496,27 +496,6 @@
               }
             },
             {
-              "id": 30,
-              "name": "doDetectDeletedElements",
-              "kind": 1024,
-              "kindString": "Property",
-              "flags": {
-                "isPublic": true
-              },
-              "sources": [
-                {
-                  "fileName": "Args.ts",
-                  "line": 48,
-                  "character": 9
-                }
-              ],
-              "type": {
-                "type": "intrinsic",
-                "name": "boolean"
-              },
-              "defaultValue": "true"
-            },
-            {
               "id": 29,
               "name": "errorFile",
               "kind": 1024,

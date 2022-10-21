@@ -80,6 +80,8 @@ export class ConnectorRunner {
     const supportedVersion = "0.0.1";
     if (!json.version || json.version !== supportedVersion)
       throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
+
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.example-code
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
@@ -89,6 +91,8 @@ export class ConnectorRunner {
       hubArgs = new HubArgs(json.hubArgs);
 
     const runner = new ConnectorRunner(jobArgs, hubArgs);
+    // __PUBLISH_EXTRACT_END__
+
     return runner;
   }
 
@@ -138,9 +142,9 @@ export class ConnectorRunner {
   public get jobSubjectName(): string {
     let name = this.jobArgs.source;
 
-    const moreArgs = this.jobArgs.moreArgs;
-    if (moreArgs && moreArgs.pcf && moreArgs.pcf.subjectNode)
-      name = moreArgs.pcf.subjectNode;
+    const connectorArgs = this.jobArgs.connectorArgs;
+    if (connectorArgs && connectorArgs.pcf && connectorArgs.pcf.subjectNode)
+      name = connectorArgs.pcf.subjectNode;
 
     return name;
   }
@@ -200,6 +204,7 @@ export class ConnectorRunner {
     const synchConfig = await this.doInRepositoryChannel(
       async () => {
         const config = this.insertSynchronizationConfigLink();
+        this.connector.connectorArgs = this.jobArgs.connectorArgs;
         await this.connector.openSourceData(this.jobArgs.source);
         await this.connector.onOpenIModel();
         return config;
@@ -244,7 +249,7 @@ export class ConnectorRunner {
     await this.doInConnectorChannel(jobSubject.id,
       async () => {
         await this.connector.updateExistingData();
-        // this.updateDeletedElements();
+        this.updateDeletedElements();
       },
       "Synchronize."
     );
@@ -307,18 +312,10 @@ export class ConnectorRunner {
       await this.connector.issueReporter.publishReport();
   }
 
-  // PROPOSAL: This should not be the runner's responsibility. The connector author uses the
-  // synchronizer to map source files to an iModel. The cleanup is part of that process.
-
-  // private updateDeletedElements() {
-  //   if (this.jobArgs.doDetectDeletedElements) {
-  //     const job = this.connector.jobSubject.id;
-  //     // TODO: This should probably be a connector method, because otherwise we're coupling the
-  //     // connector framework with the synchronizer. What if the connector author wants to use their
-  //     // own synchronizer?
-  //     this.connector.synchronizer.deleteInChannel(job);
-  //   }
-  // }
+  private updateDeletedElements() {
+    if (this.connector.shouldDeleteElements())
+      this.connector.synchronizer.detectDeletedElements();
+  }
 
   private updateProjectExtent() {
     const res = this.db.computeProjectExtents({

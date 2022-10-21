@@ -18,6 +18,7 @@ export abstract class BaseConnector {
   private _synchronizer?: Synchronizer;
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
+  private _connectorArgs?: { [otherArg: string]: any };
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
@@ -86,6 +87,15 @@ export abstract class BaseConnector {
     return false;
   }
 
+  /**
+   * Returns boolean flag to toggle deletion. Defaults to true where elements not marked by onElementSeen
+   * deleted by ConnectorRunner. If this flag is set to false, the connector author is responsible for
+   * deletion and cleaning up unused elements.
+   */
+  public shouldDeleteElements(): boolean {
+    return true;
+  }
+
   /** Returns the name to be used for the job subject. This only needs to be overridden if the connector supports multiple files per channel, in which case it must be overridden. */
   public getJobSubjectName(sourcePath: string): string {
     return `${this.getConnectorName()}:${sourcePath}`;
@@ -107,6 +117,14 @@ export abstract class BaseConnector {
 
   public get issueReporter(): ConnectorIssueReporter | undefined {
     return this._issueReporter;
+  }
+
+  public set connectorArgs(args: { [otherArg: string]: any } | undefined) {
+    this._connectorArgs = args;
+  }
+
+  public get connectorArgs(): { [otherArg: string]: any } | undefined {
+    return this._connectorArgs;
   }
 
   public set jobSubject(subject: Subject) {
