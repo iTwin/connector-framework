@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken, Id64String } from "@itwin/core-bentley";
+import { AccessToken, Id64String, Logger } from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
 import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
 import { Subject } from "@itwin/core-backend";
@@ -27,6 +27,7 @@ import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquar
 import * as hash from "object-hash";
 import * as fs from "fs";
 import * as path from "path";
+import { LoggerCategories } from "../../src/LoggerCategory";
 
 // __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
 export default class TestConnector extends BaseConnector {
@@ -141,6 +142,14 @@ export default class TestConnector extends BaseConnector {
     this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
   }
   // __PUBLISH_EXTRACT_END__
+
+  public override async unmapModel(source: string) {
+    Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
+    const physicalModelId = this.queryPhysicalModel();
+    if (!physicalModelId)
+      return;
+    this.synchronizer.imodel.models.deleteModel(physicalModelId);
+  }
 
   public getApplicationVersion(): string {
     return "1.0.0.0";

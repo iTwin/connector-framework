@@ -9,6 +9,7 @@ import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import type { Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
+import { LoggerCategories } from "./LoggerCategory";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -99,6 +100,12 @@ export abstract class BaseConnector {
   /** Returns the name to be used for the job subject. This only needs to be overridden if the connector supports multiple files per channel, in which case it must be overridden. */
   public getJobSubjectName(sourcePath: string): string {
     return `${this.getConnectorName()}:${sourcePath}`;
+  }
+
+  /** */
+  public async unmapModel(source: string): Promise<void> {
+    Logger.logTrace(LoggerCategories.Framework, source);
+    return;
   }
 
   public set synchronizer(sync: Synchronizer) {
