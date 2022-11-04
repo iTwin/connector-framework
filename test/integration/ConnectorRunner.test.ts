@@ -22,6 +22,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let testProjectId: Id64String;
   let testIModelId: Id64String| undefined;
   let updateIModelId: Id64String | undefined;
+  let unmapIModelId: Id64String | undefined;
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
@@ -61,9 +62,16 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (!updateIModelId) {
       updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
     }
+
     testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName});
     if (!testIModelId) {
       testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
+    }
+
+    // TODO: change hardcoded iModel name
+    unmapIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: "connectorFrameworkUnmap"});
+    if (!unmapIModelId) {
+      unmapIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: "connectorFrameworkUnmap" });
     }
   });
 
@@ -81,7 +89,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 
-  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs) {
+  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, skipVerification?: boolean) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
     // __PUBLISH_EXTRACT_START__ ConnectorRunnerTest.run.example-code
     const status = await runner.run(testConnector);
@@ -90,14 +98,22 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 
-    const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
-    const briefcaseEntry = briefcases[0];
-    expect(briefcaseEntry !== undefined);
-    const db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
+    if (skipVerification)
+      return;
+
+    await verifyIModel(jobArgs, hubArgs);
+  }
+
+  async function verifyIModel(jobArgs: JobArgs, hubArgs: HubArgs) {
+    let db;
     try {
+      const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
+      const briefcaseEntry = briefcases[0];
+      expect(briefcaseEntry !== undefined);
+      db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
       utils.verifyIModel(db, jobArgs, false);
     } finally {
-      db.close();
+      db?.close();
     }
   }
 
@@ -144,10 +160,46 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await runConnector(jobArgs, hubArgs);
 
     // run sync again to test update
-
     await runConnector(jobArgs, hubArgs);
 
     // cleanup
     await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId!});
+  });
+
+  it("should download and perform an unmap operation on an existing imodel", async () => {
+    // TODO: This test does not seem to operate on a fresh iModel; see before().
+
+    const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: assetPath,
+    });
+
+    const hubArgs = new HubArgs({
+      projectGuid: testProjectId,
+      iModelGuid: unmapIModelId,
+    } as HubArgsProps);
+
+    hubArgs.clientConfig = testClientConfig;
+    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+      return token!;
+    };
+
+    // First run to add data
+    await runConnector(jobArgs, hubArgs);
+
+    // Second run to add another model
+    jobArgs.source = path.join(KnownTestLocations.assetsDir, "TestConnector_v2.json");
+    await runConnector(jobArgs, hubArgs, true);
+
+    // Deletes second model
+    jobArgs.shouldUnmapSource = true;
+    await runConnector(jobArgs, hubArgs, true);
+
+    // Verify that second model is deleted
+    jobArgs.source = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    await verifyIModel(jobArgs, hubArgs);
+
+    // cleanup
+    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: unmapIModelId!});
   });
 });

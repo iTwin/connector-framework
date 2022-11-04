@@ -31,7 +31,7 @@ export interface JobArgsProps {
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
   errorFile?: string;
-  unmapModel?: boolean;
+  shouldUnmapSource?: boolean;
   connectorArgs?: { [otherArg: string]: any };
 }
 
@@ -50,7 +50,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public updateDomainSchemas: boolean = true;
   public updateDbProfile: boolean = true;
   public synchConfigFile?: string;
-  public unmapModel?: boolean = false;
+  public shouldUnmapSource?: boolean = false;
   public connectorArgs?: { [otherArg: string]: any };
 
   constructor(props: JobArgsProps) {
@@ -63,7 +63,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.connectorArgs = props.connectorArgs;
     this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");
     this.synchConfigFile = props.synchConfigFile;
-    this.unmapModel = props.unmapModel;
+    this.shouldUnmapSource = props.shouldUnmapSource;
   }
 
   public get isValid() {

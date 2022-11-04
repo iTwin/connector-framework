@@ -28,6 +28,7 @@ import * as hash from "object-hash";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "../../src/LoggerCategory";
+import { deleteElementTree } from "../../src/ElementTreeWalker";
 
 // __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
 export default class TestConnector extends BaseConnector {
@@ -143,12 +144,10 @@ export default class TestConnector extends BaseConnector {
   }
   // __PUBLISH_EXTRACT_END__
 
-  public override async unmapModel(source: string) {
+  public override async unmapSource(source: string) {
     Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
-    const physicalModelId = this.queryPhysicalModel();
-    if (!physicalModelId)
-      return;
-    this.synchronizer.imodel.models.deleteModel(physicalModelId);
+    deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
+    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);
   }
 
   public getApplicationVersion(): string {

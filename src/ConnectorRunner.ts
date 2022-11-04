@@ -245,16 +245,14 @@ export class ConnectorRunner {
       "Write job subject and definitions."
     );
 
-    if(this.jobArgs.unmapModel) {
-      Logger.logInfo(LoggerCategories.Framework, "Unmapping model...");
+    if(this.jobArgs.shouldUnmapSource) {
+      Logger.logInfo(LoggerCategories.Framework, "Unmapping source data...");
       await this.doInRepositoryChannel(
         async () => {
-          await this.connector.unmapModel(this.jobSubjectName);
+          await this.connector.unmapSource(this.jobSubjectName);
           this.updateProjectExtent();
-          this.connector.synchronizer.updateRepositoryLinks();
-          this.updateSynchronizationConfigLink(synchConfig);
         },
-        "Unmapping model"
+        "Unmapping source data"
       );
       return;
     }

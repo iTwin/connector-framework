@@ -102,9 +102,9 @@ export abstract class BaseConnector {
     return `${this.getConnectorName()}:${sourcePath}`;
   }
 
-  /** */
-  public async unmapModel(source: string): Promise<void> {
-    Logger.logTrace(LoggerCategories.Framework, source);
+  /** Overridable function that must me implemented when the flag shouldUnmapSource is set to true. This method is used to unmap an existing source file in the iModel */
+  public async unmapSource(source: string): Promise<void> {
+    Logger.logError(LoggerCategories.Framework, `Unmap method is not defined while unmapping ${source}`);
     return;
   }
 
