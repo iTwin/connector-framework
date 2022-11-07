@@ -108,6 +108,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     let db;
     try {
       const briefcases = BriefcaseManager.getCachedBriefcases(hubArgs.iModelGuid);
+      expect(briefcases && (briefcases.length > 0));
       const briefcaseEntry = briefcases[0];
       expect(briefcaseEntry !== undefined);
       db = await BriefcaseDb.open({ fileName: briefcases[0].fileName, readonly: true });
