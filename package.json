@@ -16,8 +16,11 @@
     "build": "tsc 1>&2",
     "clean": "rimraf lib",
     "copy:config": "internal-tools copy-config",
+    "lint": "eslint -f visualstudio \"./src/**/*.ts\" 1>&2",
+    "lint:fix": "npm run lint -- --fix",
     "test": "npm run test:standalone",
     "coveralls": "npx nyc report --reporter=text-lcov > ./coverage/lcov.info",
+    "lint:copyright": "node .githooks/copyright-linter.js",
     "test:standalone": "npm run build && nyc mocha --grep standalone",
     "test:integration": "npm run build && nyc mocha --grep integration",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
@@ -78,6 +81,17 @@
     "@itwin/core-bentley": "^3.4.0",
     "@itwin/core-common": "^3.4.0",
     "@itwin/node-cli-authorization": "^0.9.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{tsx,ts,jsx,js}": [
+      "eslint --max-warnings=0 --fix",
+      "npm run lint:copyright --fix"
+    ]
   },
   "eslintConfig": {
     "plugins": [

@@ -245,19 +245,31 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
   }
 
   private createDBSchema() {
-    this._reportDb.withSqliteStatement(`CREATE TABLE ${this._tempReportFileRecordsTable}(activityId STRING, fileId STRING NOT NULL UNIQUE, filePath STRING)`, (stmt) => { stmt.step(); });
-    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._tempReportFileRecordsTable}ActivityIdx ON ${this._tempReportFileRecordsTable}(activityId)`, (stmt) => { stmt.step(); });
+    this._reportDb.withSqliteStatement(`CREATE TABLE ${this._tempReportFileRecordsTable}(activityId STRING, fileId STRING NOT NULL UNIQUE, filePath STRING)`, (stmt) => {
+      stmt.step();
+    });
+    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._tempReportFileRecordsTable}ActivityIdx ON ${this._tempReportFileRecordsTable}(activityId)`, (stmt) => {
+      stmt.step();
+    });
 
     this._reportDb.withSqliteStatement(`CREATE TABLE ${this._tempReportAuditRecordsTable}(fileId STRING NOT NULL, ecInstanceId STRING, elementSourceId STRING, auditLevel STRING,
 			auditCategory STRING, auditMessage STRING, auditType STRING, GUID STRING,
-      UNIQUE(fileId, ecInstanceId, elementSourceId, auditLevel, auditCategory, auditMessage, auditType))`, (stmt) => { stmt.step(); });
+      UNIQUE(fileId, ecInstanceId, elementSourceId, auditLevel, auditCategory, auditMessage, auditType))`, (stmt) => {
+      stmt.step();
+    });
 
     this._reportDb.withSqliteStatement(`CREATE TABLE ${this._sourceFileTempConnectorIssuesTable}(activityId STRING, contextId STRING, jobId STRING, imodelId STRING, briefcaseId STRING,
 				fileId STRING, filePath STRING, dataType STRING, itemType STRING, dataSource STRING, fileName STRING, itemExists BOOLEAN, downloadUrl STRING, state STRING, failureReason STRING, uniqueName STRING, fileSize INTEGER, foundByConnector BOOLEAN)`, (stmt) => { stmt.step(); });
-    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._sourceFileTempConnectorIssuesTable}ActivityIdx ON ${this._sourceFileTempConnectorIssuesTable}(activityId)`, (stmt) => { stmt.step(); });
+    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._sourceFileTempConnectorIssuesTable}ActivityIdx ON ${this._sourceFileTempConnectorIssuesTable}(activityId)`, (stmt) => {
+      stmt.step();
+    });
 
-    this._reportDb.withSqliteStatement(`CREATE TABLE ${this._tempIgnoredElementRecordTable}(repositoryId STRING, elementIds STRING)`, (stmt) => { stmt.step(); });
-    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._tempIgnoredElementRecordTable}repositoryIdx ON ${this._tempIgnoredElementRecordTable}(repositoryId)`, (stmt) => { stmt.step(); });
+    this._reportDb.withSqliteStatement(`CREATE TABLE ${this._tempIgnoredElementRecordTable}(repositoryId STRING, elementIds STRING)`, (stmt) => {
+      stmt.step();
+    });
+    this._reportDb.withSqliteStatement(`CREATE INDEX ${this._tempIgnoredElementRecordTable}repositoryIdx ON ${this._tempIgnoredElementRecordTable}(repositoryId)`, (stmt) => {
+      stmt.step();
+    });
   }
 
   private createBadgersDb() {
