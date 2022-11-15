@@ -9,13 +9,12 @@
 import { ElementUniqueAspect } from "@itwin/core-backend";
 import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
 import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
-import { deleteElementSubTrees } from "./ElementTreeWalker";
 
 /** The state of the given SourceItem against the iModelDb
  * @beta
