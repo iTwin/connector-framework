@@ -8,7 +8,7 @@ import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} f
 import { Subject } from "@itwin/core-backend";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelJsFs,
-  ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
+  ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements, deleteElementTree,
 } from "@itwin/core-backend";
 import type { ColorDefProps, GeometryPartProps, InformationPartitionElementProps, SubCategoryAppearance } from "@itwin/core-common";
 import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, IModel, IModelError, RenderMode, ViewFlags } from "@itwin/core-common";
@@ -28,7 +28,6 @@ import * as hash from "object-hash";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "../../src/LoggerCategory";
-import { deleteElementTree } from "../../src/ElementTreeWalker";
 
 // __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
 export default class TestConnector extends BaseConnector {
