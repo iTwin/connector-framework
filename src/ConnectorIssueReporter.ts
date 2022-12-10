@@ -24,4 +24,7 @@ export interface ConnectorIssueReporter {
 
   /** Creates a JSON report file to be uploaded by the orchestrator */
   publishReport: () => Promise<void>;
+
+  /** Close the issue reporter and any database connections */
+  close: () => Promise<void>;
 }
