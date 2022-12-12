@@ -1,8 +1,20 @@
 # Change Log - @itwin/connector-framework
 
-## 0.1.0
+## 1.0.2
 
-- Initial release of the iTwin Connector Framework
+- Adds the ability to unmap as an overwritable function
+- Initializes issue reporter to the SQLite issue reporter
+- Removes `ElementTreeWalker.ts` and uses the implementation in `iTwin/core-backend`
+- Adds an example wrapper `ExampleWrapper.ts`
+- Adds documentation tags for easier code extraction
+
+# 1.0.1
+
+- Renames `moreArgs` to `connectorArgs` and allows this parameter to be accessed by the connector
+
+## 1.0.0
+
+- Removes `doDetectDeletedElements` from job args. Deletion is toggled by overriding the `BaseConnector` function `shouldDeleteElements`
 
 ## 0.2.0
 
@@ -12,6 +24,6 @@
 - Major changes to synchronizer.ts
 - Changes to method signatures Synchronizer.recordDocument, Synchronizer.detectChanges, and Synchronizer.updateIModel to consolidate the 'kind' and 'scope' parameters into the SourceItem object (Breaking API Change)
 
-## 1.0.0
+## 0.1.0
 
-- Removes `doDetectDeletedElements` from job args. Deletion is toggled by overriding the `BaseConnector` function `shouldDeleteElements`
+- Initial release of the iTwin Connector Framework

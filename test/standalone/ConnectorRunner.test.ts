@@ -107,12 +107,13 @@ describe("iTwin Connector Fwk #standalone", () => {
         expect(error.message).to.eql("Connector has not been loaded.");
       else
         throw error;
-    } finally {
-      issueReporter.close();
     }
+    const filePath = path.join(KnownTestLocations.outputDir, fileName);
+    const badgersFile = runner.issueReporter.getReportPath();
 
     // disable for now
-    expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
+    expect(fs.statSync(filePath).isFile());
+    expect(fs.statSync(badgersFile).isFile());
   });
   it("Should fail and have synchConfigLink", async () => {
     const assetFile = path.join(KnownTestLocations.assetsDir, "TestConnector.json");

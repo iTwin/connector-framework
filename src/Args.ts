@@ -28,7 +28,7 @@ export interface JobArgsProps {
   revisionHeader?: string;
   dbType?: "briefcase" | "snapshot" | "standalone";
   activityId?: string;
-  issuesDbFile?: string;
+  issuesDbDir?: string;
   loggerConfigJSONFile?: string;
   synchConfigFile?: string;
   errorFile?: string;
@@ -46,7 +46,7 @@ export class JobArgs implements JobArgsProps, Validatable {
   public revisionHeader: string = "JSFWK";
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
   public activityId?: string;
-  public issuesDbFile?: string;
+  public issuesDbDir?: string;
   public loggerConfigJSONFile?: string;
   public errorFile: string;
   public updateDomainSchemas: boolean = true;
@@ -61,7 +61,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.revisionHeader = props.revisionHeader ?? this.revisionHeader;
     this.dbType = props.dbType ?? this.dbType;
     this.activityId = props.activityId;
-    this.issuesDbFile = props.issuesDbFile ?? path.join(this.stagingDir, "issues.db");
+    this.issuesDbDir = props.issuesDbDir
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
     this.connectorArgs = props.connectorArgs;
     this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");

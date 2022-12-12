@@ -136,11 +136,11 @@ export class ConnectorRunner {
     return this._hubArgs;
   }
 
-  public set issueReporter(reporter: ConnectorIssueReporter) {
+  public set issueReporter(reporter: ConnectorIssueReporter | undefined) {
     this._issueReporter = reporter;
   }
 
-  public get issueReprorter(): ConnectorIssueReporter| undefined {
+  public get issueReporter(): ConnectorIssueReporter | undefined {
     return this._issueReporter;
   }
 
@@ -328,9 +328,9 @@ export class ConnectorRunner {
       this._db.close();
     }
 
-    if (this._issueReporter) {
-      await this._issueReporter.publishReport();
-      await this._issueReporter.close();
+    if (this.issueReporter) {
+      await this.issueReporter.publishReport();
+      await this.issueReporter.close();
     }
   }
 
@@ -448,7 +448,7 @@ export class ConnectorRunner {
       iModelId = "";
     }
 
-    this.issueReporter = new SqliteIssueReporter(contextId, iModelId, this.jobArgs.activityId, this.jobArgs.source);
+    this.issueReporter = new SqliteIssueReporter(contextId, iModelId, this.jobArgs.activityId, this.jobArgs.source, this.jobArgs.issuesDbDir);
   }
 
   private async getToken() {

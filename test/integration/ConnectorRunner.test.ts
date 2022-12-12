@@ -122,6 +122,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
+      issuesDbDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
@@ -146,6 +147,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
+      issuesDbDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
@@ -173,6 +175,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
+      issuesDbDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
