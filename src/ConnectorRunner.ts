@@ -5,7 +5,7 @@
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
 import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
-import { BentleyError, IModelHubStatus } from "@itwin/core-bentley";
+import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
 import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
 import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
@@ -18,6 +18,7 @@ import { Synchronizer } from "./Synchronizer";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
+import { SqliteIssueReporter } from "./SqliteIssueReporter";
 
 type Path = string;
 
@@ -135,8 +136,12 @@ export class ConnectorRunner {
     return this._hubArgs;
   }
 
-  public set issueReporter(reporter: ConnectorIssueReporter) {
+  public set issueReporter(reporter: ConnectorIssueReporter | undefined) {
     this._issueReporter = reporter;
+  }
+
+  public get issueReporter(): ConnectorIssueReporter | undefined {
+    return this._issueReporter;
   }
 
   public get jobSubjectName(): string {
@@ -190,6 +195,9 @@ export class ConnectorRunner {
 
     Logger.logInfo(LoggerCategories.Framework, "Loading connector...");
     await this.loadConnector(connector);
+
+    Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
+    this.loadIssueReporter();
 
     Logger.logInfo(LoggerCategories.Framework, "Authenticating...");
     await this.loadReqContext();
@@ -320,8 +328,10 @@ export class ConnectorRunner {
       this._db.close();
     }
 
-    if (this._connector && this.connector.issueReporter)
-      await this.connector.issueReporter.publishReport();
+    if (this.issueReporter) {
+      await this.issueReporter.publishReport();
+      await this.issueReporter.close();
+    }
   }
 
   private updateDeletedElements() {
@@ -419,6 +429,26 @@ export class ConnectorRunner {
   private async loadReqContext() {
     const token = await this.getToken();
     this._reqContext = token;
+  }
+
+  private loadIssueReporter() {
+    if (this.issueReporter)
+      return;
+
+    if (!this.jobArgs.activityId)
+      this.jobArgs.activityId = Guid.createValue();
+
+    let contextId;
+    let iModelId;
+    if (this.jobArgs.dbType === "briefcase") {
+      contextId = this.hubArgs.projectGuid;
+      iModelId = this.hubArgs.iModelGuid;
+    } else {
+      contextId = "";
+      iModelId = "";
+    }
+
+    this.issueReporter = new SqliteIssueReporter(contextId, iModelId, this.jobArgs.activityId, this.jobArgs.source, this.jobArgs.issuesDbDir);
   }
 
   private async getToken() {
