@@ -8,7 +8,7 @@
 - Adds an example wrapper `ExampleWrapper.ts`
 - Adds documentation tags for easier code extraction
 
-# 1.0.1
+## 1.0.1
 
 - Renames `moreArgs` to `connectorArgs` and allows this parameter to be accessed by the connector
 
