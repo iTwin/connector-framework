@@ -61,7 +61,7 @@ export class JobArgs implements JobArgsProps, Validatable {
     this.revisionHeader = props.revisionHeader ?? this.revisionHeader;
     this.dbType = props.dbType ?? this.dbType;
     this.activityId = props.activityId;
-    this.issuesDbDir = props.issuesDbDir
+    this.issuesDbDir = props.issuesDbDir;
     this.loggerConfigJSONFile = props.loggerConfigJSONFile;
     this.connectorArgs = props.connectorArgs;
     this.errorFile = props.errorFile ?? path.join(this.stagingDir, "error.json");
