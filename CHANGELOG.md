@@ -1,5 +1,10 @@
 # Change Log - @itwin/connector-framework
 
+## 1.0.3
+
+- Upgrades iTwin dependencies to 3.5.0
+- Replaces deprectaed `ExternalSourceAspect.findBySource` with `ExternalSourceAspect.findAllBySource`
+
 ## 1.0.2
 
 - Adds the ability to unmap as an overwritable function
