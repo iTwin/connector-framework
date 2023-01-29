@@ -126,24 +126,27 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
 
   // Verify some elements
   if (!isUpdate) {
-    const ids = ExternalSourceAspect.findBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
-    assert.isTrue(Id64.isValidId64(ids.aspectId!));
-    assert.isTrue(Id64.isValidId64(ids.elementId!));
-    const tile = imodel.elements.getElement<SmallSquareTile>(ids.elementId!);
+    const ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    const tile = imodel.elements.getElement<SmallSquareTile>(ids[0].elementId);
     assert.equal(tile.condition, "New");
   } else {
     // Modified element
-    let ids = ExternalSourceAspect.findBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
-    assert.isTrue(Id64.isValidId64(ids.aspectId!));
-    assert.isTrue(Id64.isValidId64(ids.elementId!));
-    let tile = imodel.elements.getElement<SmallSquareTile>(ids.elementId!);
+    let ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    let tile = imodel.elements.getElement<SmallSquareTile>(ids[0].elementId);
     assert.equal(tile.condition, "Scratched");
 
     // New element
-    ids = ExternalSourceAspect.findBySource(imodel, physicalModelId!, "Tile", "5b51a06f-4026-4d0d-9674-d8428b118e9a");
-    assert.isTrue(Id64.isValidId64(ids.aspectId!));
-    assert.isTrue(Id64.isValidId64(ids.elementId!));
-    tile = imodel.elements.getElement<RectangleTile>(ids.elementId!);
+    ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "5b51a06f-4026-4d0d-9674-d8428b118e9a");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    tile = imodel.elements.getElement<RectangleTile>(ids[0].elementId);
     assert.equal(tile.placement.origin.x, 1.0);
     assert.equal(tile.placement.origin.y, 2.0);
   }

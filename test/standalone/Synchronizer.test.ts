@@ -25,9 +25,10 @@ describe("synchronizer #standalone", () => {
 
   const sourceAspect = (meta: SourceItem) => {
     assert.exists(meta.scope), assert.exists(meta.kind), assert.exists(meta.id);
-    const { aspectId } = ExternalSourceAspect.findBySource(imodel, meta.scope!, meta.kind!, meta.id);
+    const ids = ExternalSourceAspect.findAllBySource(imodel, meta.scope!, meta.kind!, meta.id);
+    const aspectId = ids[0]?.aspectId;
     assert.exists(aspectId);
-    return imodel.elements.getAspect(aspectId!) as ExternalSourceAspect;
+    return imodel.elements.getAspect(aspectId) as ExternalSourceAspect;
   };
 
   const count = (query: string, times: number): void => {

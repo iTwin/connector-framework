@@ -336,19 +336,19 @@ export class Synchronizer {
     };
 
     if (item.id !== "") {
-      ids = ExternalSourceAspect.findBySource(this.imodel, item.scope, item.kind, item.id);
+      ids = ExternalSourceAspect.findAllBySource(this.imodel, item.scope, item.kind, item.id);
     }
 
     // If we fail to locate the aspect with its unique (kind, identifier) tuple, we consider the
     // source item new.
-    if (ids.aspectId === undefined) {
+    if (ids[0]?.aspectId === undefined) {
       return results;
     }
 
     let aspect: ExternalSourceAspect | undefined;
 
     try {
-      aspect = this.imodel.elements.getAspect(ids.aspectId) as ExternalSourceAspect;
+      aspect = this.imodel.elements.getAspect(ids[0].aspectId) as ExternalSourceAspect;
     } catch (err) {
       // Unfortunately, the only way we can find out if an aspect is NOT there is by getting an
       // error when asking for it.
@@ -365,7 +365,7 @@ export class Synchronizer {
     this._seenAspects.add(aspect.id);
 
     results.existingExternalSourceAspect = aspect.toJSON();
-    results.id = ids.elementId;
+    results.id = ids[0]?.elementId;
 
     if (item.version !== undefined && item.version === aspect.version) {
       results.state = ItemState.Unchanged;
@@ -407,10 +407,8 @@ export class Synchronizer {
     // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
     let aspectId: Id64String | undefined;
     if (sourceItem.id !== "") {
-      const xsa = ExternalSourceAspect.findBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);
-      if (xsa.aspectId !== undefined) {
-        aspectId = xsa.aspectId;
-      }
+      const xsa = ExternalSourceAspect.findAllBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);
+      aspectId = xsa[0]?.aspectId;
     // __PUBLISH_EXTRACT_END__
     }
 

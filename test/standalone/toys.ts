@@ -58,15 +58,15 @@ function put(sync: Synchronizer, props: ElementProps, meta: SourceItem): Id64Str
     throw Error("fatal: incomplete external source aspect");
   }
 
-  const found =  ExternalSourceAspect.findBySource(
+  const found =  ExternalSourceAspect.findAllBySource(
     sync.imodel, meta.scope, meta.kind, meta.id
   );
 
-  if (!found.elementId) {
+  if (!found[0]?.elementId) {
     throw Error("fatal: element as given to the synchronizer but not inserted");
   }
 
-  return found.elementId;
+  return found[0]?.elementId;
 }
 
 interface BerryGroups {
