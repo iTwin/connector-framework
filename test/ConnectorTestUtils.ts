@@ -116,7 +116,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
-  const jobSubjectName = jobArgs.source;
+  const jobSubjectName = `TestConnector:${jobArgs.source}`;
   const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
   assert.isTrue(Id64.isValidId64(subjectId));
 

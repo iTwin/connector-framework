@@ -1,5 +1,10 @@
 # Change Log - @itwin/connector-framework
 
+## 1.1.0
+
+- Breaking change: renames job subject to keep backwards compatibility with the 2.X framework. Can be reverted in the connector by overwriting `getJobSubjectName` to return only `sourcePath`
+- Reverts job subject properties to use Bridge instead of Connector. Keeps persisted data backwards compatible
+
 ## 1.0.3
 
 - Upgrades iTwin dependencies to 3.5.0
