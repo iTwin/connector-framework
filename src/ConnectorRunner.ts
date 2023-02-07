@@ -145,13 +145,7 @@ export class ConnectorRunner {
   }
 
   public get jobSubjectName(): string {
-    let name = this.jobArgs.source;
-
-    const connectorArgs = this.jobArgs.connectorArgs;
-    if (connectorArgs && connectorArgs.pcf && connectorArgs.pcf.subjectNode)
-      name = connectorArgs.pcf.subjectNode;
-
-    return name;
+    return this.connector.getJobSubjectName(this.jobArgs.source);
   }
 
   public get db(): IModelDb {
@@ -359,11 +353,12 @@ export class ConnectorRunner {
       const jsonProperties: any = {
         Subject: {
           Job: {
+            // Properties contain bridge instead of connector to keep backwards compatibility
             Properties: {
-              ConnectorVersion: this.connector.getApplicationVersion(),
-              ConnectorType: "JSConnector",
+              BridgeVersion: this.connector.getApplicationVersion(),
+              BridgeType: "JSConnector",
             },
-            Connector: this.connector.getConnectorName(),
+            Bridge: this.connector.getConnectorName(),
           },
         },
       };
