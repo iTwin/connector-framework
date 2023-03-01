@@ -5,6 +5,8 @@
     "version": "0.2.0",
     "configurations": [
 
+
+
         {
             "name": "iTwinConnectorFwk Tests (standalone)",
             "cwd": "${workspaceFolder}",
@@ -27,6 +29,17 @@
             "test:integration"
           ]
       },
+      {
+        "name": "Build Documentation",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "documentation"
+        ]
+    },
       {
         "name": "pretest",
         "cwd": "${workspaceFolder}",

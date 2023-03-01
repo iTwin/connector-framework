@@ -24,7 +24,7 @@
     "test:standalone": "npm run build && nyc mocha --grep standalone",
     "test:integration": "npm run build && nyc mocha --grep integration",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
-    "documentation": "node ./node_modules/@itwin/build-tools/scripts/docs.js --source=./src --out=./documentation --json=./documentation/doc.json --excludes=test"
+    "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix node ./node_modules/@itwin/build-tools/scripts/docs.js --source=./src --out=./documentation --json=./documentation/doc.json --excludes=test"
   },
   "keywords": [
     "Bentley",
@@ -56,10 +56,12 @@
     "@types/mocha": "^8.2.2",
     "@types/node": "^14.0.0",
     "@types/object-hash": "^1.3.0",
+    "@types/request-promise-native": "^1.0.17",
     "@types/ws": "^8.5.3",
     "chai": "^4.1.2",
     "chai-as-promised": "^7",
     "cpx2": "^3.0.0",
+    "cross-env": "^7.0.3",
     "dotenv": "10.0.0",
     "eslint": "^7.11.0",
     "eslint-plugin-deprecation": "^1.3.2",
@@ -69,12 +71,11 @@
     "mocha-suppress-logs": "^0.3.1",
     "nyc": "^15.1.0",
     "object-hash": "^1.3.1",
+    "request-promise-native": "^1.0.9",
     "rimraf": "^3.0.2",
     "source-map-support": "^0.5.21",
     "ts-node": "10.8.0",
-    "typescript": "~4.4.0",
-    "request-promise-native": "^1.0.9",
-    "@types/request-promise-native": "^1.0.17"
+    "typescript": "~4.4.0"
   },
   "peerDependencies": {
     "@itwin/core-backend": "^3.5.0",
