@@ -15,3 +15,6 @@ secret.bat
 # ???
 node.exe
 manifest.itsyn.yml
+
+# staging dir
+src/staging
