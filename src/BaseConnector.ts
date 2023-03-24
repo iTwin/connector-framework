@@ -118,11 +118,12 @@ export abstract class BaseConnector {
     return this._synchronizer;
   }
 
-  public set issueReporter(reporter: ConnectorIssueReporter | undefined) {
+  public set issueReporter(reporter: ConnectorIssueReporter) {
     this._issueReporter = reporter;
   }
 
-  public get issueReporter(): ConnectorIssueReporter | undefined {
+  public get issueReporter(): ConnectorIssueReporter {
+    assert(this._issueReporter !== undefined);
     return this._issueReporter;
   }
 

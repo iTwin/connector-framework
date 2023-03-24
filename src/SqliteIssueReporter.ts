@@ -31,7 +31,7 @@ export type PostPublishingProcessor = (reportPath: string) => Promise<void>;
  * @beta
  */
 export class SqliteIssueReporter implements ConnectorIssueReporter {
-  private _reportDb;
+  private _reportDb: ECDb;
   private _reportFile;
   private _outputDir;
   private _contextInfo: ContextInfo;
@@ -93,6 +93,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
       stmt.bindValue(2, ignoredElementIdList);
       stmt.step();
     });
+    this._reportDb.saveChanges();
   }
 
   public reportIssue(ecInstanceId: string, sourceId: string, level: "Error" | "Warning", category: string, message: string, type: string) {
@@ -103,6 +104,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
       stmt.bindValues(values);
       stmt.step();
     });
+    this._reportDb.saveChanges();
   }
 
   public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string,) {
@@ -115,6 +117,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
       stmt.bindValues(values);
       stmt.step();
     });
+    this._reportDb.saveChanges();
   }
 
   public recordReferenceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, downloadUrl: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean) {
@@ -124,6 +127,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
       stmt.bindValues(values);
       stmt.step();
     });
+    this._reportDb.saveChanges();
   }
 
   public createJsonReport() {
@@ -243,6 +247,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
         });
       }
     });
+    this._reportDb.saveChanges();
   }
 
   private createDBSchema() {
@@ -271,10 +276,11 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     this._reportDb.withSqliteStatement(`CREATE INDEX ${this._tempIgnoredElementRecordTable}repositoryIdx ON ${this._tempIgnoredElementRecordTable}(repositoryId)`, (stmt) => {
       stmt.step();
     });
+    this._reportDb.saveChanges();
   }
 
   private createBadgersDb() {
-    const tempDbFileName = `${this._contextInfo.activityId} - ${this._contextInfo.operationType} - badgers.db`;
+    const tempDbFileName = `${this._contextInfo.activityId}-${this._contextInfo.operationType}-badgers.db`;
     this._dbPath = path.join(this._outputDir, tempDbFileName);
     if (fs.existsSync(this._dbPath)) {
       fs.unlinkSync(this._dbPath);

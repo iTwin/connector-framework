@@ -176,6 +176,7 @@ export class ConnectorRunner {
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       await this.onFailure(err);
+      throw err; // Rethrow error to make sure the caller knows about the failure
     } finally {
       await this.onFinish();
     }
@@ -427,8 +428,10 @@ export class ConnectorRunner {
   }
 
   private loadIssueReporter() {
-    if (this.issueReporter)
+    if (this.issueReporter) {
+      this.connector.issueReporter = this.issueReporter;
       return;
+    }
 
     if (!this.jobArgs.activityId)
       this.jobArgs.activityId = Guid.createValue();
@@ -444,6 +447,7 @@ export class ConnectorRunner {
     }
 
     this.issueReporter = new SqliteIssueReporter(contextId, iModelId, this.jobArgs.activityId, this.jobArgs.source, this.jobArgs.issuesDbDir);
+    this.connector.issueReporter = this.issueReporter;
   }
 
   private async getToken() {
