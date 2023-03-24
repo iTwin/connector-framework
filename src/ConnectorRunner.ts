@@ -176,7 +176,6 @@ export class ConnectorRunner {
       this.connector.reportError(this.jobArgs.stagingDir, msg, "ConnectorRunner", "Run", LoggerCategories.Framework);
       runStatus = BentleyStatus.ERROR;
       await this.onFailure(err);
-      throw err; // Rethrow error to make sure the caller knows about the failure
     } finally {
       await this.onFinish();
     }

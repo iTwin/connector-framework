@@ -76,6 +76,8 @@ async function runConnector() {
   const runner = new ConnectorRunner(jobArgs, hubArgs);
   console.log(`\nrunner created, about to call connectorRunner.run with path ${connectorPath}`);
   const status = await runner.run(connectorPath);
+  if (status === BentleyStatus.ERROR)
+    throw new Error("The connector encountered an error");
   console.log(status);
 }
 

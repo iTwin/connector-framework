@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 1.1.1
+
+- Fixes bug in issue reporter to generate correct reports
+
 ## 1.1.0
 
 - Breaking change: renames job subject to keep backwards compatibility with the 2.X framework. Can be reverted in the connector by overwriting `getJobSubjectName` to return only `sourcePath`
