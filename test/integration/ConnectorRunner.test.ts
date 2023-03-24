@@ -123,6 +123,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const jobArgs = new JobArgs({
       source: assetPath,
       issuesDbDir: KnownTestLocations.outputDir,
+      stagingDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
@@ -148,6 +149,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const jobArgs = new JobArgs({
       source: assetPath,
       issuesDbDir: KnownTestLocations.outputDir,
+      stagingDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
@@ -176,6 +178,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     const jobArgs = new JobArgs({
       source: assetPath,
       issuesDbDir: KnownTestLocations.outputDir,
+      stagingDir: KnownTestLocations.outputDir,
     });
 
     const hubArgs = new HubArgs({
