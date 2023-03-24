@@ -13,6 +13,7 @@ import { IModelHost, IModelHostConfiguration } from "@itwin/core-backend"
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import { get } from "request-promise-native";
+import { BentleyStatus } from "@itwin/core-bentley";
 
 async function runConnector() {
   console.log("Wrapper launched successfully");
