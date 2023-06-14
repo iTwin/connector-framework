@@ -70,6 +70,7 @@ export default class TestConnector extends BaseConnector {
     this._sourceDataState = documentStatus.itemState;
     assert(documentStatus.elementProps.id !== undefined);
     this._repositoryLinkId = documentStatus.elementProps.id;
+    this.issueReporter.recordSourceFileInfo(sourcePath, sourcePath, sourcePath, "File", "Manifest", "State", "Faliure Reason", true, 1234, true);
   }
   // __PUBLISH_EXTRACT_END__
 

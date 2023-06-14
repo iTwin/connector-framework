@@ -13,7 +13,7 @@ export interface ConnectorIssueReporter {
   /** Reports a generic issue encountered by the connector. The sourceId here will determine what file the issue corresponds to */
   reportIssue: (ecInstanceId: string, sourceId: string, level: "Error" | "Warning", category: string, message: string, type: string) => void;
 
-  /** Records file information for a connector job. Should be called by the orchestrator */
+  /** Records file information for a connector job. Should be called by the connector*/
   recordSourceFileInfo: (sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string) => void;
 
   /** Records additional files for a connector job */
