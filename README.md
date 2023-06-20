@@ -8,7 +8,9 @@ The **@itwin/connector-framework** package contains the classes which comprise t
 ## Documentation
 
 ### Lifecycle policy
-Version 1.X of the connector framework will be supported as long as iTwin.js 3.X is supported. Please refer to the [iTwin.js API deprecation policy](https://www.itwinjs.org/learning/api-support-policies/#api-deprecation-policy).
+The main branch used for 2.x, based on iTwin.js 4.x, will be the default location for all fixes and enhancements. Patches will only be back-ported to 1.x if they are considered critical or related to security.
+
+Version 1.x of the connector framework will be supported as long as iTwin.js 3.x is supported. Please refer to the [iTwin.js API deprecation policy](https://www.itwinjs.org/learning/api-support-policies/#package-support-policy).
 
 ### Quick Upgrade Guide
 

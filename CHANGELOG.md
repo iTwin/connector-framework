@@ -4,6 +4,7 @@
 
 - Upgrades to iTwin.js 4.0.0
 - Replaces `projectId` with `iTwinId` in hub utility functions
+- Upgrades node dependency to >=18.12.0
 
 ## 1.1.1
 
