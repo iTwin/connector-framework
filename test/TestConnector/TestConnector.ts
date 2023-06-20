@@ -122,7 +122,7 @@ export default class TestConnector extends BaseConnector {
       throw new IModelError(IModelStatus.BadArg, error);
     }
 
-    this.issueReporter.reportIssue(physicalModelId, "source", "Warning", "Test", "Test Message", "Type");
+    this.issueReporter.reportIssue(physicalModelId, this._sourceData ?? "unknown", "Warning", "Test", "Test Message", "Type");
 
     if (this._sourceDataState === ItemState.New) {
       this.insertCategories();

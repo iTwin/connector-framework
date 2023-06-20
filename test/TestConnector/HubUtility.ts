@@ -24,9 +24,9 @@ export class HubUtility {
 
   public static logCategory = "HubUtility";
 
-  public static async queryIModelByName(requestContext: AccessToken, projectId: string, iModelName: string): Promise<IModel | undefined> {
+  public static async queryIModelByName(requestContext: AccessToken, iTwinId: string, iModelName: string): Promise<IModel | undefined> {
     const authCallback: AuthorizationCallback = async () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: requestContext};});
-    const iModels = this.iModelClient.iModels.getRepresentationList({ urlParams: { projectId, name: iModelName }, authorization: authCallback });
+    const iModels = this.iModelClient.iModels.getRepresentationList({ urlParams: { iTwinId, name: iModelName }, authorization: authCallback });
     const imodel = await iModels.next();
     return imodel.value;
   }
@@ -76,18 +76,18 @@ export class HubUtility {
   }
 
   /** Create  */
-  public static async recreateIModel(accessToken: AccessToken, projectId: GuidString, iModelName: string): Promise<GuidString> {
+  public static async recreateIModel(accessToken: AccessToken, iTwinId: GuidString, iModelName: string): Promise<GuidString> {
     // Delete any existing iModel
     const authCallback: AuthorizationCallback = async () => new Promise<Authorization>(() => {return {scheme: "Bearer", token: accessToken};});
     try {
-      const deleteIModelId: GuidString = await HubUtility.queryIModelIdByName(accessToken, projectId, iModelName);
+      const deleteIModelId: GuidString = await HubUtility.queryIModelIdByName(accessToken, iTwinId, iModelName);
       await this.iModelClient.iModels.delete({iModelId: deleteIModelId, authorization: authCallback});
     } catch (err) {
       Logger.logError(HubUtility.logCategory, "Failed to recreate an IModel");
     }
 
     // Create a new iModel
-    const iModel: IModel = await this.iModelClient.iModels.createEmpty({iModelProperties: {projectId, name: iModelName, description: `Description for ${iModelName}`}, authorization: authCallback});
+    const iModel: IModel = await this.iModelClient.iModels.createEmpty({iModelProperties: {iTwinId, name: iModelName, description: `Description for ${iModelName}`}, authorization: authCallback});
     return iModel.id;
   }
 }
