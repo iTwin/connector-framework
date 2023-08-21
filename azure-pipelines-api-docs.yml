@@ -19,3 +19,15 @@ steps:
     npm install
     npm run documentation
   displayName: 'npm install and build documentation'
+
+- task: CopyFiles@2
+  displayName: 'Copy generated docs to: $(Build.StagingDirectory)'
+  inputs:
+    SourceFolder: $(Build.SourcesDirectory)/documentation
+    TargetFolder: $(Build.StagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: Connector-Framework Docs'
+  inputs:
+    PathtoPublish: '$(Build.StagingDirectory)/docs/'
+    ArtifactName: 'Connector-Framework Docs'
