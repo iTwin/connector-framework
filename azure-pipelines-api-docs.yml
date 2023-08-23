@@ -21,10 +21,10 @@ steps:
   displayName: 'npm install and build documentation'
 
 - task: CopyFiles@2
-  displayName: 'Copy generated docs to: $(Build.StagingDirectory)'
+  displayName: 'Copy generated docs to: $(Build.StagingDirectory)/docs/'
   inputs:
-    SourceFolder: $(Build.SourcesDirectory)/documentation
-    TargetFolder: $(Build.StagingDirectory)
+    SourceFolder: $(Build.SourcesDirectory)/documentation/
+    TargetFolder: $(Build.StagingDirectory)/docs/
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: Connector-Framework Docs'
