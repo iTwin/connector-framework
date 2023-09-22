@@ -5,7 +5,7 @@
 import type { AccessToken, Id64String} from "@itwin/core-bentley";
 import { Logger } from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
-import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
+import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps, RenderMaterialElementParams} from "@itwin/core-backend";
 import { Subject } from "@itwin/core-backend";
 import {
   CategorySelector, DefinitionModel, DefinitionPartition, deleteElementTree, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition,
@@ -38,9 +38,8 @@ export default class TestConnector extends BaseConnector {
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
+
   public static override async create(): Promise<TestConnector> {
-    // const connector = new TestConnector();
-    // connector.fileBasedDeletedElementDetection = true;
     return new TestConnector();
   }
 
@@ -113,11 +112,6 @@ export default class TestConnector extends BaseConnector {
     this.insertCodeSpecs();
   }
   // __PUBLISH_EXTRACT_END__
-
-  public override supportsMultipleFilesPerChannel(): boolean {
-  // to avoid legacy channel based deleted element detection, override this method and return true
-    return true;
-  }
 
   // __PUBLISH_EXTRACT_START__ TestConnector-updateExistingData.example-code
   public async updateExistingData() {
@@ -289,13 +283,13 @@ export default class TestConnector extends BaseConnector {
   }
 
   private getColoredPlasticParams(): RenderMaterialElementParams {
-    const params = new RenderMaterialElementParams(Palettes.TestConnector);
+    const params: RenderMaterialElementParams = { paletteName: Palettes.TestConnector };
     params.transmit = 0.5;
     return params;
   }
 
   private getMagnetizedFerriteParams(): RenderMaterialElementParams {
-    const params = new RenderMaterialElementParams(Palettes.TestConnector);
+    const params: RenderMaterialElementParams = { paletteName: Palettes.TestConnector };
     const darkGrey = this.toRgbFactor(ColorByName.darkGrey);
     params.specularColor = darkGrey;
     params.color = darkGrey;
