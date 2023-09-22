@@ -551,7 +551,7 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
+    const synchronizer = new Synchronizer(this.db, this.connector.supportsMultipleFilesPerChannel(), this._reqContext);
     this.connector.synchronizer = synchronizer;
   }
 
