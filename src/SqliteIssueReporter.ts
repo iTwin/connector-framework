@@ -39,6 +39,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
   private _postPublishingProcessor?: PostPublishingProcessor;
   private _dbPath: string = "";
   private _deleteBadgersDb;
+  private _recordedSourceFile;
 
   private _tempReportFileRecordsTable = "BadgersReportFileRecords";
   private _tempReportAuditRecordsTable = "BadgersReportAuditRecords";
@@ -54,6 +55,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     this._outputDir = outputDir ?? os.tmpdir();
     this._deleteBadgersDb = deleteReportDB ?? false;
     this._postPublishingProcessor;
+    this._recordedSourceFile = "";
 
     this._reportFile = this.computeReportFileName(activityId, false);
 
@@ -111,6 +113,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     if (sourceId !== this._fileInfo.fileId) {
       Logger.logWarning(LoggerCategories.Framework, "Source file Id does not match value set in constructor");
     }
+    this._recordedSourceFile = sourceId;
     const values = [this._contextInfo.activityId, this._contextInfo.contextId, this._contextInfo.jobId, this._contextInfo.iModelId, this._contextInfo.briefcaseId, sourceId, this._fileInfo.filePath,
       "SourceFile", itemType, dataSource, name, exists, downloadUrl, state, failureReason, uniqueName, fileSize, foundByConnector];
     this._reportDb.withPreparedSqliteStatement(`INSERT INTO ${this._sourceFileTempConnectorIssuesTable}(activityId, contextId, jobId, imodelId, briefcaseId, fileId, filePath, dataType, itemType, dataSource, fileName, itemExists, downloadUrl, state, failureReason, uniqueName, fileSize, foundByConnector) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, (stmt) => {
@@ -131,6 +134,10 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
   }
 
   public createJsonReport() {
+    if (!this._recordedSourceFile) {
+      Logger.logWarning(LoggerCategories.Framework, "Source file data not recorded. Call recordSourceFileInfo with relevant data");
+    }
+
     const timestamp = new Date().toISOString();
     const context = {
       reportType: "detailReport",

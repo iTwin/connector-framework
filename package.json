@@ -1,12 +1,12 @@
 {
   "name": "@itwin/connector-framework",
-  "version": "1.1.2",
+  "version": "2.0.2",
   "description": "iTwin Connector Framework",
   "main": "lib/src/connector-framework.js",
   "typings": "lib/src/connector-framework.d.ts",
   "license": "MIT",
   "engines": {
-    "node": ">=14.17.0 <17.0"
+    "node": ">=18.12.0"
   },
   "repository": {
     "type": "git",
@@ -39,18 +39,17 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^3.7.1",
-    "@itwin/core-backend": "^3.7.1",
-    "@itwin/core-bentley": "^3.7.1",
-    "@itwin/core-common": "^3.7.1",
-    "@itwin/core-geometry": "^3.7.1",
-    "@itwin/core-quantity": "^3.7.1",
-    "@itwin/ecschema-metadata": "^3.7.1",
-    "@itwin/eslint-plugin": "^3.7.1",
-    "@itwin/imodels-access-backend": "^1.0.1",
-    "@itwin/imodels-client-authoring": "^1.0.1",
-    "@itwin/node-cli-authorization": "^0.9.0",
-    "@itwin/oidc-signin-tool": "^3.2.0",
+    "@itwin/build-tools": "^4.1.8",
+    "@itwin/core-bentley": "^4.1.8",
+    "@itwin/core-common": "^4.1.8",
+    "@itwin/core-geometry": "^4.1.8",
+    "@itwin/core-quantity": "^4.1.8",
+    "@itwin/ecschema-metadata": "^4.1.8",
+    "@itwin/eslint-plugin": "^3.7.8",
+    "@itwin/imodels-access-backend": "^4.1.0",
+    "@itwin/imodels-client-authoring": "^4.1.8",
+    "@itwin/node-cli-authorization": "^1.0.1",
+    "@itwin/oidc-signin-tool": "^4.0.0",
     "@types/chai": "^4.1.4",
     "@types/chai-as-promised": "^7",
     "@types/mocha": "^8.2.2",
@@ -74,13 +73,12 @@
     "rimraf": "^3.0.2",
     "source-map-support": "^0.5.21",
     "ts-node": "10.8.0",
-    "typescript": "~4.4.0"
+    "typescript": "~4.9.5"
   },
   "peerDependencies": {
-    "@itwin/core-backend": "^3.7.1",
-    "@itwin/core-bentley": "^3.7.1",
-    "@itwin/core-common": "^3.7.1",
-    "@itwin/node-cli-authorization": "^0.9.0"
+    "@itwin/core-bentley": "^4.1.8",
+    "@itwin/core-common": "^4.1.8",
+    "@itwin/node-cli-authorization": "^1.0.1"
   },
   "husky": {
     "hooks": {

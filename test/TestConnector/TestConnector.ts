@@ -70,6 +70,7 @@ export default class TestConnector extends BaseConnector {
     this._sourceDataState = documentStatus.itemState;
     assert(documentStatus.elementProps.id !== undefined);
     this._repositoryLinkId = documentStatus.elementProps.id;
+    this.issueReporter.recordSourceFileInfo(sourcePath, sourcePath, sourcePath, "File", "Manifest", "State", "Faliure Reason", true, 1234, true);
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -121,7 +122,7 @@ export default class TestConnector extends BaseConnector {
       throw new IModelError(IModelStatus.BadArg, error);
     }
 
-    this.issueReporter.reportIssue(physicalModelId, "source", "Warning", "Test", "Test Message", "Type");
+    this.issueReporter.reportIssue(physicalModelId, this._sourceData ?? "unknown", "Warning", "Test", "Test Message", "Type");
 
     if (this._sourceDataState === ItemState.New) {
       this.insertCategories();
