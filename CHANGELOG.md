@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.2
+
+- Upgrades to iTwin.js 4.1.8 to fix performance of Synchronizer.detectChanges().
+
 ## 2.0.0
 
 - Upgrades to iTwin.js 4.0.0
