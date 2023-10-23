@@ -584,24 +584,9 @@ export class Synchronizer {
     });
   }
 
-  private logClassNameForID(id: Id64String): void {
-    const sql = `SELECT ECClassId FROM BisCore.Element WHERE ECInstanceId=?`;
-    this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
-      statement.bindId(1, id);
-      while (DbResult.BE_SQLITE_ROW === statement.step()) {
-        const val = statement.getValue(0);
-        const clsname = val.getClassNameForClassId ();
-        // eslint-disable-next-line no-console
-        Logger.logInfo (LoggerCategories.Framework, `Id ${  id  }is of class ${  clsname}`);
-      }
-    });
-  }
-
-  // given a repository link, return a model id using external source
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // given a repository link, return a model id using ElementHasLinks relationship
   private getScopeID(_repLinkId: Id64String): Id64String {
-    const sql = `select mod.ECInstanceId from bis.model mod join bis.ElementIsFromSource eifs on mod.ECInstanceId=eifs.SourceECInstanceId join BisCore.ExternalSourceIsInRepository esiir on eifs.TargetECInstanceId=esiir.SourceECInstanceId and esiir.TargetECInstanceId=?`;
-    // const sql = `select part.ECInstanceId from bis.PhysicalPartition part`;
+    const sql = `select ehl.SourceECInstanceId from bis.ElementHasLinks ehl where ehl.TargetECInstanceId=?`;
 
     let scopeId: Id64String = "";
     this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
@@ -620,12 +605,9 @@ export class Synchronizer {
       if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
         continue;
       assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
-      // this.detectDeletedElementsInScope(value.elementProps.id);
-      // this.logClassNameForID (value.elementProps.id);
-      // const scopeId = "0x20000000006";
 
       const scopeId = this.getScopeID(value.elementProps.id);
-      this.logClassNameForID (scopeId);
+
       this.detectDeletedElementsInScope(scopeId);
     }
   }
@@ -633,7 +615,6 @@ export class Synchronizer {
   private detectDeletedElementsInScope(scopeId: Id64String) {
 
     const sql = `SELECT aspect.Element.Id FROM ${ExternalSourceAspect.classFullName} aspect WHERE aspect.Scope.Id=?`;
-    // const sql = `select eifs.SourceECInstanceId from Bis.ElementIsFromSource eifs join BisCore.ExternalSourceIsInRepository esiir on eifs.TargetECInstanceId=esiir.SourceECInstanceId and esiir.TargetECInstanceId=?`;
 
     const elementsToDelete: Id64String[] = [];
     const defElementsToDelete: Id64String[] = [];
