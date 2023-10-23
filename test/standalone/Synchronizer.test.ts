@@ -306,14 +306,8 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
 
-      const blueberryProps = new DefinitionGroup({
-        classFullName: DefinitionGroup.classFullName,
-        code: Code.createEmpty(),
-        model: model.id!,
-        isPrivate: false,
-        userLabel: "definitions of blueberries",
-        // parent: new ElementOwnsChildElements(...),
-      }, imodel);
+      const blueberryProps = DefinitionGroup.create (imodel, model.id!, Code.createEmpty(), false);
+      blueberryProps.userLabel = "definitions of blueberries";
 
       berryTree.childElements!.push({
         itemState: ItemState.New,
