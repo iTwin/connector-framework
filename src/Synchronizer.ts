@@ -606,9 +606,9 @@ export class Synchronizer {
         continue;
       assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
 
-      const scopeId = this.getScopeID(value.elementProps.id);
+      // const scopeId = this.getScopeID(value.elementProps.id);
 
-      this.detectDeletedElementsInScope(scopeId);
+      this.detectDeletedElementsInScope(value.elementProps.id);
     }
   }
 

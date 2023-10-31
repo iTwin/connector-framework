@@ -39,6 +39,11 @@ export default class TestConnector extends BaseConnector {
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
 
+  public override supportsMultipleFilesPerChannel(): boolean {
+    // to avoid legacy channel based deleted element detection, override this method and return true
+    return true;
+  }
+
   public static override async create(): Promise<TestConnector> {
     return new TestConnector();
   }
@@ -394,7 +399,7 @@ export default class TestConnector extends BaseConnector {
       const str = JSON.stringify(group);
       const sourceItem: SourceItem = {
         source: xse?.id,
-        scope: groupModelId,
+        scope: this.repositoryLinkId,
         kind: "Group",
         id: group.guid,
         checksum: () => hash.MD5(str),
@@ -447,7 +452,7 @@ export default class TestConnector extends BaseConnector {
     const str = JSON.stringify(tile);
     const sourceItem: SourceItem = {
       source: xse?.id,
-      scope: physicalModelId,
+      scope: this.repositoryLinkId,
       kind: "Tile",
       id: tile.guid,
       checksum: () => hash.MD5(str),

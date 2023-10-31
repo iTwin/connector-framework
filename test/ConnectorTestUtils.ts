@@ -9,10 +9,9 @@ import type { Id64String} from "@itwin/core-bentley";
 import { DbResult, Id64, Logger, LogLevel } from "@itwin/core-bentley";
 import { IModel } from "@itwin/core-common";
 import type { ECSqlStatement, IModelDb} from "@itwin/core-backend";
-import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
+import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, RepositoryLink, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
 import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
 import { CodeSpecs } from "./TestConnector/TestConnectorElements";
-import { ModelNames } from "./TestConnector/TestConnector";
 import { KnownTestLocations } from "./KnownTestLocations";
 import type { JobArgs } from "../src/Args";
 import * as fs from "fs";
@@ -91,7 +90,8 @@ export function getCount(imodel: IModelDb, className: string) {
   let count = 0;
   imodel.withPreparedStatement(`SELECT count(*) AS [count] FROM ${className}`, (stmt: ECSqlStatement) => {
     assert.equal(DbResult.BE_SQLITE_ROW, stmt.step());
-    const row = stmt.getRow(); count = row.count;
+    const row = stmt.getRow();
+    count = row.count;
   });
   return count;
 }
@@ -120,13 +120,14 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
   assert.isTrue(Id64.isValidId64(subjectId));
 
-  const physicalModelId = imodel.elements.queryElementIdByCode(PhysicalPartition.createCode(imodel, subjectId, ModelNames.Physical));
-  assert.isTrue(physicalModelId !== undefined);
-  assert.isTrue(Id64.isValidId64(physicalModelId!));
+  // const physicalModelId = imodel.elements.queryElementIdByCode(PhysicalPartition.createCode(imodel, subjectId, ModelNames.Physical));
+  const repositoryModelId = imodel.elements.queryElementIdByCode (RepositoryLink.createCode(imodel, IModel.repositoryModelId, jobArgs.source));
+  assert.isTrue(repositoryModelId !== undefined);
+  assert.isTrue(Id64.isValidId64(repositoryModelId!));
 
   // Verify some elements
   if (!isUpdate) {
-    const ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    const ids = ExternalSourceAspect.findAllBySource(imodel, repositoryModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
     assert.isTrue(ids.length > 0);
     assert.isTrue(Id64.isValidId64(ids[0].aspectId));
     assert.isTrue(Id64.isValidId64(ids[0].elementId));
@@ -134,7 +135,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
     assert.equal(tile.condition, "New");
   } else {
     // Modified element
-    let ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    let ids = ExternalSourceAspect.findAllBySource(imodel, repositoryModelId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
     assert.isTrue(ids.length > 0);
     assert.isTrue(Id64.isValidId64(ids[0].aspectId));
     assert.isTrue(Id64.isValidId64(ids[0].elementId));
@@ -142,7 +143,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
     assert.equal(tile.condition, "Scratched");
 
     // New element
-    ids = ExternalSourceAspect.findAllBySource(imodel, physicalModelId!, "Tile", "5b51a06f-4026-4d0d-9674-d8428b118e9a");
+    ids = ExternalSourceAspect.findAllBySource(imodel, repositoryModelId!, "Tile", "5b51a06f-4026-4d0d-9674-d8428b118e9a");
     assert.isTrue(ids.length > 0);
     assert.isTrue(Id64.isValidId64(ids[0].aspectId));
     assert.isTrue(Id64.isValidId64(ids[0].elementId));
