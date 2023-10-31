@@ -151,35 +151,12 @@ export function berryGroups(sync: Synchronizer): BerryGroups {
     value,
   });
 
-  const berryProps: DefinitionElementProps = {
-    classFullName: DefinitionGroup.classFullName,
-    code: code("berries"),
-    model: modelId,
-    isPrivate: false,
-    userLabel: "definitions of berries",
-  };
-
-  const strawberryProps: DefinitionElementProps = {
-    classFullName: DefinitionGroup.classFullName,
-    code: code("strawberries"),
-    model: modelId,
-    isPrivate: false,
-    userLabel: "definitions of strawberries",
-    // parent: new ElementOwnsChildElements(...),
-  };
-
-  const raspberryProps: DefinitionElementProps = {
-    classFullName: DefinitionGroup.classFullName,
-    code: code("raspberries"),
-    model: modelId,
-    isPrivate: false,
-    userLabel: "definitions of raspberries",
-    // parent: new ElementOwnsChildElements(...),
-  };
-
-  const berry = new DefinitionGroup(berryProps, imodel);
-  const strawberry = new DefinitionGroup(strawberryProps, imodel);
-  const raspberry = new DefinitionGroup(raspberryProps, imodel);
+  const berry = DefinitionGroup.create (imodel, modelId,code("berries"), false );
+  berry.userLabel = "definitions of berries";
+  const strawberry = DefinitionGroup.create (imodel, modelId,code("strawberries"), false );
+  strawberry.userLabel = "definitions of strawberries";
+  const raspberry = DefinitionGroup.create (imodel, modelId,code("raspberries"), false );
+  raspberry.userLabel = "definitions of raspberries";
 
   // Sam Wilson: FYI parent/child relationships between definition groups is not what makes them
   // groups. See DefinitionGroupGroupsDefinitions. That doesn't matter for this test. ):
