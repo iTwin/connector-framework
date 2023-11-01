@@ -16,7 +16,7 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, 
 import type { SolidPrimitive } from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import type { DeletionDetectionParams, SourceDocument, SourceItem , SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
@@ -39,9 +39,10 @@ export default class TestConnector extends BaseConnector {
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
 
-  public override supportsMultipleFilesPerChannel(): boolean {
-    // to avoid legacy channel based deleted element detection, override this method and return true
-    return true;
+  public override getDeletionDetectionParams(): DeletionDetectionParams {
+    // to avoid legacy channel based deleted element detection, override this method and set fileBased to true
+    const ddp = {fileBased: true, scopeToPartition : false};
+    return ddp;
   }
 
   public static override async create(): Promise<TestConnector> {
