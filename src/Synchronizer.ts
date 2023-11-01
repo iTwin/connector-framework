@@ -177,6 +177,28 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
   return item.scope !== undefined && item.kind !== undefined;
 }
 
+/** paramaters to control how deletions are detected.
+ * These parameters exist due to evolution in the detection of deletions. For legacy reasons,
+ * The default is channel based (that is by job subject) (e.g. fileBased = false), but, for
+ * new connectors or for connectors that support multiple files for a given channel and
+ * it is necessary to narrow the scope from the entire channel (i.e. everything under the job subject)
+ * then file based detection is strongly recommended.
+ * The second parameter scopeToPartition is ignored for channel based detection and it
+ * it is recommended to be passed as false for file based deletion detection.
+ * IMPORTANT: scopeToPartion must be passed as true for legacy connectors that created
+ * external source aspects scope to the physical partition for example.  The test connector in this repository
+ * incorrectly set the external source aspects this way and it is likely other connectors followed this example.
+*/
+export interface DeletionDetectionParams {
+  /** true for file based (recommended for new connectors)
+   * false for channel based i.e. under JobSubject */
+  fileBased: boolean;
+  /** false is recommended, but, true is required for legacy connectors that create
+   * external source aspects that scope to a physical partition instead of repository
+   *  links ingored for channel based deletion detection */
+  scopeToPartition: boolean;
+}
+
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
  */
@@ -186,13 +208,18 @@ export class Synchronizer {
   private _unchangedSources: Id64String[] = new Array<Id64String>();
   private _links = new Map<string, RecordDocumentResults>();
   private _jobSubjectId: string | undefined;
-
+  private _ddp: DeletionDetectionParams;
   public constructor(
     public readonly imodel: IModelDb,
     private _supportsMultipleFilesPerChannel: boolean,
-    protected _requestContext?: AccessToken) {
+    protected _requestContext?: AccessToken,
+    private _scopeToPartition?: boolean
+  ) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
+
+    this._ddp = {fileBased: _supportsMultipleFilesPerChannel, scopeToPartition : (_scopeToPartition === undefined? false:_scopeToPartition)};
+
   }
 
   /** @internal */
@@ -550,7 +577,7 @@ export class Synchronizer {
     if (this.imodel.isSnapshotDb())
       return;
 
-    if (this._supportsMultipleFilesPerChannel)
+    if (this._ddp.fileBased)
       this.detectDeletedElementsInFiles();
     else
       this.detectDeletedElementsInChannel();
@@ -606,9 +633,13 @@ export class Synchronizer {
         continue;
       assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
 
-      // const scopeId = this.getScopeID(value.elementProps.id);
+      let scopeId = value.elementProps.id;
 
-      this.detectDeletedElementsInScope(value.elementProps.id);
+      if (this._ddp.scopeToPartition) {
+        scopeId = this.getScopeID(value.elementProps.id);
+      }
+
+      this.detectDeletedElementsInScope(scopeId);
     }
   }
 
