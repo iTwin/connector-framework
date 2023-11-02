@@ -39,10 +39,23 @@ export default class TestConnector extends BaseConnector {
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
 
+  private getDDParamsFromEnv(): DeletionDetectionParams {
+    const ddp = {fileBased: true, scopeToPartition : false};
+
+    if ("testConnector_channelBasedDD" in process.env) {
+      ddp.fileBased = false;
+    } else {
+      if ("testConnector_scopeToPartition" in process.env) {
+        ddp.scopeToPartition = true;
+      }
+    }
+    return ddp;
+  }
+
   public override getDeletionDetectionParams(): DeletionDetectionParams {
     // to avoid legacy channel based deleted element detection, override this method and set fileBased to true
-    const ddp = {fileBased: true, scopeToPartition : false};
-    return ddp;
+
+    return this.getDDParamsFromEnv();
   }
 
   public static override async create(): Promise<TestConnector> {
@@ -396,11 +409,11 @@ export default class TestConnector extends BaseConnector {
   private convertGroupElements(groupModelId: Id64String) {
     for (const group of this._data.Groups) {
       const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
-
+      const ddp = this.getDeletionDetectionParams();
       const str = JSON.stringify(group);
       const sourceItem: SourceItem = {
         source: xse?.id,
-        scope: this.repositoryLinkId,
+        scope: (ddp.scopeToPartition? groupModelId: this.repositoryLinkId),
         kind: "Group",
         id: group.guid,
         checksum: () => hash.MD5(str),
@@ -451,9 +464,10 @@ export default class TestConnector extends BaseConnector {
   private convertTile(physicalModelId: Id64String, definitionModelId: Id64String, groupModelId: Id64String, tile: any, shape: string) {
     const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
     const str = JSON.stringify(tile);
+    const ddp = this.getDeletionDetectionParams();
     const sourceItem: SourceItem = {
       source: xse?.id,
-      scope: this.repositoryLinkId,
+      scope: (ddp.scopeToPartition ? physicalModelId :this.repositoryLinkId),
       kind: "Tile",
       id: tile.guid,
       checksum: () => hash.MD5(str),
