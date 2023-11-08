@@ -28,7 +28,7 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
-describe("iTwin Connector Fwk (#standalone)", () => {
+describe("iTwin Connector Fwk (#standalone) - Legacy Channel Based Deletion Detection", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
@@ -85,7 +85,7 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     }
   }
 
-  it("test connector update - Channel Based Deletion Detection", async () => {
+  it("test connector update", async () => {
     await runConnector();
 
     fs.utimesSync(jobArgs.source, new Date(), new Date()); // touch the input file, so that the connector will re-process it

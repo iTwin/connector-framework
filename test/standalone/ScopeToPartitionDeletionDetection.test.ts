@@ -28,7 +28,7 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
-describe("iTwin Connector Fwk (#standalone)", () => {
+describe("iTwin Connector Fwk (#standalone) - File Based Deletion Detection w Scoped to Partition", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
@@ -85,7 +85,7 @@ describe("iTwin Connector Fwk (#standalone)", () => {
     }
   }
 
-  it("test connector update - File Based Deletion Detection w Scoped to Partition", async () => {
+  it("test connector update", async () => {
     process.env.testConnector_scopeToPartition = "1"; // tell the connector to create XSAs scoped to partitions
     await runConnector();
 
