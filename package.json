@@ -100,8 +100,5 @@
       "no-duplicate-imports": "off",
       "@typescript-eslint/consistent-type-imports": "error"
     }
-  },
-  "dependencies": {
-    "@types/semver": "^7.3.10"
   }
 }
