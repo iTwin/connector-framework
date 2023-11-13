@@ -1,5 +1,17 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.3
+
+- Accommodates file-based deletion detection.  File-based (as opposed to the old channel-based) deletion detection IS the recommended path for all new connectors.  The legacy channel-based connectors are still supported.  Lastly, for legacy connectors that would like to switch to file-based deletion detection, but, followed the incorrect example in the test connector of assigning the partition id rather than the repository link id to the scopeId member of the ExternalSourceAspect, a third option is available.  To support the new options a new interface is introduced, **DeletionDetectionParams**. A summary of these parameters is presented below:
+
+Deletion Detection Type             |   fileBased   |   scopedToPartition
+------------------------------------|---------------|---------------------
+File-based (recommended)            |   true        |   false
+File-based ( scoped to partition)   |   true        |   true
+Channel-based (legacy)              |   false       |   (not used)
+
+To implement file-based deletion detection (recommended), override the **getDeletionDetectionParams** method as is shown in the test connector and return the DeletionDetectionParams according to the table above.  Connectors which do not implement this method will continue to use channel-based (legacy) deletion detection.
+
 ## 2.0.2
 
 - Upgrades to iTwin.js 4.1.8 to fix performance of Synchronizer.detectChanges().
