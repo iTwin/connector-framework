@@ -551,7 +551,8 @@ export class ConnectorRunner {
   }
 
   private async loadSynchronizer() {
-    const synchronizer = new Synchronizer(this.db, false, this._reqContext);
+    const ddp = this.connector.getDeletionDetectionParams();
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , this._reqContext, ddp.scopeToPartition);
     this.connector.synchronizer = synchronizer;
   }
 

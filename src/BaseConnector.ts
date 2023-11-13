@@ -6,7 +6,7 @@ import type { AccessToken } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
 import type { Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import type { Synchronizer } from "./Synchronizer";
+import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
@@ -84,8 +84,10 @@ export abstract class BaseConnector {
    * In the case of #2, it is up to the connector to supply the jobSubject name.
    * See [Channels]($docs/learning/backend/Channel) for an explanation of the concept of channels.
    */
-  public supportsMultipleFilesPerChannel(): boolean {
-    return false;
+  public getDeletionDetectionParams(): DeletionDetectionParams {
+    // default to channel based deletion detection
+    const ddp = {fileBased: false, scopeToPartition : false};
+    return ddp;
   }
 
   /**
