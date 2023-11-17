@@ -87,6 +87,22 @@ stages:
           test_scopes: $(test_scopes)
         condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
+      - script: |
+          npm run documentation
+        displayName: 'npm install and build documentation'
+
+      - task: CopyFiles@2
+        displayName: 'Copy generated docs to: $(Build.StagingDirectory)/docs/'
+        inputs:
+          SourceFolder: $(Build.SourcesDirectory)/documentation/
+          TargetFolder: $(Build.StagingDirectory)/docs/
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: Connector-Framework Docs'
+        inputs:
+          PathtoPublish: '$(Build.StagingDirectory)/docs/'
+          ArtifactName: 'Connector-Framework Docs'
+
       - bash: |
           checkVersion() {
             localVer=$1
