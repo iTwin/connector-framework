@@ -1,6 +1,6 @@
 {
   "name": "@itwin/connector-framework",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "iTwin Connector Framework",
   "main": "lib/src/connector-framework.js",
   "typings": "lib/src/connector-framework.d.ts",
@@ -39,12 +39,12 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.1.8",
-    "@itwin/core-bentley": "^4.1.8",
-    "@itwin/core-common": "^4.1.8",
-    "@itwin/core-geometry": "^4.1.8",
-    "@itwin/core-quantity": "^4.1.8",
-    "@itwin/ecschema-metadata": "^4.1.8",
+    "@itwin/build-tools": "^4.2.3",
+    "@itwin/core-bentley": "^4.2.3",
+    "@itwin/core-common": "^4.2.3",
+    "@itwin/core-geometry": "^4.2.3",
+    "@itwin/core-quantity": "^4.2.3",
+    "@itwin/ecschema-metadata": "^4.2.3",
     "@itwin/eslint-plugin": "^3.7.8",
     "@itwin/imodels-access-backend": "^4.1.0",
     "@itwin/imodels-client-authoring": "^4.1.8",
@@ -76,8 +76,8 @@
     "typescript": "~4.9.5"
   },
   "peerDependencies": {
-    "@itwin/core-bentley": "^4.1.8",
-    "@itwin/core-common": "^4.1.8",
+    "@itwin/core-bentley": "^4.2.3",
+    "@itwin/core-common": "^4.2.3",
     "@itwin/node-cli-authorization": "^1.0.1"
   },
   "husky": {
