@@ -1,5 +1,13 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.5
+
+- Move ahead to iTwin.js 4.2.4 and remove eslint related dev dependencies which were pulling through bad semver version
+
+## 2.0.4
+
+- Move ahead to iTwin.js 4.2.3
+
 ## 2.0.3
 
 - Accommodates file-based deletion detection.  File-based (as opposed to the old channel-based) deletion detection IS the recommended path for all new connectors.  The legacy channel-based connectors are still supported.  Lastly, for legacy connectors that would like to switch to file-based deletion detection, but, followed the incorrect example in the test connector of assigning the partition id rather than the repository link id to the scopeId member of the ExternalSourceAspect, a third option is available.  To support the new options a new interface is introduced, **DeletionDetectionParams**. A summary of these parameters is presented below:
