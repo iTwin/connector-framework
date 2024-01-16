@@ -657,6 +657,24 @@ export class Synchronizer {
 
         const element = this.imodel.elements.getElement(elementId);
         const hasSeenElement = this._seenElements.has(elementId);
+        // NEEDSWORK ADO# 1334078
+        // We need to exclude functional elements created for aggregation
+        // The aggregation work flow related elements in functional models 
+        // to elements in the aggregation functional model using XSAs
+        // This requires special treatment for these specific functional elements
+        // How to identify these special functional elements
+        // 1) they will have XSA to elements in the app's functional model
+        // 2) There are also relationships from either 
+        // elements in PhysicalModels (StagingAreaPhysicalElementFulfillsFunction) or
+        // DrawingModels (PhysicalElementFulfillsFunction)
+        // 3) In CMAP it is called "Project Digital Twin Functional Model", 
+        // it would be good to know if there is a special schema sub class for these
+        // elements/models, then we could simply use the class name as a filter.
+        // After reviewing the ProcessFunctional schema, it appears that
+        // there are no special subclasses for the FunctionalModels or 
+        // FunctionalElements used for Aggregation
+
+
         if (!hasSeenElement) {
           if (element instanceof DefinitionElement)
             defElementsToDelete.push(elementId);
