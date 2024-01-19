@@ -577,9 +577,7 @@ export class Synchronizer {
     if (this.imodel.isSnapshotDb())
       return;
 
-    if (this._ddp.fileBased && !this._ddp.scopeToPartition)
-      this.detectDeletedElementsInFiles();
-    else
+    if (!this._ddp.fileBased || this._ddp.scopeToPartition)
     {
       // ADO# 1334078
       // Note: channel based deletion detection is required for models
@@ -587,7 +585,10 @@ export class Synchronizer {
       // are also scoped to partition and we don't want to delete them.
       this.detectDeletedElementsInChannel();
     }
-      
+    else      
+    {
+      this.detectDeletedElementsInFiles();
+    }
   }
 
   /** Detect and delete all elements and models that meet the following conditions:
@@ -618,35 +619,13 @@ export class Synchronizer {
     });
   }
 
-  // given a repository link, return a model id using ElementHasLinks relationship
-  private getScopeID(_repLinkId: Id64String): Id64String {
-    const sql = `select ehl.SourceECInstanceId from bis.ElementHasLinks ehl where ehl.TargetECInstanceId=?`;
-
-    let scopeId: Id64String = "";
-    this.imodel.withPreparedStatement(sql, (statement: ECSqlStatement): void => {
-      statement.bindId(1, _repLinkId);
-      if (DbResult.BE_SQLITE_ROW === statement.step()) {
-        const val = statement.getValue(0);
-        scopeId = val.getId();
-      }
-    });
-
-    return scopeId;
-  }
-
   private detectDeletedElementsInFiles() {
     for (const value of this._links.values()) {
       if (value.itemState === ItemState.Unchanged || value.itemState === ItemState.New)
         continue;
       assert(value.elementProps.id !== undefined && Id64.isValidId64(value.elementProps.id));
 
-      let scopeId = value.elementProps.id;
-
-      if (this._ddp.scopeToPartition) {
-        scopeId = this.getScopeID(value.elementProps.id);
-      }
-
-      this.detectDeletedElementsInScope(scopeId);
+      this.detectDeletedElementsInScope(value.elementProps.id);
     }
   }
 
