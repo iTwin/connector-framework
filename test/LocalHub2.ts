@@ -139,7 +139,8 @@ export class LocalHub2 {
       nativeDb.saveLocalValue(BriefcaseLocalValue.NoLocking, arg.noLocks ? "true" : undefined);
       nativeDb.saveChanges();
     } finally {
-      nativeDb.closeIModel();
+      // NEEDSWORK: refer to IModelDb.ts
+      nativeDb.closeFile();
     }
   }
 
