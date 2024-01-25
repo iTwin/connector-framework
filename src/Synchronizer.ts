@@ -583,6 +583,12 @@ export class Synchronizer {
       // Note: channel based deletion detection is required for models
       // that are scoped to partion because xsas for aggregation elements in plantsight
       // are also scoped to partition and we don't want to delete them.
+    if (this._ddp.scopeToPartition == true) {
+      const logMessage = `Channel based deletion detection is required for models that are scoped to partition. Performing channel-based deletion detection!`;
+      Logger.logInfo(LoggerCategories.Framework, logMessage);
+      }
+
+
       this.detectDeletedElementsInChannel();
     }
     else      
