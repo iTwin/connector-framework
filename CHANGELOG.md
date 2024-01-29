@@ -1,5 +1,10 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.6
+
+- revert to channel-based deletion detection for ScopeToPartiton===true case to ensure correct behavior in PlantSight aggregation workflow
+- run npm update to update dependencies in package-lock.json
+
 ## 2.0.5
 
 - Move ahead to iTwin.js 4.2.4 and remove eslint related dev dependencies which were pulling through bad semver version
