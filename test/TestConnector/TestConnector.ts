@@ -2,20 +2,21 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import { AccessToken, Id64String, Logger } from "@itwin/core-bentley";
+import type { AccessToken, Id64String} from "@itwin/core-bentley";
+import { Logger } from "@itwin/core-bentley";
 import { assert, IModelStatus } from "@itwin/core-bentley";
-import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps} from "@itwin/core-backend";
+import type { DisplayStyleCreationOptions, PhysicalElement, RelationshipProps, RenderMaterialElementParams} from "@itwin/core-backend";
 import { Subject } from "@itwin/core-backend";
 import {
-  CategorySelector, DefinitionModel, DefinitionPartition, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition, IModelJsFs,
-  ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements, deleteElementTree,
+  CategorySelector, DefinitionModel, DefinitionPartition, deleteElementTree, DisplayStyle3d, ElementGroupsMembers, GeometryPart, GroupInformationPartition,
+  IModelJsFs, ModelSelector, OrthographicViewDefinition, PhysicalModel, PhysicalPartition, RenderMaterialElement, SpatialCategory, SubCategory, SubjectOwnsPartitionElements,
 } from "@itwin/core-backend";
 import type { ColorDefProps, GeometryPartProps, InformationPartitionElementProps, SubCategoryAppearance } from "@itwin/core-common";
 import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, IModel, IModelError, RenderMode, ViewFlags } from "@itwin/core-common";
 import type { SolidPrimitive } from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
+import type { DeletionDetectionParams, SourceDocument, SourceItem , SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
@@ -37,6 +38,25 @@ export default class TestConnector extends BaseConnector {
   private _sourceDataState: ItemState = ItemState.New;
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
+
+  private getDDParamsFromEnv(): DeletionDetectionParams {
+    const ddp = {fileBased: true, scopeToPartition : false};
+
+    if ("testConnector_channelBasedDD" in process.env) {
+      ddp.fileBased = false;
+    } else {
+      if ("testConnector_scopeToPartition" in process.env) {
+        ddp.scopeToPartition = true;
+      }
+    }
+    return ddp;
+  }
+
+  public override getDeletionDetectionParams(): DeletionDetectionParams {
+    // to avoid legacy channel based deleted element detection, override this method and set fileBased to true
+
+    return this.getDDParamsFromEnv();
+  }
 
   public static override async create(): Promise<TestConnector> {
     return new TestConnector();
@@ -277,18 +297,18 @@ export default class TestConnector extends BaseConnector {
     this.insertMaterial(Materials.MagnetizedFerrite, this.getMagnetizedFerriteParams());
   }
 
-  private insertMaterial(materialName: string, params: RenderMaterialElement.Params) {
+  private insertMaterial(materialName: string, params: RenderMaterialElementParams) {
     RenderMaterialElement.insert(this.synchronizer.imodel, this.queryDefinitionModel()!, materialName, params);
   }
 
-  private getColoredPlasticParams(): RenderMaterialElement.Params {
-    const params = new RenderMaterialElement.Params(Palettes.TestConnector);
+  private getColoredPlasticParams(): RenderMaterialElementParams {
+    const params: RenderMaterialElementParams = { paletteName: Palettes.TestConnector };
     params.transmit = 0.5;
     return params;
   }
 
-  private getMagnetizedFerriteParams(): RenderMaterialElement.Params {
-    const params = new RenderMaterialElement.Params(Palettes.TestConnector);
+  private getMagnetizedFerriteParams(): RenderMaterialElementParams {
+    const params: RenderMaterialElementParams = { paletteName: Palettes.TestConnector };
     const darkGrey = this.toRgbFactor(ColorByName.darkGrey);
     params.specularColor = darkGrey;
     params.color = darkGrey;
@@ -389,11 +409,11 @@ export default class TestConnector extends BaseConnector {
   private convertGroupElements(groupModelId: Id64String) {
     for (const group of this._data.Groups) {
       const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
-
+      const ddp = this.getDeletionDetectionParams();
       const str = JSON.stringify(group);
       const sourceItem: SourceItem = {
         source: xse?.id,
-        scope: groupModelId,
+        scope: (ddp.scopeToPartition? groupModelId: this.repositoryLinkId),
         kind: "Group",
         id: group.guid,
         checksum: () => hash.MD5(str),
@@ -444,9 +464,10 @@ export default class TestConnector extends BaseConnector {
   private convertTile(physicalModelId: Id64String, definitionModelId: Id64String, groupModelId: Id64String, tile: any, shape: string) {
     const xse = this.synchronizer.getExternalSourceElementByLinkId(this.repositoryLinkId);
     const str = JSON.stringify(tile);
+    const ddp = this.getDeletionDetectionParams();
     const sourceItem: SourceItem = {
       source: xse?.id,
-      scope: physicalModelId,
+      scope: (ddp.scopeToPartition ? physicalModelId :this.repositoryLinkId),
       kind: "Tile",
       id: tile.guid,
       checksum: () => hash.MD5(str),
