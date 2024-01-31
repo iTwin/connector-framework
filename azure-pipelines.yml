@@ -54,10 +54,6 @@ stages:
         displayName: 'Install Node.js'
 
       - script: |
-          npm install npm@10.4.0 -f
-        displayName: 'install latest npm'
-
-      - script: |
           npm install
         displayName: 'install packages'
 
