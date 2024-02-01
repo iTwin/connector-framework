@@ -177,3 +177,25 @@ stages:
         name: ConnectorFramework
         dryrun: false
 
+- stage: Validate_Docs
+  dependsOn: Build
+  condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'PullRequest', 'Manual'))
+  jobs:
+      - template: common/config/azure-pipelines/jobs/docs-build.yaml@itwinjs-core
+        parameters:
+          checkout: itwinjs-core
+          useCurrentPresentationDocsArtifact: true
+
+- stage: Tag_Docs
+  dependsOn: Validate_Docs
+  condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'))
+  jobs:
+   - job: Tag_Docs
+     displayName: Tag Docs
+     steps:
+     - task: tagBuildOrRelease@0
+       displayName: Tag Docs
+       inputs:
+        type: "Build"
+        tags: "hasDocs"
+        condition: and(contains(variables['Build.SourceVersionMessage'], '[publish docs]'), not(contains(variables['Build.SourceVersionMessage'], '(dev)')))
