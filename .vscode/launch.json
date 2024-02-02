@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
       {
+        "name": "Documentation",
+        "request": "launch",
+        "runtimeArgs": [
+          "run",
+          "documentation"
+        ],
+        "runtimeExecutable": "npm",
+        "type": "node"
+      },
         "name": "iTwinConnectorFwk Tests (Legacy)",
         "cwd": "${workspaceFolder}",
         "type": "node",
