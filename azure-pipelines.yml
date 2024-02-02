@@ -190,7 +190,6 @@ stages:
         parameters:
           checkout: itwinjs-core
           useCurrentPresentationDocsArtifact: false
-          useCurrentConnectorFrameworkDocs: true
 
 - stage: Tag_Docs
   dependsOn: Validate_Docs
