@@ -40,28 +40,28 @@ export interface JobArgsProps {
  * Arguments specific to a connector job
  */
 export class JobArgs implements JobArgsProps, Validatable {
-  /** Source file 
+  /** Source File 
    */
   public source: string;
-    /** staging directory
+    /** Staging Directory
    */
   public stagingDir: string = path.join(__dirname, "staging");
-    /** revision header 
+    /** Revision Header 
    */
   public revisionHeader: string = "JSFWK";
-    /** database type 
+    /** Database Type 
    */
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-      /** activity id 
+      /** Activity Id 
    */
   public activityId?: string;
-      /** issues database directory (optional) 
+      /** Issues Database Directory (optional) 
    */
   public issuesDbDir?: string;
-      /** logger configuration file (optional) 
+      /** Logger Configuration File (optional) 
    */
   public loggerConfigJSONFile?: string;
-      /** error file 
+      /** Error File 
    */
   public errorFile: string;
       /** Pass true to update the domain schemas
@@ -70,13 +70,13 @@ export class JobArgs implements JobArgsProps, Validatable {
       /** Pass true to update db profile
    */
   public updateDbProfile: boolean = true;
-      /** synchronization config file (optional) 
+      /** Synchronization Config File (optional) 
    */
   public synchConfigFile?: string;
-      /** pass true to unmap the source file (optional)
+      /** Pass true to unmap the source file (optional)
    */
   public shouldUnmapSource?: boolean = false;
-      /** arguments to be passed through to connector (optional)
+      /** Arguments to be passed through to Connector (optional)
    */
   public connectorArgs?: { [otherArg: string]: any };
 
@@ -126,31 +126,31 @@ export interface HubArgsProps {
  * Arguments specific to iModelHub used in a connector job
  */
 export class HubArgs implements HubArgsProps, Validatable {
-  /** briefcase file 
+  /** Briefcase File 
    */
   public briefcaseFile?: string;
-    /** briefcase Id (optional) 
+    /** Briefcase Id (optional) 
    */
   public briefcaseId?: number;
-    /** project Guid
+    /** Project Guid
    */
   public projectGuid: string;
     /** iModel Guid
    */
   public iModelGuid: string;
-    /** Connect Region
+    /** Connect Region  "0" | "102" | "103"
    */
   public region: ConnectRegion = "0";
-/** Node Cli Authorization configuration (optional)
+/** Node Cli Authorization Configuration (optional)
    */
   public clientConfig?: NodeCliAuthorizationConfiguration;
-    /** Token callback url (optional)
+    /** Token Callback Url (optional)
    */
   public tokenCallbackUrl?: string;
-    /** Token callback (optional)
+    /** Token Callback (optional)
    */
   public tokenCallback?: () => Promise<AccessToken>;
-  /** Whether or no to require input from user to authenticate
+  /** Whether or not to require input from user to authenticate
    */
   public doInteractiveSignIn: boolean = false;
   /** Number of attempts to obtain a lock before failing 
