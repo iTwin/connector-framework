@@ -9,7 +9,7 @@
 import { ElementUniqueAspect } from "@itwin/core-backend";
 import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
@@ -486,6 +486,41 @@ export class Synchronizer {
     }
 
     return IModelStatus.Success;
+  }
+
+  private getRepositoryLinkId (docId: string) : Id64String|undefined {
+    let repLinkId = undefined;
+    const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, docId);
+    const key = IModel.repositoryModelId + code.value.toLowerCase();
+    const existing = this._links.get(key);
+    if (existing !== undefined) {
+      repLinkId = existing.elementProps.id;
+    }
+
+    return repLinkId
+  } 
+
+  public findOrInsertRootSourceRelationship (config: string, docId: string) {
+    const repositoryLinkId = this.getRepositoryLinkId (docId);
+
+    if (repositoryLinkId != undefined) {
+      const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
+
+      if (xse?.id != undefined){
+        try {
+          this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
+        }
+        catch {
+          
+        }
+        
+      } 
+      else 
+        Logger.logWarning(LoggerCategories.Framework, "Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}");
+    }
+    else 
+      Logger.logWarning(LoggerCategories.Framework, "Unable to find repository link related to source = ${this.jobArgs.source}");
+
   }
 
   /** Returns the External Source Element associated with a repository link
