@@ -500,6 +500,11 @@ export class Synchronizer {
     return repLinkId
   } 
 
+  /** Creates a relationship between the SynchConfigLink and the ExternalSource if one doesn't exist already.
+   * @param config The element id of the SynchronizationConfigLink
+   * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
+   * @beta
+   */
   public findOrInsertRootSourceRelationship (config: string, docId: string) {
     const repositoryLinkId = this.getRepositoryLinkId (docId);
 
@@ -507,20 +512,17 @@ export class Synchronizer {
       const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
 
       if (xse?.id != undefined){
-        try {
-          this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
-        }
-        catch {
-          
-        }
-        
+        // check if we have this relationship first
+        if (undefined !== this.imodel.relationships.tryGetInstance(SynchronizationConfigSpecifiesRootSources.classFullName, {sourceId: config, targetId: xse.id}))
+          return;
+
+        this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
       } 
       else 
         Logger.logWarning(LoggerCategories.Framework, "Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}");
     }
     else 
       Logger.logWarning(LoggerCategories.Framework, "Unable to find repository link related to source = ${this.jobArgs.source}");
-
   }
 
   /** Returns the External Source Element associated with a repository link
