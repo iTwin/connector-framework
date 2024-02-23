@@ -40,20 +40,46 @@ export interface JobArgsProps {
  * Arguments specific to a connector job
  */
 export class JobArgs implements JobArgsProps, Validatable {
-
+  /** Source File 
+   */
   public source: string;
+    /** Staging Directory
+   */
   public stagingDir: string = path.join(__dirname, "staging");
+    /** Revision Header 
+   */
   public revisionHeader: string = "JSFWK";
+    /** Database Type 
+   */
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
+      /** Activity Id 
+   */
   public activityId?: string;
+      /** Issues Database Directory (optional) 
+   */
   public issuesDbDir?: string;
+      /** Logger Configuration File (optional) 
+   */
   public loggerConfigJSONFile?: string;
+      /** Error File 
+   */
   public errorFile: string;
+      /** Pass true to update the domain schemas
+   */
   public updateDomainSchemas: boolean = true;
+      /** Pass true to update db profile
+   */
   public updateDbProfile: boolean = true;
+      /** Synchronization Config File (optional) 
+   */
   public synchConfigFile?: string;
+      /** Pass true to unmap the source file (optional)
+   */
   public shouldUnmapSource?: boolean = false;
+      /** Arguments to be passed through to Connector (optional)
+   */
   public connectorArgs?: { [otherArg: string]: any };
+
 
   constructor(props: JobArgsProps) {
     this.source = props.source;
@@ -100,19 +126,38 @@ export interface HubArgsProps {
  * Arguments specific to iModelHub used in a connector job
  */
 export class HubArgs implements HubArgsProps, Validatable {
-
+  /** Briefcase File 
+   */
   public briefcaseFile?: string;
+    /** Briefcase Id (optional) 
+   */
   public briefcaseId?: number;
+    /** Project Guid
+   */
   public projectGuid: string;
+    /** iModel Guid
+   */
   public iModelGuid: string;
+    /** Connect Region  "0" | "102" | "103"
+   */
   public region: ConnectRegion = "0";
+/** Node Cli Authorization Configuration (optional)
+   */
   public clientConfig?: NodeCliAuthorizationConfiguration;
-
+    /** Token Callback Url (optional)
+   */
   public tokenCallbackUrl?: string;
+    /** Token Callback (optional)
+   */
   public tokenCallback?: () => Promise<AccessToken>;
+  /** Whether or not to require input from user to authenticate
+   */
   public doInteractiveSignIn: boolean = false;
-
+  /** Number of attempts to obtain a lock before failing 
+   */
   public maxLockRetries = 3;
+    /** Number of seconds to wait before retrying to obtain lock 
+   */
   public maxLockRetryWaitSeconds = 5;
 
   constructor(props: HubArgsProps) {

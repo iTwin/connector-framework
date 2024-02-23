@@ -1,6 +1,6 @@
 {
   "name": "@itwin/connector-framework",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "iTwin Connector Framework",
   "main": "lib/src/connector-framework.js",
   "typings": "lib/src/connector-framework.d.ts",
@@ -25,7 +25,7 @@
     "test:standalone": "npm run build && nyc mocha --grep standalone",
     "test:integration": "npm run build && nyc mocha --grep integration",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
-    "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --onlyJson"
+    "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
 
   },
   "keywords": [

@@ -1,5 +1,11 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.7
+
+- Generate API documentation in build pipeline.
+- added descriptions to hub and job args properties
+- Discontinue hardcoding npm version in pipeline.
+
 ## 2.0.6
 
 - revert to channel-based deletion detection for ScopeToPartiton===true case to ensure correct behavior in PlantSight aggregation workflow
