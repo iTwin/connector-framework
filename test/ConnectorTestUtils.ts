@@ -9,7 +9,7 @@ import type { Id64String} from "@itwin/core-bentley";
 import { DbResult, Id64, Logger, LogLevel } from "@itwin/core-bentley";
 import { IModel } from "@itwin/core-common";
 import type { ECSqlStatement, IModelDb} from "@itwin/core-backend";
-import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, RepositoryLink, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
+import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, RepositoryLink, Subject, SynchronizationConfigLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
 import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
 import { CodeSpecs } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
@@ -129,6 +129,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   assert.equal(10, getCount(imodel, "TestConnector:RightTriangleTile"));
   assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
   assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
+  assert.equal(1, getCount(imodel, SynchronizationConfigSpecifiesRootSources.classFullName));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
   const jobSubjectName = `TestConnector:${jobArgs.source}`;
