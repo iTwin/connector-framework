@@ -129,7 +129,12 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   assert.equal(10, getCount(imodel, "TestConnector:RightTriangleTile"));
   assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
   assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
+  //const numXSE = jobArgs.shouldUnmapSource? 2 : 1;
+  // NEEDSWORK unmap test adds second ExternalSource and therefore a second relationship to SyncConfigLink
+  // need to confirm that unmapping a file should remove related repositorylink AND ExternalSource
+  // Also, need to ensure unmap works with both file-based and channel based models
   assert.equal(1, getCount(imodel, SynchronizationConfigSpecifiesRootSources.classFullName));
+  // assert.equal(1, getCount(imodel, ExternalSource.classFullName));
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
   const jobSubjectName = `TestConnector:${jobArgs.source}`;

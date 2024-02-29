@@ -235,6 +235,7 @@ export class Synchronizer {
 
   // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.example-code
   private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
+    // let xseCount = this.getExternalSourceCount();
     const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
     if (xse !== undefined) {
       assert(xse.id !== undefined);
@@ -248,7 +249,10 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    return this.imodel.elements.insertElement(xseProps);
+    const xseId : Id64String = this.imodel.elements.insertElement(xseProps);
+    // xseCount = this.getExternalSourceCount();
+    return xseId;
+    
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -519,10 +523,10 @@ export class Synchronizer {
         this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
       } 
       else 
-        Logger.logWarning(LoggerCategories.Framework, "Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}");
+        Logger.logWarning(LoggerCategories.Framework, `Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}`);
     }
     else 
-      Logger.logWarning(LoggerCategories.Framework, "Unable to find repository link related to source = ${this.jobArgs.source}");
+      Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
   /** Returns the External Source Element associated with a repository link
@@ -532,6 +536,18 @@ export class Synchronizer {
   public getExternalSourceElement(repositoryLink: Element): ExternalSourceProps | undefined {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
+
+public getExternalSourceCount (): number {
+  let xseCount = 0;
+  this.imodel.withStatement("select * from BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+    while (DbResult.BE_SQLITE_ROW === stmt.step()) {
+      xseCount++;
+    }
+
+  });
+  return xseCount;
+}
+
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
