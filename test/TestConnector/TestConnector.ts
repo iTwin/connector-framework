@@ -170,7 +170,10 @@ export default class TestConnector extends BaseConnector {
   public override async unmapSource(source: string) {
     Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
     deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
-    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);
+    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);      
+    // bf: ADO# 1387737 - Also delete the ExternalSource
+    if (this._externalSourceId != undefined)
+       this.synchronizer.imodel.elements.deleteElement(this._externalSourceId);
   }
 
   public getApplicationVersion(): string {
