@@ -55,8 +55,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
-    const updateImodelName = process.env.test_existing_imodel_name!;
-    const newImodelName = process.env.test_new_imodel_name!;
+    let newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
+    let updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: newImodelName + "Update";
+
 
     updateIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: updateImodelName });
     if (!updateIModelId) {
@@ -69,9 +70,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     // TODO: change hardcoded iModel name
-    unmapIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: "connectorFrameworkUnmap"});
+    unmapIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName + "Unmap"});
     if (!unmapIModelId) {
-      unmapIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: "connectorFrameworkUnmap" });
+      unmapIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName + "Unmap" });
     }
   });
 
