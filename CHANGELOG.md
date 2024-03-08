@@ -1,5 +1,10 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.8
+
+- Create a relationship between the ExternalSource element and the SynchronizationConfigLink.
+- Fix Unmap to also delete the ExternalSource element
+
 ## 2.0.7
 
 - Generate API documentation in build pipeline.

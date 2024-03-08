@@ -16,7 +16,7 @@ import { CodeScopeSpec, CodeSpec, ColorByName, ColorDef, GeometryStreamBuilder, 
 import type { SolidPrimitive } from "@itwin/core-geometry";
 import { Box, Cone, LinearSweep, Loop, Point3d, StandardViewIndex, Vector3d } from "@itwin/core-geometry";
 
-import type { DeletionDetectionParams, SourceDocument, SourceItem , SynchronizationResults } from "../../src/Synchronizer";
+import type { DeletionDetectionParams, RecordDocumentResults, SourceDocument, SourceItem , SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState } from "../../src/Synchronizer";
 import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
@@ -33,11 +33,13 @@ import { LoggerCategories } from "../../src/LoggerCategory";
 // __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
 export default class TestConnector extends BaseConnector {
 // __PUBLISH_EXTRACT_END__
-
+  // _data is the contents of the external source read into memory
   private _data: any;
   private _sourceDataState: ItemState = ItemState.New;
+  // _sourceData is the path to the native source that is read into _data
   private _sourceData?: string;
   private _repositoryLinkId?: Id64String;
+  private _externalSourceId?: Id64String;
 
   private getDDParamsFromEnv(): DeletionDetectionParams {
     const ddp = {fileBased: true, scopeToPartition : false};
@@ -90,6 +92,7 @@ export default class TestConnector extends BaseConnector {
     this._sourceDataState = documentStatus.itemState;
     assert(documentStatus.elementProps.id !== undefined);
     this._repositoryLinkId = documentStatus.elementProps.id;
+    this._externalSourceId = documentStatus.source;
     this.issueReporter.recordSourceFileInfo(sourcePath, sourcePath, sourcePath, "File", "Manifest", "State", "Faliure Reason", true, 1234, true);
   }
   // __PUBLISH_EXTRACT_END__
@@ -167,7 +170,10 @@ export default class TestConnector extends BaseConnector {
   public override async unmapSource(source: string) {
     Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
     deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
-    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);
+    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);      
+    // bf: ADO# 1387737 - Also delete the ExternalSource
+    if (this._externalSourceId != undefined)
+       this.synchronizer.imodel.elements.deleteElement(this._externalSourceId);
   }
 
   public getApplicationVersion(): string {
@@ -177,7 +183,7 @@ export default class TestConnector extends BaseConnector {
     return "TestConnector";
   }
 
-  private getDocumentStatus(): SynchronizationResults {
+  private getDocumentStatus(): RecordDocumentResults {
     let timeStamp = Date.now();
     assert(this._sourceData !== undefined, "we should not be in this method if the source file has not yet been opened");
     const stat = IModelJsFs.lstatSync(this._sourceData); // will throw if this._sourceData names a file that does not exist. That would be a bug. Let it abort the job.

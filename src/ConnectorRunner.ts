@@ -208,6 +208,8 @@ export class ConnectorRunner {
         const config = this.insertSynchronizationConfigLink();
         this.connector.connectorArgs = this.jobArgs.connectorArgs;
         await this.connector.openSourceData(this.jobArgs.source);
+        // ADO# 720780 - have both a synchconfiglink and external source - create the relationship
+        this.connector.synchronizer.ensureRootSourceRelationshipExists (config, this.jobArgs.source);
         await this.connector.onOpenIModel();
         return config;
       },

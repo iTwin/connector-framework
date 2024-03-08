@@ -9,7 +9,7 @@
 import { ElementUniqueAspect } from "@itwin/core-backend";
 import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink } from "@itwin/core-backend";
+import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
 import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
 import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
@@ -248,7 +248,10 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    return this.imodel.elements.insertElement(xseProps);
+    const xseId : Id64String = this.imodel.elements.insertElement(xseProps);
+    // xseCount = this.getExternalSourceCount();
+    return xseId;
+    
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -488,6 +491,43 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
+  private getRepositoryLinkId (docId: string) : Id64String|undefined {
+    let repLinkId = undefined;
+    const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, docId);
+    const key = IModel.repositoryModelId + code.value.toLowerCase();
+    const existing = this._links.get(key);
+    if (existing !== undefined) {
+      repLinkId = existing.elementProps.id;
+    }
+
+    return repLinkId
+  } 
+
+  /** Creates a relationship between the SynchConfigLink and the ExternalSource if one doesn't exist already.
+   * @param config The element id of the SynchronizationConfigLink
+   * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
+   * @beta
+   */
+  public ensureRootSourceRelationshipExists (config: string, docId: string) {
+    const repositoryLinkId = this.getRepositoryLinkId (docId);
+
+    if (repositoryLinkId !== undefined) {
+      const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
+
+      if (xse?.id !== undefined) {
+        // check if we have this relationship first
+        if (undefined !== this.imodel.relationships.tryGetInstance(SynchronizationConfigSpecifiesRootSources.classFullName, {sourceId: config, targetId: xse.id}))
+          return;
+
+        this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
+      } 
+      else 
+        Logger.logWarning(LoggerCategories.Framework, `Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}`);
+    }
+    else 
+      Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
+  }
+
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLink The repository link associated with the External Source Element
    * @beta
@@ -495,6 +535,17 @@ export class Synchronizer {
   public getExternalSourceElement(repositoryLink: Element): ExternalSourceProps | undefined {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
+
+public getExternalSourceCount (): number {
+  let xseCount = 0;
+  this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+    if (DbResult.BE_SQLITE_ROW, stmt.step()) {
+      const row = stmt.getRow();
+      xseCount = row.count;
+    }
+  });
+  return xseCount;
+}
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element

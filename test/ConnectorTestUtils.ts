@@ -9,7 +9,7 @@ import type { Id64String} from "@itwin/core-bentley";
 import { DbResult, Id64, Logger, LogLevel } from "@itwin/core-bentley";
 import { IModel } from "@itwin/core-common";
 import type { ECSqlStatement, IModelDb} from "@itwin/core-backend";
-import { ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, RepositoryLink, Subject, SynchronizationConfigLink } from "@itwin/core-backend";
+import { ExternalSource, ExternalSourceAspect, IModelHost, IModelHostConfiguration, IModelJsFs, PhysicalPartition, RepositoryLink, Subject, SynchronizationConfigLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
 import type { RectangleTile, SmallSquareTile } from "./TestConnector/TestConnectorElements";
 import { CodeSpecs } from "./TestConnector/TestConnectorElements";
 import { ModelNames } from "./TestConnector/TestConnector";
@@ -17,6 +17,7 @@ import { KnownTestLocations } from "./KnownTestLocations";
 import type { JobArgs } from "../src/Args";
 import * as fs from "fs";
 import type { DeletionDetectionParams } from "../src/Synchronizer";
+import { LoggerCategories } from "../src/LoggerCategory";
 
 export function setupLogging() {
   Logger.initializeToConsole();
@@ -111,24 +112,32 @@ function getDDParamsFromEnv(): DeletionDetectionParams {
   return ddp;
 }
 
+function checkClassInstanceCount (expected : number, imodel: IModelDb, className: string) {
+ Logger.logInfo (LoggerCategories.Framework, `Checking for ${expected} instance of class ${className}.`);
+ assert.equal(expected, getCount(imodel, className));
+ return;
+}
+
 export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boolean = false, ddp?: DeletionDetectionParams) {
   // Confirm the schema was imported simply by trying to get the meta data for one of the classes.
   assert.isDefined(imodel.getMetaData("TestConnector:TestConnectorGroup"));
-  assert.equal(1, getCount(imodel, "BisCore:RepositoryLink"));
-  assert.equal(1, getCount(imodel, "BisCore:PhysicalModel"));
-  assert.equal(1, getCount(imodel, "TestConnector:TestConnectorGroupModel"));
-  assert.equal(8, getCount(imodel, "BisCore:GeometryPart"));
-  assert.equal(1, getCount(imodel, "BisCore:SpatialCategory"));
-  assert.equal(2, getCount(imodel, "BisCore:RenderMaterial"));
-  assert.equal(2, getCount(imodel, "TestConnector:TestConnectorGroup"));
-  assert.equal(41, getCount(imodel, "TestConnector:TestConnectorPhysicalElement"));
-  assert.equal(6, getCount(imodel, "TestConnector:EquilateralTriangleTile"));
-  assert.equal(8, getCount(imodel, "TestConnector:IsoscelesTriangleTile"));
-  assert.equal(isUpdate ? 7 : 8, getCount(imodel, "TestConnector:LargeSquareTile"));
-  assert.equal(isUpdate ? 2 : 1, getCount(imodel, "TestConnector:RectangleTile"));
-  assert.equal(10, getCount(imodel, "TestConnector:RightTriangleTile"));
-  assert.equal(8, getCount(imodel, "TestConnector:SmallSquareTile"));
-  assert.equal(1, getCount(imodel, SynchronizationConfigLink.classFullName));
+  checkClassInstanceCount(1, imodel, "BisCore:RepositoryLink");
+  checkClassInstanceCount(1, imodel, "BisCore:PhysicalModel");
+  checkClassInstanceCount(1, imodel, "TestConnector:TestConnectorGroupModel");
+  checkClassInstanceCount(8, imodel, "BisCore:GeometryPart");
+  checkClassInstanceCount(1, imodel, "BisCore:SpatialCategory");
+  checkClassInstanceCount(2, imodel, "BisCore:RenderMaterial");
+  checkClassInstanceCount(2, imodel, "TestConnector:TestConnectorGroup");
+  checkClassInstanceCount(41, imodel, "TestConnector:TestConnectorPhysicalElement");
+  checkClassInstanceCount(6, imodel, "TestConnector:EquilateralTriangleTile");
+  checkClassInstanceCount(8, imodel, "TestConnector:IsoscelesTriangleTile");
+  checkClassInstanceCount(isUpdate ? 7 : 8, imodel, "TestConnector:LargeSquareTile");
+  checkClassInstanceCount(isUpdate ? 2 : 1, imodel, "TestConnector:RectangleTile");
+  checkClassInstanceCount(10, imodel, "TestConnector:RightTriangleTile");
+  checkClassInstanceCount(8, imodel, "TestConnector:SmallSquareTile");
+  checkClassInstanceCount(1, imodel, SynchronizationConfigLink.classFullName);
+  checkClassInstanceCount(1, imodel, SynchronizationConfigSpecifiesRootSources.classFullName);
+  checkClassInstanceCount(1, imodel, ExternalSource.classFullName);
 
   assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
   const jobSubjectName = `TestConnector:${jobArgs.source}`;
