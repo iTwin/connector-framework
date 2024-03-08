@@ -42,16 +42,16 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.2.4",
-    "@itwin/core-bentley": "^4.2.4",
-    "@itwin/core-common": "^4.2.4",
-    "@itwin/core-geometry": "^4.2.4",
-    "@itwin/core-quantity": "^4.2.4",
-    "@itwin/ecschema-metadata": "^4.2.4",
-    "@itwin/imodels-access-backend": "^4.1.0",
-    "@itwin/imodels-client-authoring": "^4.1.8",
-    "@itwin/node-cli-authorization": "^1.0.1",
-    "@itwin/oidc-signin-tool": "^4.0.0",
+    "@itwin/build-tools": "^4.4.6",
+    "@itwin/core-bentley": "^4.4.6",
+    "@itwin/core-common": "^4.4.6",
+    "@itwin/core-geometry": "^4.4.6",
+    "@itwin/core-quantity": "^4.4.6",
+    "@itwin/ecschema-metadata": "^4.4.6",
+    "@itwin/imodels-access-backend": "^4.1.5",
+    "@itwin/imodels-client-authoring": "^4.3.0",
+    "@itwin/node-cli-authorization": "^2.0.1",
+    "@itwin/oidc-signin-tool": "^4.3.2",
     "@types/chai": "^4.1.4",
     "@types/chai-as-promised": "^7",
     "@types/mocha": "^8.2.2",
@@ -77,9 +77,9 @@
     "typescript": "~4.9.5"
   },
   "peerDependencies": {
-    "@itwin/core-bentley": "^4.2.4",
-    "@itwin/core-common": "^4.2.4",
-    "@itwin/node-cli-authorization": "^1.0.1"
+    "@itwin/core-bentley": "^4.4.6",
+    "@itwin/core-common": "^4.4.6",
+    "@itwin/node-cli-authorization": "^2.0.1"
   },
   "husky": {
     "hooks": {
