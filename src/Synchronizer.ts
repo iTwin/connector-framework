@@ -235,7 +235,6 @@ export class Synchronizer {
 
   // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.example-code
   private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
-    // let xseCount = this.getExternalSourceCount();
     const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
     if (xse !== undefined) {
       assert(xse.id !== undefined);
@@ -509,13 +508,13 @@ export class Synchronizer {
    * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
    * @beta
    */
-  public findOrInsertRootSourceRelationship (config: string, docId: string) {
+  public ensureRootSourceRelationshipExists (config: string, docId: string) {
     const repositoryLinkId = this.getRepositoryLinkId (docId);
 
-    if (repositoryLinkId != undefined) {
+    if (repositoryLinkId !== undefined) {
       const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
 
-      if (xse?.id != undefined){
+      if (xse?.id !== undefined) {
         // check if we have this relationship first
         if (undefined !== this.imodel.relationships.tryGetInstance(SynchronizationConfigSpecifiesRootSources.classFullName, {sourceId: config, targetId: xse.id}))
           return;
@@ -539,15 +538,14 @@ export class Synchronizer {
 
 public getExternalSourceCount (): number {
   let xseCount = 0;
-  this.imodel.withStatement("select * from BisCore.ExternalSource", (stmt: ECSqlStatement) => {
-    while (DbResult.BE_SQLITE_ROW === stmt.step()) {
-      xseCount++;
+  this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+    if (DbResult.BE_SQLITE_ROW, stmt.step()) {
+      const row = stmt.getRow();
+      xseCount = row.count;
     }
-
   });
   return xseCount;
 }
-
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
