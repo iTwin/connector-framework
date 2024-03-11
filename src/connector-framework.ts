@@ -41,7 +41,7 @@ export * from "./Synchronizer";
 
 
 /**
- * @docs-group-description  Logging
+ * @docs-group-description Logging
  * Module for providing messages to connector developers, testers and users of a range of severity levels from informational to error level.
  */
 
