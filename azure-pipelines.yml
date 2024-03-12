@@ -189,7 +189,7 @@ stages:
       - template: common/config/azure-pipelines/jobs/docs-build.yaml@itwinjs-core
         parameters:
           checkout: itwinjs-core
-          useCurrentPresentationDocsArtifact: false
+          useCurrentPresentationDocsArtifact: true
 
 - stage: Tag_Docs
   dependsOn: Validate_Docs
