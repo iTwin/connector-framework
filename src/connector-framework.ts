@@ -41,8 +41,8 @@ export * from "./Synchronizer";
 
 
 /**
- * @docs-group-description LoggerCategories
- * Enumeration for all logger categories in this package.
+ * @docs-group-description Logging
+ * Module for providing messages to connector developers, testers and users of a range of severity levels from informational to error level.
  */
 
 
