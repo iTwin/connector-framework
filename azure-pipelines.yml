@@ -28,7 +28,7 @@ resources:
       type: github
       endpoint: iModelJs
       name: iTwin/itwinjs-core
-      ref: refs/heads/allow-connector-to-consume-own-docs
+      ref: refs/heads/master
 
 stages:
 - stage: Build
