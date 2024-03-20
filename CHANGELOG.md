@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.9
+
+- Move ahead to iTwin.js 4.4.6
+
 ## 2.0.8
 
 - Create a relationship between the ExternalSource element and the SynchronizationConfigLink.
