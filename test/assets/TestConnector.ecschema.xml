@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<ECSchema schemaName="TestConnector" alias="TestConnector" version="01.00" xmlns="http://www.bentley.com/schemas/Bentley.ECXML.3.1">
+<ECSchema schemaName="TestConnector" alias="TestConnector" version="01.00.02" xmlns="http://www.bentley.com/schemas/Bentley.ECXML.3.1">
 
     <ECSchemaReference name="BisCore" version="01.00" alias="bis"/>
 
@@ -30,6 +30,18 @@
     </ECEntityClass>
 
     <ECEntityClass typeName="IsoscelesTriangleTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="PentagonTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="HexagonTile">
+        <BaseClass>TestConnectorPhysicalElement</BaseClass>
+    </ECEntityClass>
+
+    <ECEntityClass typeName="OctagonTile">
         <BaseClass>TestConnectorPhysicalElement</BaseClass>
     </ECEntityClass>
 

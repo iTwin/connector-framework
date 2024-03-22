@@ -49,6 +49,17 @@
           ]
       },
       {
+        "name": "iTwinConnectorFwk Tests (Multifile)",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "test:multifile"
+        ]
+    },
+      {
         "name": "pretest",
         "cwd": "${workspaceFolder}",
         "type": "node",

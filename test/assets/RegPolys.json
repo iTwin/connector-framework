@@ -1,0 +1,128 @@
+{
+   "Groups": [
+      {
+         "groupType": "Advanced Set",
+         "manufactureLocation": "Philadelphia, PA",
+         "manufactureDate": "2024-03-20",
+         "name": "Graduation Present",
+         "guid": "ED2D4723-6E3E-4C0F-B9D0-51A7F2CA52C7"
+      },
+      {
+         "name": "Specialty Store Find",
+         "guid": "B1F907B7-84EC-4C0A-88B8-55969395B90B"
+      }
+   ],
+   "Tiles": {
+      "PentagonTile": [
+         {
+            "casingMaterial": "YellowPlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.0"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "A79F20CB-7B0D-472A-83C5-BF68A510901A"
+         },
+         {
+            "casingMaterial": "OrangePlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.25"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "33558A89-288F-4067-A826-6AEF9AA9FDDE"
+         },
+         {
+            "casingMaterial": "RedPlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.5"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "6FFA4B61-2674-451E-AAF3-3367C2DE8A6B"
+         }
+      ],
+      "HexagonTile": [
+         {
+            "casingMaterial": "BluePlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.0",
+                  "y": "0.25"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "9D3B99F4-070A-43E3-BFCE-3EDF15AA4D94"
+         },
+         {
+            "casingMaterial": "YellowPlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.25",
+                  "y": "0.25"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "C282E150-C711-46E1-B118-E9AB01EBAA84"
+         },
+         {
+            "casingMaterial": "GreenPlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.5",
+                  "y": "0.25"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "7E030395-A701-4D88-A223-14BA5542279D"
+         }
+      ],
+      "OctagonTile": [
+         {
+            "casingMaterial": "RedPlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.0",
+                  "y": "0.5"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "DC033652-6DCA-4C77-8AED-32C7A9A3ECEA"
+         },
+         {
+            "casingMaterial": "BluePlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.25",
+                  "y": "0.5"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "3B10536B-21E7-410A-952A-0BF58B8F6014"
+         },
+         {
+            "casingMaterial": "PurplePlastic",
+            "condition": "New",
+            "Placement": {
+               "Origin": {
+                  "x": "2.5",
+                  "y": "0.5"
+               }
+            },
+            "Group": "Specialty Store Find",
+            "guid": "2D564552-B72D-40FD-B25F-BB0B97BC2789"
+         }
+      ]
+   }
+}

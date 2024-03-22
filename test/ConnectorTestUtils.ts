@@ -180,3 +180,64 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   }
 }
 
+export function verifyRegPolyModel(imodel: IModelDb, jobArgs: JobArgs /*, isUpdate: boolean = false, ddp?: DeletionDetectionParams*/) {
+  // Confirm the schema was imported simply by trying to get the meta data for one of the classes.
+  assert.isDefined(imodel.getMetaData("TestConnector:TestConnectorGroup"));
+  checkClassInstanceCount(1, imodel, "BisCore:RepositoryLink");
+  checkClassInstanceCount(1, imodel, "BisCore:PhysicalModel");
+  checkClassInstanceCount(1, imodel, "TestConnector:TestConnectorGroupModel");
+  checkClassInstanceCount(11, imodel, "BisCore:GeometryPart");
+  checkClassInstanceCount(1, imodel, "BisCore:SpatialCategory");
+  //checkClassInstanceCount(2, imodel, "BisCore:RenderMaterial");
+  checkClassInstanceCount(2, imodel, "TestConnector:TestConnectorGroup");
+  //checkClassInstanceCount(41, imodel, "TestConnector:TestConnectorPhysicalElement");
+  checkClassInstanceCount(3, imodel, "TestConnector:HexagonTile");
+  checkClassInstanceCount(3, imodel, "TestConnector:PentagonTile");
+  checkClassInstanceCount(3, imodel, "TestConnector:OctagonTile");
+  checkClassInstanceCount(1, imodel, SynchronizationConfigLink.classFullName);
+  checkClassInstanceCount(1, imodel, SynchronizationConfigSpecifiesRootSources.classFullName);
+  checkClassInstanceCount(1, imodel, ExternalSource.classFullName);
+
+  assert.isTrue(imodel.codeSpecs.hasName(CodeSpecs.Group));
+  const jobSubjectName = `TestConnector:${jobArgs.source}`;
+  const subjectId: Id64String = imodel.elements.queryElementIdByCode(Subject.createCode(imodel, IModel.rootSubjectId, jobSubjectName))!;
+  assert.isTrue(Id64.isValidId64(subjectId));
+  /*
+  if (ddp === undefined) {
+    ddp = getDDParamsFromEnv ();
+  }
+  const physicalModelId = imodel.elements.queryElementIdByCode(PhysicalPartition.createCode(imodel, subjectId, ModelNames.Physical));
+  const repositoryModelId = imodel.elements.queryElementIdByCode (RepositoryLink.createCode(imodel, IModel.repositoryModelId, jobArgs.source));
+  const scopeId = (ddp.scopeToPartition ? physicalModelId: repositoryModelId);
+  assert.isTrue(scopeId !== undefined);
+  assert.isTrue(Id64.isValidId64(scopeId!));
+
+  // Verify some elements
+  if (!isUpdate) {
+    const ids = ExternalSourceAspect.findAllBySource(imodel, scopeId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    const tile = imodel.elements.getElement<SmallSquareTile>(ids[0].elementId);
+    assert.equal(tile.condition, "New");
+  } else {
+    // Modified element
+    let ids = ExternalSourceAspect.findAllBySource(imodel, scopeId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    let tile = imodel.elements.getElement<SmallSquareTile>(ids[0].elementId);
+    assert.equal(tile.condition, "Scratched");
+
+    // New element
+    ids = ExternalSourceAspect.findAllBySource(imodel, scopeId!, "Tile", "5b51a06f-4026-4d0d-9674-d8428b118e9a");
+    assert.isTrue(ids.length > 0);
+    assert.isTrue(Id64.isValidId64(ids[0].aspectId));
+    assert.isTrue(Id64.isValidId64(ids[0].elementId));
+    tile = imodel.elements.getElement<RectangleTile>(ids[0].elementId);
+    assert.equal(tile.placement.origin.x, 1.0);
+    assert.equal(tile.placement.origin.y, 2.0);
+  }
+  */
+}
+

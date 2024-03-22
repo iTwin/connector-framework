@@ -22,9 +22,9 @@ import { BaseConnector } from "../../src/BaseConnector";
 import { TestConnectorSchema } from "./TestConnectorSchema";
 import { TestConnectorGroupModel } from "./TestConnectorModels";
 import type { TestConnectorGroupProps } from "./TestConnectorElements";
-import { Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, IsoscelesTriangleTile, LargeSquareTile, Materials, RectangleTile, RightTriangleTile, SmallSquareTile, TestConnectorGroup } from "./TestConnectorElements";
+import { Categories, CodeSpecs, EquilateralTriangleTile, GeometryParts, HexagonTile, IsoscelesTriangleTile, LargeSquareTile, Materials, OctagonTile, PentagonTile, RectangleTile, RightTriangleTile, SmallSquareTile, TestConnectorGroup } from "./TestConnectorElements";
 import type { QuadCasing, TriangleCasing } from "./TestConnectorGeometry";
-import { Casings, EquilateralTriangleCasing, IsoscelesTriangleCasing, LargeSquareCasing, RectangleCasing, RectangularMagnetCasing, RightTriangleCasing, SmallSquareCasing } from "./TestConnectorGeometry";
+import { Casings, EquilateralTriangleCasing, HexagonCasing, IsoscelesTriangleCasing, LargeSquareCasing, OctagonCasing, PentagonCasing, RectangleCasing, RectangularMagnetCasing, RegularPolygonCasing, RightTriangleCasing, SmallSquareCasing } from "./TestConnectorGeometry";
 import * as hash from "object-hash";
 import * as fs from "fs";
 import * as path from "path";
@@ -341,7 +341,20 @@ export default class TestConnector extends BaseConnector {
     this.insertTriangle(definitionModel, new RightTriangleCasing());
     this.insertBox(definitionModel, new RectangularMagnetCasing());
     this.insertCircularMagnet(definitionModel);
+    this.insertRegularPolygon (definitionModel, new PentagonCasing());
+    this.insertRegularPolygon (definitionModel, new HexagonCasing());
+    this.insertRegularPolygon (definitionModel, new OctagonCasing());
   }
+
+  insertRegularPolygon(definitionModelId: string, casing: RegularPolygonCasing) {
+    const loop = Loop.createPolygon(casing.points());
+    const sweep = LinearSweep.create(loop, casing.vec(), true);
+    if (undefined === sweep) {
+      throw new IModelError(IModelStatus.NoGeometry, `Unable to create geometry for ${casing.name()}`);
+    }
+    this.insertGeometry(definitionModelId, casing.name(), sweep);
+  }
+ 
 
   private insertBox(definitionModelId: Id64String, casing: QuadCasing) {
     const center = casing.center();
@@ -507,6 +520,15 @@ export default class TestConnector extends BaseConnector {
       case "RectangleTile":
         element = RectangleTile.create(this.synchronizer.imodel, physicalModelId, definitionModelId, tile);
         break;
+      case "PentagonTile":
+        element = PentagonTile.create(this.synchronizer.imodel, physicalModelId, definitionModelId, tile);
+        break;
+      case "HexagonTile":
+        element = HexagonTile.create(this.synchronizer.imodel, physicalModelId, definitionModelId, tile);
+        break;
+      case "OctagonTile":
+        element = OctagonTile.create(this.synchronizer.imodel, physicalModelId, definitionModelId, tile);
+        break;                              
       default:
         throw new IModelError(IModelStatus.BadArg, `unknown tile shape ${shape}`);
     }

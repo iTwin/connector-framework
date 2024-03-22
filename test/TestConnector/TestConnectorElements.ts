@@ -13,7 +13,7 @@ import { TestConnectorLoggerCategory } from "./TestConnectorLoggerCategory";
 import type { XYZProps, YawPitchRollProps } from "@itwin/core-geometry";
 import { Point3d, YawPitchRollAngles } from "@itwin/core-geometry";
 import type { TileBuilder } from "./TestConnectorGeometry";
-import { EquilateralTriangleTileBuilder, IsoscelesTriangleTileBuilder, LargeSquareTileBuilder, RectangleTileBuilder, RightTriangleTileBuilder, SmallSquareTileBuilder } from "./TestConnectorGeometry";
+import { EquilateralTriangleTileBuilder, HexagonBuilder, IsoscelesTriangleTileBuilder, LargeSquareTileBuilder, OctagonBuilder, PentagonBuilder, RectangleTileBuilder, RightTriangleTileBuilder, SmallSquareTileBuilder } from "./TestConnectorGeometry";
 
 export enum CodeSpecs {
   Group = "TestConnector:Group",
@@ -34,6 +34,9 @@ export enum GeometryParts {
   RightTriangleCasing = "RightTriangleCasing",
   CircularMagnet = "CircularMagnet",
   RectangularMagnet = "RectangularMagnet",
+  PentagonCasing = "PentagonCasing",
+  HexagonCasing = "HexagonCasing",
+  OctagonCasing = "OctagonCasing",
 }
 
 export enum Materials {
@@ -189,6 +192,31 @@ export class IsoscelesTriangleTile extends TestConnectorPhysicalElement {
 
   public static create(imodel: IModelDb, physicalModelId: Id64String, definitionModelId: Id64String, tile: any): PhysicalElement {
     return this.createElement(imodel, physicalModelId, definitionModelId, tile, new IsoscelesTriangleTileBuilder(imodel, definitionModelId), this.classFullName);
+  }
+}
+
+export class PentagonTile extends TestConnectorPhysicalElement {
+  public static override get className(): string { return "PentagonTile"; }
+
+  public static create(imodel: IModelDb, physicalModelId: Id64String, definitionModelId: Id64String, tile: any): PhysicalElement {
+    return this.createElement(imodel, physicalModelId, definitionModelId, tile, new PentagonBuilder(imodel, definitionModelId), this.classFullName);
+  }
+}
+
+export class HexagonTile extends TestConnectorPhysicalElement {
+  public static override get className(): string { return "HexagonTile"; }
+
+  public static create(imodel: IModelDb, physicalModelId: Id64String, definitionModelId: Id64String, tile: any): PhysicalElement {
+    return this.createElement(imodel, physicalModelId, definitionModelId, tile, new HexagonBuilder(imodel, definitionModelId), this.classFullName);
+  }
+}
+
+
+export class OctagonTile extends TestConnectorPhysicalElement {
+  public static override get className(): string { return "OctagonTile"; }
+
+  public static create(imodel: IModelDb, physicalModelId: Id64String, definitionModelId: Id64String, tile: any): PhysicalElement {
+    return this.createElement(imodel, physicalModelId, definitionModelId, tile, new OctagonBuilder(imodel, definitionModelId), this.classFullName);
   }
 }
 

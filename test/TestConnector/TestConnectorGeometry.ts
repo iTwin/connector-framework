@@ -11,6 +11,8 @@ import type { GeometryStreamProps} from "@itwin/core-common";
 import { ColorByName, ColorDef, GeometryParams, GeometryStreamBuilder, IModelError } from "@itwin/core-common";
 import type { Id64String} from "@itwin/core-bentley";
 import { IModelStatus } from "@itwin/core-bentley";
+import { get } from "request-promise-native";
+import { start } from "repl";
 
 export enum Casings {
   SmallWidth = 0.1,
@@ -143,6 +145,54 @@ export class RightTriangleCasing extends TriangleCasing {
     return points;
   }
 }
+
+export abstract class RegularPolygonCasing extends TileCasing {
+  public name() {
+    return this.m_name;
+  }
+constructor (nSides: number, name: string) {
+  super();
+  this.m_nSides = nSides;
+  this.m_name = name;
+}
+  public vec() {
+    return new Vector3d(0.0, 0.0, Casings.Thickness);
+  }
+
+  private  m_nSides: number;
+  private m_name: string;
+
+  public points(): Point3d[] {
+    const points: Point3d[] = [];
+    const rho = Casings.SmallWidth;
+    for (let i = 0; i < this.m_nSides; ++i) {
+      // rotate startPt by fraction of full circle (360 deg)
+      const x = rho*Math.cos((i/this.m_nSides)*2*Math.PI);
+      const y = rho*Math.sin((i/this.m_nSides)*2*Math.PI); 
+      points.push (new Point3d(x,y,0));
+    }
+    return points;
+  }
+  
+}
+
+export class PentagonCasing extends RegularPolygonCasing {
+constructor () {
+  super(5, GeometryParts.PentagonCasing);
+}
+}
+
+export class HexagonCasing extends RegularPolygonCasing {
+  constructor () {
+    super(6, GeometryParts.HexagonCasing);
+  }
+  }
+
+  export class OctagonCasing extends RegularPolygonCasing {
+    constructor () {
+      super(8, GeometryParts.OctagonCasing);
+    }
+    }
 
 export abstract class TileBuilder {
   protected _builder: GeometryStreamBuilder;
@@ -452,4 +502,86 @@ export class IsoscelesTriangleTileBuilder extends TileBuilder {
     }
     this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, yawp.origin, yawp.angles);
   }
+}
+
+export abstract class RegularPolygonBuilder extends TileBuilder {
+  protected _centroid: Point3d;
+  protected _a: number;
+  protected _b: number;
+  protected _c: number;
+
+  constructor(imodel: IModelDb, definitionModelId: Id64String) {
+    super(imodel, definitionModelId);
+    this._a = Casings.SmallWidth / 2;
+    this._c = Casings.SmallWidth;
+    this._b = Math.sqrt(Math.pow(this._c, 2) - Math.pow(this._a, 2));
+    this._centroid = new Point3d(0.0, this._b / 3, Casings.Thickness / 2);
+  }
+
+  protected appendCircularMagnet(circularMagnetGeomPartId: Id64String) {
+    this._builder.appendGeometryPart3d(circularMagnetGeomPartId, this._centroid);
+  }
+
+  protected appendRectangularMagnet(rectangularMagnetGeomPartId: Id64String, magnetOffset: number) {
+    this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, new Point3d(0.0, magnetOffset, this._centroid.z));
+    this.addPoints(rectangularMagnetGeomPartId, magnetOffset, -1);
+    this.addPoints(rectangularMagnetGeomPartId, magnetOffset, -1);
+  }
+
+  private addPoints(rectangularMagnetGeomPartId: Id64String, magnetOffset: number, multiplier: number) {
+    const points: Point3d[] = [];
+    points[0] = new Point3d(this._c * 0.25, multiplier * magnetOffset, this._centroid.z);
+    points[1] = new Point3d(this._c * 0.75, multiplier * magnetOffset, this._centroid.z);
+    const rotation = Matrix3d.createRigidHeadsUp(new Vector3d(this._a, this._b, 0.0), AxisOrder.XYZ);
+    const transform = Transform.createRefs(new Point3d(multiplier * this._a, 0.0, 0.0), rotation);
+    const transPoints = transform.multiplyPoint3dArray(points);
+
+    let yawp = YawPitchRollAngles.tryFromTransform(Transform.createRefs(transPoints[0], rotation));
+    if (yawp.angles === undefined) {
+      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for Regular Polygon Tile");
+    }
+    this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, yawp.origin, yawp.angles);
+
+    yawp = YawPitchRollAngles.tryFromTransform(Transform.createRefs(transPoints[1], rotation));
+    if (yawp.angles === undefined) {
+      throw new IModelError(IModelStatus.BadArg, "Unable to create YawPitchRollAngles for Regular Polygon Tile");
+    }
+    this._builder.appendGeometryPart3d(rectangularMagnetGeomPartId, yawp.origin, yawp.angles);
+  }
+}
+
+export class PentagonBuilder extends RegularPolygonBuilder {
+
+  protected getCasing(): TileCasing {
+    return new PentagonCasing();
+  }
+
+  protected get casingName(): string {
+    return GeometryParts.PentagonCasing;
+  }
+
+}
+
+export class HexagonBuilder extends RegularPolygonBuilder {
+
+  protected getCasing(): TileCasing {
+    return new HexagonCasing();
+  }
+
+  protected get casingName(): string {
+    return GeometryParts.HexagonCasing;
+  }
+
+}
+
+export class OctagonBuilder extends RegularPolygonBuilder {
+
+  protected getCasing(): TileCasing {
+    return new OctagonCasing();
+  }
+
+  protected get casingName(): string {
+    return GeometryParts.OctagonCasing;
+  }
+
 }
