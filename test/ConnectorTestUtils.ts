@@ -124,7 +124,8 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   checkClassInstanceCount(1, imodel, "BisCore:RepositoryLink");
   checkClassInstanceCount(1, imodel, "BisCore:PhysicalModel");
   checkClassInstanceCount(1, imodel, "TestConnector:TestConnectorGroupModel");
-  checkClassInstanceCount(8, imodel, "BisCore:GeometryPart");
+  // changed expected GeometryParts from 8 to 11 to accommodate 3 new parts: Pentagon, Hexagon, Octagon
+  checkClassInstanceCount(11, imodel, "BisCore:GeometryPart");
   checkClassInstanceCount(1, imodel, "BisCore:SpatialCategory");
   checkClassInstanceCount(2, imodel, "BisCore:RenderMaterial");
   checkClassInstanceCount(2, imodel, "TestConnector:TestConnectorGroup");
