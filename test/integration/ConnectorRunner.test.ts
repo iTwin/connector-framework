@@ -41,6 +41,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
+      authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`
     };
 
     const userCred = {
