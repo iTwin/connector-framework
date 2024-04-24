@@ -520,6 +520,7 @@ export class ConnectorRunner {
 
     let bcFile: string | undefined;
     if (this.hubArgs.briefcaseFile) {
+      Logger.logInfo(LoggerCategories.Framework, `Use briefcase file passed with HubArgs: ${this.hubArgs.briefcaseFile}`);
       bcFile = this.hubArgs.briefcaseFile;
     } else {
       const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelGuid);
@@ -563,7 +564,7 @@ export class ConnectorRunner {
     this._db = await BriefcaseDb.open(openProps);
 
     if (this._db !== undefined)
-      Logger.logInfo(LoggerCategories.Framework, `Successfully opened the briefcase db with .holdsExclusiveLock = ${this._db.locks.holdsExclusiveLock} and .holdsSharedLock = ${this._db.locks.holdsSharedLock}`);
+      Logger.logInfo(LoggerCategories.Framework, `Successfully opened the briefcase db`);
     else
       throw new Error(`Failed to open briefcase with file name ${openProps.fileName}`);
     // (this._db as BriefcaseDb).concurrencyControl.startBulkMode(); // not sure what/if anything is the new "startBulkMode"
