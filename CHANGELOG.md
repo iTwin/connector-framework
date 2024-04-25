@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.0.10
+
+- Add logging around the loading of the briefcase db to improve lock diagnostics.
+
 ## 2.0.9
 
 - Move ahead to iTwin.js 4.4.6

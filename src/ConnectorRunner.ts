@@ -520,14 +520,21 @@ export class ConnectorRunner {
 
     let bcFile: string | undefined;
     if (this.hubArgs.briefcaseFile) {
+      Logger.logInfo(LoggerCategories.Framework, `Use briefcase file passed with HubArgs: ${this.hubArgs.briefcaseFile}.`);
       bcFile = this.hubArgs.briefcaseFile;
     } else {
       const briefcases = BriefcaseManager.getCachedBriefcases(this.hubArgs.iModelGuid);
+      let cbcCount = 0;
+      if (briefcases !== undefined)
+        cbcCount = briefcases.length;
+      Logger.logInfo(LoggerCategories.Framework, `Looking for iModel GUID ${this.hubArgs.iModelGuid} among ${cbcCount} cached briefcases.`);
       for (const bc of briefcases) {
+        Logger.logInfo(LoggerCategories.Framework, `Current cached briefcase has iModel GUID ${bc.iModelId}.`);
         assert(bc.iModelId === this.hubArgs.iModelGuid);
         if (this.hubArgs.briefcaseId && bc.briefcaseId !== this.hubArgs.briefcaseId)
           continue;
         bcFile = bc.fileName;
+        Logger.logInfo(LoggerCategories.Framework, `Briefcase found in cache - using file name ${bcFile}.`);
         break;
       }
     }
@@ -537,10 +544,15 @@ export class ConnectorRunner {
       openProps = { fileName: bcFile };
     } else {
       const reqArg: RequestNewBriefcaseArg = { iTwinId: this.hubArgs.projectGuid, iModelId: this.hubArgs.iModelGuid };
+      Logger.logInfo(LoggerCategories.Framework, `Briefcase not found in cache - requesting new briefcase from project (iTwin) ${reqArg.iTwinId} with iModel id ${reqArg.iModelId}.`);
       if (this.hubArgs.briefcaseId)
         reqArg.briefcaseId = this.hubArgs.briefcaseId;
 
       const bcProps: LocalBriefcaseProps = await BriefcaseManager.downloadBriefcase(reqArg);
+
+      if (bcProps !== undefined)
+        Logger.logInfo(LoggerCategories.Framework, `A new briefcase with id = ${bcProps.briefcaseId} and name = ${bcProps.fileName} was successfully downloaded.`);
+
       if (this.jobArgs.updateDbProfile || this.jobArgs.updateDomainSchemas) {
         await this.doWithRetries(async () => BriefcaseDb.upgradeSchemas(bcProps), BeforeRetry.Nothing);
       }
@@ -548,7 +560,13 @@ export class ConnectorRunner {
       openProps = { fileName: bcProps.fileName };
     }
 
+    Logger.logInfo(LoggerCategories.Framework, `Attempting to open the briefcase db...`);
     this._db = await BriefcaseDb.open(openProps);
+
+    if (this._db !== undefined)
+      Logger.logInfo(LoggerCategories.Framework, `Successfully opened the briefcase db.`);
+    else
+      throw new Error(`Failed to open briefcase with file name ${openProps.fileName}`);
     // (this._db as BriefcaseDb).concurrencyControl.startBulkMode(); // not sure what/if anything is the new "startBulkMode"
   }
 
