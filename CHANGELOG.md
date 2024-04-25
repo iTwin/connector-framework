@@ -3,6 +3,7 @@
 ## 2.0.10
 
 - Add logging around the loading of the briefcase db to improve lock diagnostics.
+- Move dependenciesw ahead to iTwin.js 4.5.2
 
 ## 2.0.9
 
