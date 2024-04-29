@@ -197,6 +197,8 @@ stages:
   jobs:
    - job: Tag_Docs
      displayName: Tag Docs
+     pool:
+       vmImage: 'ubuntu-latest'
      steps:
      - task: tagBuildOrRelease@0
        displayName: Tag Docs
