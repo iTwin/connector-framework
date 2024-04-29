@@ -197,6 +197,8 @@ stages:
   jobs:
    - job: Tag_Docs
      displayName: Tag Docs
+     pool:
+       vmImage: 'ubuntu-latest'
      steps:
      - task: tagBuildOrRelease@0
        displayName: Tag Docs
@@ -204,11 +206,3 @@ stages:
         type: "Build"
         tags: "hasDocs"
         condition: and(contains(variables['Build.SourceVersionMessage'], '[publish docs]'), not(contains(variables['Build.SourceVersionMessage'], '(dev)')))
-     strategy:
-       matrix:
-         linux:
-           imageName: 'ubuntu-latest'
-         windows:
-           imageName: 'windows-latest'
-     pool:
-       vmImage: '$(imageName)'
