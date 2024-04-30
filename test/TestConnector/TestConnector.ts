@@ -217,8 +217,15 @@ export default class TestConnector extends BaseConnector {
       code: GroupInformationPartition.createCode(this.synchronizer.imodel, this.jobSubject.id, ModelNames.Group),
     };
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
+    const groupChannelKey = "Test Connector Group Channel";
+
+    this.synchronizer.imodel.channels.addAllowedChannel(groupChannelKey);
+
+    this.synchronizer.imodel.channels.makeChannelRoot({elementId: partitionId, channelKey: groupChannelKey});
 
     return this.synchronizer.imodel.models.insertModel({ classFullName: TestConnectorGroupModel.classFullName, modeledElement: { id: partitionId } });
+
+
   }
 
   private queryGroupModel(): Id64String | undefined {
