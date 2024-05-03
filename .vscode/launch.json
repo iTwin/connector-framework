@@ -38,6 +38,17 @@
         "test:filebased"
       ],
   },
+  {
+    "name": "iTwinConnectorFwk Tests (trimming)",
+    "cwd": "${workspaceFolder}",
+    "type": "node",
+    "request": "launch",
+    "runtimeExecutable": "npm",
+    "runtimeArgs": [
+      "run",
+      "test:trimming"
+    ],
+},
       {
         "name": "iTwinConnectorFwk Tests (Legacy)",
         "cwd": "${workspaceFolder}",
