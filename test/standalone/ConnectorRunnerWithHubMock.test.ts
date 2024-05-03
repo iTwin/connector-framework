@@ -28,7 +28,7 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
-describe("iTwin Connector Fwk (#standalone)", () => {
+describe("iTwin Connector Fwk (#standalone) - file-based deletion detection", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;

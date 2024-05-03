@@ -4,6 +4,8 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+
       {
         "name": "Documentation",
         "request": "launch",
@@ -14,6 +16,28 @@
         "runtimeExecutable": "npm",
         "type": "node"
       },
+      {
+        "name": "iTwinConnectorFwk Tests (NonShared)",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "test:nonshared"
+        ],
+    },
+    {
+      "name": "iTwinConnectorFwk Tests (FileBased)",
+      "cwd": "${workspaceFolder}",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "test:filebased"
+      ],
+  },
       {
         "name": "iTwinConnectorFwk Tests (Legacy)",
         "cwd": "${workspaceFolder}",

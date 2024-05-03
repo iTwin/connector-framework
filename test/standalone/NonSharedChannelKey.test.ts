@@ -28,7 +28,7 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
-describe("iTwin Connector Fwk (#standalone) - Using Non Shared Channel Key", () => {
+describe("iTwin Connector Fwk (#standalone) - Using non-shared Channel Key", () => {
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;

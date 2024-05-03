@@ -383,16 +383,10 @@ export class ConnectorRunner {
         parent: new SubjectOwnsSubjects(root.id),
       };
 
-      //this.db.channels.insertChannelSubject({subjectName: Subject.classFullName, channelKey: this.jobSubjectKey, parentSubjectId: root.id});
-
       const newSubjectId = this.db.elements.insertElement(subjectProps);
 
-      if (!this.usesSharedChannel) {
-        this.db.channels.addAllowedChannel(this.channelKey);
-
-        // do it this way to preserve code, jsonProperties in subjectProps
+      if (!this.usesSharedChannel)
         this.db.channels.makeChannelRoot({elementId: newSubjectId, channelKey: this.channelKey});
-        }
 
       subject = this.db.elements.getElement<Subject>(newSubjectId);
       // await this.db.locks.releaseAllLocks();
@@ -514,6 +508,7 @@ export class ConnectorRunner {
     } else {
       throw new Error("Invalid JobArgs.dbType");
     }
+    this.db.channels.addAllowedChannel(this.channelKey);
   }
 
   private async loadSnapshotDb() {
@@ -591,7 +586,7 @@ export class ConnectorRunner {
 
   private async loadSynchronizer() {
     const ddp = this.connector.getDeletionDetectionParams();
-    const synchronizer = new Synchronizer(this.db, ddp.fileBased , this._reqContext, ddp.scopeToPartition);
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , this._reqContext, ddp.scopeToPartition, this.connector.getChannelKey());
     this.connector.synchronizer = synchronizer;
   }
 
