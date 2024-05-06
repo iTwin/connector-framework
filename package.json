@@ -45,12 +45,12 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.6.0-dev.21",
-    "@itwin/core-bentley": "^4.6.0-dev.21",
-    "@itwin/core-common": "^4.6.0-dev.21",
-    "@itwin/core-geometry": "^4.6.0-dev.21",
-    "@itwin/core-quantity": "^4.6.0-dev.21",
-    "@itwin/ecschema-metadata": "^4.6.0-dev.21",
+    "@itwin/build-tools": "^4.6.0-dev.27",
+    "@itwin/core-bentley": "^4.6.0-dev.27",
+    "@itwin/core-common": "^4.6.0-dev.27",
+    "@itwin/core-geometry": "^4.6.0-dev.27",
+    "@itwin/core-quantity": "^4.6.0-dev.27",
+    "@itwin/ecschema-metadata": "^4.6.0-dev.27",
     "@itwin/imodels-access-backend": "^5.0.2",
     "@itwin/imodels-client-authoring": "^5.2.0",
     "@itwin/node-cli-authorization": "^2.0.1",
@@ -80,8 +80,8 @@
     "typescript": "~4.9.5"
   },
   "peerDependencies": {
-    "@itwin/core-bentley": "^4.6.0-dev.21",
-    "@itwin/core-common": "^4.6.0-dev.21",
+    "@itwin/core-bentley": "^4.6.0-dev.27",
+    "@itwin/core-common": "^4.6.0-dev.27",
     "@itwin/node-cli-authorization": "^2.0.1"
   },
   "husky": {
@@ -107,6 +107,6 @@
   },
   "dependencies": {
     "cross-env": "^7.0.3",
-    "@itwin/core-backend": "^4.6.0-dev.21"
+    "@itwin/core-backend": "^4.6.0-dev.27"
   }
 }
