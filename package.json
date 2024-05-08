@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "4.6.0-dev.27",
+    "@itwin/build-tools": "^4.6.0-dev.27",
     "@itwin/core-bentley": "^4.5.2",
     "@itwin/core-common": "^4.5.2",
     "@itwin/core-geometry": "^4.5.2",
