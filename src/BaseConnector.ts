@@ -3,6 +3,7 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken } from "@itwin/core-bentley";
+import type { AuthorizationClient } from "@itwin/core-common";
 import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
 import type { Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
@@ -10,6 +11,34 @@ import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
+import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+
+
+type AccessTokenGetter = (() => Promise<AccessToken>);
+type AccessTokenCallbackUrl = string;
+
+class CallbackUrlClient implements AuthorizationClient {
+  private _callbackUrl:string;
+  constructor (callbackUrl:string) {
+      this._callbackUrl = callbackUrl;
+  }
+  async getAccessToken(): Promise<string> {
+      const response = await fetch(this._callbackUrl);
+      const tokenStr = await response.json();
+      return tokenStr;
+  }
+}
+
+class CallbackClient implements AuthorizationClient {
+  private _tokenCallback:() => Promise<AccessToken>;
+  constructor (tokenCallback: () => Promise<AccessToken>) {
+      this._tokenCallback = tokenCallback;
+  }
+  async getAccessToken(): Promise<string> {
+      const tokenStr = await this._tokenCallback();
+      return tokenStr;
+  }
+}
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -20,6 +49,27 @@ export abstract class BaseConnector {
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
+
+  private _authClient? : AuthorizationClient;
+
+  public initializeCallbackClient (authClient:AccessTokenGetter){
+      this._authClient = new CallbackClient (authClient);
+  }
+
+  public initializeCallbackUrlClient (authClient:AccessTokenCallbackUrl){
+      this._authClient = new CallbackUrlClient(authClient);
+  }
+
+  public initializeInteractiveClient (authClient:NodeCliAuthorizationConfiguration){
+          this._authClient = new NodeCliAuthorizationClient(authClient);
+  }
+
+  public async getAccessToken () {
+  if (this._authClient === undefined)
+    throw ("Error: Auth Client is not defined!");
+
+  return this._authClient.getAccessToken();
+  }
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");
