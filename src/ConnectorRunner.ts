@@ -451,13 +451,6 @@ export class ConnectorRunner {
     }
   }
 
-  private async getTokenInteractive() {
-    const client = new NodeCliAuthorizationClient(this.hubArgs.clientConfig!);
-    Logger.logInfo(LoggerCategories.Framework, "token signin");
-    await client.signIn();
-    return client.getAccessToken();
-  }
-
   private async loadDb() {
     if (this.jobArgs.dbType === "briefcase") {
       await this.loadBriefcaseDb();

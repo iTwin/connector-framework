@@ -61,7 +61,10 @@ export abstract class BaseConnector {
   }
 
   public initializeInteractiveClient (authClient:NodeCliAuthorizationConfiguration){
-          this._authClient = new NodeCliAuthorizationClient(authClient);
+          const ncliClient = new NodeCliAuthorizationClient(authClient);
+          // From docs... If signIn hasn't been called, the AccessToken will remain empty.
+          ncliClient.signIn();
+          this._authClient = ncliClient;
   }
 
   public async getAccessToken () {
