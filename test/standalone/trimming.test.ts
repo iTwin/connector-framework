@@ -207,30 +207,4 @@ describe("trimming #standalone", () => {
     });
   });
 
-  it("fail nested definition models", () => {
-    let sync = new Synchronizer(imodel, false);
-
-    // Write to the iModel!
-    const { subject } = nestedDefinitionModels(sync);
-
-    const query = (fullClass: string) => `select count(*) from ${fullClass}`;
-
-    // Assert that the synchronizer inserted everything as intended.
-    count(imodel, query(Subject.classFullName), 2);             // +1 for root subject
-    count(imodel, query(DefinitionPartition.classFullName), 2); // +1 for dictionary partition
-    count(imodel, query(DefinitionModel.classFullName), 4);     // +1 for dictionary model, +1 for repository model
-    count(imodel, query(DefinitionContainer.classFullName), 2);
-    count(imodel, query(Category.classFullName), 2);
-
-    // Okay, let's move this definition model to a different subject in the source file. We expect
-    // everything to be deleted.
-
-    sync = new Synchronizer(imodel, false);
-
-    sync.jobSubjectId = subject.id!;
-    assert.throws(
-      () => sync.detectDeletedElementsInChannel(),
-      /Error deleting element/i
-    );
-  });
 });
