@@ -436,9 +436,9 @@ export class ConnectorRunner {
       return "notoken";
   }
 
-  private async initAuthClient(hubArgs:HubArgs) {
-    if (!this.needsToken())
-      return;
+  private async initAuthClient(hubArgs:HubArgs) : Promise<string> {
+    if (!this._connector || !this.needsToken())
+      return "notoken";
 
     if (hubArgs.doInteractiveSignIn)
       this._connector?.initializeInteractiveClient(hubArgs.clientConfig!);
@@ -449,6 +449,8 @@ export class ConnectorRunner {
     else {
       throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
+
+    return this._connector?.getAccessToken();
   }
 
   private async loadDb() {
