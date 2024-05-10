@@ -25,6 +25,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   let unmapIModelId: Id64String | undefined;
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
+  let callbackUrl : string|undefined;
 
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
@@ -43,6 +44,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
       scope: process.env.test_scopes!,
       authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`
     };
+
+    callbackUrl = process.env.test_callbackUrl!
 
     const userCred = {
       email: process.env.test_user_name!,
@@ -133,10 +136,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: testIModelId,
     } as HubArgsProps);
 
+  if (callbackUrl) {
+    hubArgs.tokenCallbackUrl = callbackUrl;  
+    }
+  else {
     hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return token!;
     };
+    }
 
     await runConnector(jobArgs, hubArgs);
 
@@ -159,10 +167,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: updateIModelId,
     } as HubArgsProps);
 
+  if (callbackUrl) {
+    hubArgs.tokenCallbackUrl = callbackUrl;  
+    }
+  else {
     hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return token!;
     };
+    }
 
     await runConnector(jobArgs, hubArgs);
 
@@ -188,10 +201,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: unmapIModelId,
     } as HubArgsProps);
 
-    hubArgs.clientConfig = testClientConfig;
-    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
-      return token!;
-    };
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;  
+      }
+    else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
+      }
 
     // First run to add data
     await runConnector(jobArgs, hubArgs);
