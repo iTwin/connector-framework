@@ -40,6 +40,35 @@ class CallbackClient implements AuthorizationClient {
   }
 }
 
+class CachedToken {
+  private _token:string;
+  private _startTime: any;
+  private _duration: any;
+
+  constructor (token:string, startTime: number, duration:number) {
+  this._token = token;
+  this._startTime = startTime;
+  this._duration = duration;
+  }
+
+  GetExpirationTime () :number {
+  return this._startTime + this._duration;
+  }
+
+  IsExpired () {
+    // current time
+    const currentTime = Date.now();
+
+    // expiration time = start time + duration time
+    const expirationTime = this.GetExpirationTime ();
+    return currentTime >= expirationTime;
+  }
+
+  GetToken () : string {
+    return this._token;
+  }
+
+}
 /** Abstract implementation of the iTwin Connector.
  * @beta
  */
@@ -51,6 +80,7 @@ export abstract class BaseConnector {
   private _connectorArgs?: { [otherArg: string]: any };
 
   private _authClient? : AuthorizationClient;
+  private _cachedToken? : CachedToken;
 
   public initializeCallbackClient (authClient:AccessTokenGetter){
       this._authClient = new CallbackClient (authClient);
@@ -67,11 +97,33 @@ export abstract class BaseConnector {
           this._authClient = ncliClient;
   }
 
+  private initCachedToken (token:string, startTime: number, duration:number) {
+    this._cachedToken = new CachedToken(token, startTime, duration);
+  }
+  private getCachedToken () : CachedToken|undefined{
+    return this._cachedToken;
+  }
+
   public async getAccessToken () {
   if (this._authClient === undefined)
     throw ("Error: Auth Client is not defined!");
 
-  return this._authClient.getAccessToken();
+  const ct = this.getCachedToken();
+  if (ct && !ct?.IsExpired)
+    {
+    Logger.logInfo(LoggerCategories.Framework, `${Date.now} Using Cached Token - Expires ${ct.GetExpirationTime()}`);
+    return ct.GetToken();
+    }
+  else{
+    const newToken = await this._authClient.getAccessToken();
+    const currTime = Date.now();
+    // NEEDSWORK 1 hr. = 3600 seconds in (milliseconds)
+    const duration = 3.6E6;
+    this.initCachedToken (newToken, currTime, duration);
+    Logger.logInfo(LoggerCategories.Framework, `${currTime} Caching Fresh Token - Expires ${currTime + duration}`);
+    return newToken;
+  }
+
   }
 
   public static async create(): Promise<BaseConnector> {
