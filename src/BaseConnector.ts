@@ -13,7 +13,7 @@ import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
 import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
 
-
+type ConnectorToken = {access_token: string, expires_in: number, token_type: string};
 type AccessTokenGetter = (() => Promise<AccessToken>);
 type AccessTokenCallbackUrl = string;
 
@@ -24,8 +24,8 @@ class CallbackUrlClient implements AuthorizationClient {
   }
   async getAccessToken(): Promise<string> {
       const response = await fetch(this._callbackUrl);
-      const tokenStr = await response.json();
-      return tokenStr;
+      const responseJSON = await response.json();
+      return responseJSON.access_token;
   }
 }
 
@@ -115,9 +115,18 @@ export abstract class BaseConnector {
     return ct.GetToken();
     }
   else{
-    const newToken = await this._authClient.getAccessToken();
+    const newToken:AccessToken = await this._authClient.getAccessToken();
     const currTime = Date.now();
-    // NEEDSWORK 1 hr. = 3600 seconds in (milliseconds)
+    //----------------------------------------------------------------------
+    //
+    // NEEDSWORK - need to refactor so we can parse "expires_in" property from response.JSON 
+    // e.g.
+    // similar to ...
+    //
+    //       const responseJSON = await response.json();
+    //       return responseJSON.access_token;
+    //
+    //----------------------------------------------------------------------
     const duration = 3.6E6;
     this.initCachedToken (newToken, currTime, duration);
     Logger.logInfo(LoggerCategories.Framework, `${currTime} Caching Fresh Token - Expires ${currTime + duration}`);
