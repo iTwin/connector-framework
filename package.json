@@ -1,6 +1,6 @@
 {
   "name": "@itwin/connector-framework",
-  "version": "2.0.10",
+  "version": "2.1.0-dev.1",
   "description": "iTwin Connector Framework",
   "main": "lib/src/connector-framework.js",
   "typings": "lib/src/connector-framework.d.ts",
@@ -24,6 +24,9 @@
     "lint:copyright": "node .githooks/copyright-linter.js",
     "test:standalone": "npm run build && nyc mocha --grep standalone",
     "test:integration": "npm run build && nyc mocha --grep integration",
+    "test:nonshared": "npm run build && nyc mocha --grep non-shared",
+    "test:filebased": "npm run build && nyc mocha --grep file-based",
+    "test:trimming": "npm run build && nyc mocha --grep trimming",
     "test:unmap": "npm run build && nyc mocha --grep unmap",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
     "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
@@ -42,13 +45,13 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.5.2",
-    "@itwin/core-bentley": "^4.5.2",
-    "@itwin/core-common": "^4.5.2",
-    "@itwin/core-geometry": "^4.5.2",
-    "@itwin/core-quantity": "^4.5.2",
-    "@itwin/ecschema-metadata": "^4.5.2",
-    "@itwin/imodels-access-backend": "^5.0.2",
+    "@itwin/build-tools": "^4.6.0-dev.28",
+    "@itwin/core-bentley": "^4.6.0-dev.28",
+    "@itwin/core-common": "^4.6.0-dev.28",
+    "@itwin/core-geometry": "^4.6.0-dev.28",
+    "@itwin/core-quantity": "^4.6.0-dev.28",
+    "@itwin/ecschema-metadata": "^4.6.0-dev.28",
+    "@itwin/imodels-access-backend": "^5.0.3",
     "@itwin/imodels-client-authoring": "^5.2.0",
     "@itwin/node-cli-authorization": "^2.0.1",
     "@itwin/oidc-signin-tool": "^4.3.4",
@@ -77,8 +80,8 @@
     "typescript": "~4.9.5"
   },
   "peerDependencies": {
-    "@itwin/core-bentley": "^4.5.2",
-    "@itwin/core-common": "^4.5.2",
+    "@itwin/core-bentley": "^4.6.0-dev.28",
+    "@itwin/core-common": "^4.6.0-dev.28",
     "@itwin/node-cli-authorization": "^2.0.1"
   },
   "husky": {
@@ -103,6 +106,7 @@
     }
   },
   "dependencies": {
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "@itwin/core-backend": "^4.6.0-dev.28"
   }
 }

@@ -5,7 +5,7 @@
 import type { AccessToken } from "@itwin/core-bentley";
 import type { AuthorizationClient } from "@itwin/core-common";
 import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
-import type { Subject } from "@itwin/core-backend";
+import { ChannelControl, type Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
@@ -219,6 +219,11 @@ export abstract class BaseConnector {
   /** Returns the name to be used for the job subject. This only needs to be overridden if the connector supports multiple files per channel, in which case it must be overridden. */
   public getJobSubjectName(sourcePath: string): string {
     return `${this.getConnectorName()}:${sourcePath}`;
+  }
+
+  // override this method in the derived connector class if using not shared channel
+  public getChannelKey (): string {
+    return ChannelControl.sharedChannelName;
   }
 
   /** Overridable function that must me implemented when the flag shouldUnmapSource is set to true. This method is used to unmap an existing source file in the iModel */

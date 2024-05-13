@@ -1,5 +1,12 @@
 # Change Log - @itwin/connector-framework
 
+## 2.1.0-dev.1
+- add support for channel keys
+- add connector's channel to key to allowed channels after briefcase is loaded
+- make the connector's job subject the channel root
+
+ref. iTwin/itwinjs-core#6506
+
 ## 2.0.10
 
 - Add logging around the loading of the briefcase db to improve lock diagnostics.

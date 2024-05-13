@@ -8,7 +8,7 @@ import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
 import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
 import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
-import { BriefcaseDb, BriefcaseManager, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
+import { BriefcaseDb, BriefcaseManager, ChannelControl, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
 import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
@@ -116,6 +116,14 @@ export class ConnectorRunner {
 
   public get jobSubjectName(): string {
     return this.connector.getJobSubjectName(this.jobArgs.source);
+  }
+
+  public get channelKey (): string {
+    return this.connector.getChannelKey();
+  }
+
+  public get usesSharedChannel (): boolean {
+    return this.channelKey===ChannelControl.sharedChannelName;
   }
 
   public get db(): IModelDb {
@@ -349,7 +357,12 @@ export class ConnectorRunner {
         jsonProperties,
         parent: new SubjectOwnsSubjects(root.id),
       };
+
       const newSubjectId = this.db.elements.insertElement(subjectProps);
+
+      if (!this.usesSharedChannel)
+        this.db.channels.makeChannelRoot({elementId: newSubjectId, channelKey: this.channelKey});
+
       subject = this.db.elements.getElement<Subject>(newSubjectId);
       // await this.db.locks.releaseAllLocks();
     }
@@ -463,6 +476,7 @@ export class ConnectorRunner {
     } else {
       throw new Error("Invalid JobArgs.dbType");
     }
+    this.db.channels.addAllowedChannel(this.channelKey);
   }
 
   private async loadSnapshotDb() {
@@ -540,7 +554,7 @@ export class ConnectorRunner {
 
   private async loadSynchronizer() {
     const ddp = this.connector.getDeletionDetectionParams();
-    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition);
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey());
     this.connector.synchronizer = synchronizer;
   }
 
