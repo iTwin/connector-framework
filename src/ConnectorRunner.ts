@@ -167,12 +167,9 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Loading connector...");
     await this.loadConnector(connector);
 
-    if (this.hubArgs) {
+    if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
       Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
       await this.initAuthClient(this.hubArgs);
-    }
-    else {
-      Logger.logError(LoggerCategories.Framework, "Need HubArgs to initialize the connector's auth client!");
     }
 
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
