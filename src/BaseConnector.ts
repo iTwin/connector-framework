@@ -16,16 +16,49 @@ import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@
 type ConnectorToken = {access_token: string, expires_in: number, token_type: string};
 type AccessTokenGetter = (() => Promise<AccessToken>);
 type AccessTokenCallbackUrl = string;
+type AccessTokenWExpirationGetter = (() => Promise<TokenExpirationPair>);
 
-class CallbackUrlClient implements AuthorizationClient {
+abstract class CachedTokenClient implements AuthorizationClient {
+  async getAccessToken(): Promise<string> {
+    throw new Error("Method not implemented.");
+  }
+  private _cachedToken? : CachedToken;
+
+  private initCachedToken (token:string, expiration:number) {
+    this._cachedToken = new CachedToken(token, expiration);
+  }
+  protected async getCachedTokenIfNotExpired (freshTokenGetter: AccessTokenWExpirationGetter) : Promise<string>{
+    const currTime = Date.now();
+    if (this._cachedToken && !this._cachedToken?.IsExpired())
+      {
+      Logger.logInfo(LoggerCategories.Framework, `${currTime} Using Cached Token - Expires ${this._cachedToken.GetExpirationTime()}`);
+      return this._cachedToken.GetToken();
+      }
+    else{
+      const tePair : TokenExpirationPair = await freshTokenGetter ();
+      this.initCachedToken (tePair.token, tePair.expiration);
+      Logger.logInfo(LoggerCategories.Framework, `${currTime} Caching Fresh Token - Expires ${currTime + tePair.expiration}`);
+      return tePair.token;
+    }
+  }
+}
+
+class CallbackUrlClient extends CachedTokenClient {
   private _callbackUrl:string;
   constructor (callbackUrl:string) {
+    super();
       this._callbackUrl = callbackUrl;
   }
-  async getAccessToken(): Promise<string> {
+  override async getAccessToken(): Promise<string> {
+    return await this.getCachedTokenIfNotExpired (async () => {
+      
       const response = await fetch(this._callbackUrl);
       const responseJSON = await response.json();
-      return responseJSON.access_token;
+      const tokenStr = responseJSON.access_token;
+      const expires_in = await responseJSON.expires_in;
+      const expiration = Date.now() + expires_in*1E3; // convert to milliseconds
+      let tePair : TokenExpirationPair = {token:tokenStr, expiration:expiration};
+      return tePair;});
   }
 }
 
@@ -40,22 +73,22 @@ class CallbackClient implements AuthorizationClient {
   }
 }
 
+type TokenExpirationPair = {token : string, expiration:number};
+
 class CachedToken {
   private _token:string;
-  private _startTime: any;
-  private _duration: any;
+  private _expiration: any;
 
-  constructor (token:string, startTime: number, duration:number) {
+  constructor (token:string, expiration:number) {
   this._token = token;
-  this._startTime = startTime;
-  this._duration = duration;
+  this._expiration = expiration;
   }
 
   GetExpirationTime () :number {
-  return this._startTime + this._duration;
+  return this._expiration;
   }
 
-  IsExpired () {
+  IsExpired () : boolean {
     // current time
     const currentTime = Date.now();
 
@@ -80,7 +113,7 @@ export abstract class BaseConnector {
   private _connectorArgs?: { [otherArg: string]: any };
 
   private _authClient? : AuthorizationClient;
-  private _cachedToken? : CachedToken;
+
 
   public initializeCallbackClient (authClient:AccessTokenGetter){
       this._authClient = new CallbackClient (authClient);
@@ -97,42 +130,12 @@ export abstract class BaseConnector {
           this._authClient = ncliClient;
   }
 
-  private initCachedToken (token:string, startTime: number, duration:number) {
-    this._cachedToken = new CachedToken(token, startTime, duration);
-  }
-  private getCachedToken () : CachedToken|undefined{
-    return this._cachedToken;
-  }
-
   public async getAccessToken () {
   if (this._authClient === undefined)
     throw ("Error: Auth Client is not defined!");
 
-  const ct = this.getCachedToken();
-  if (ct && !ct?.IsExpired)
-    {
-    Logger.logInfo(LoggerCategories.Framework, `${Date.now} Using Cached Token - Expires ${ct.GetExpirationTime()}`);
-    return ct.GetToken();
-    }
-  else{
-    const newToken:AccessToken = await this._authClient.getAccessToken();
-    const currTime = Date.now();
-    //----------------------------------------------------------------------
-    //
-    // NEEDSWORK - need to refactor so we can parse "expires_in" property from response.JSON 
-    // e.g.
-    // similar to ...
-    //
-    //       const responseJSON = await response.json();
-    //       return responseJSON.access_token;
-    //
-    //----------------------------------------------------------------------
-    const duration = 3.6E6;
-    this.initCachedToken (newToken, currTime, duration);
-    Logger.logInfo(LoggerCategories.Framework, `${currTime} Caching Fresh Token - Expires ${currTime + duration}`);
-    return newToken;
-  }
-
+  const newToken = await this._authClient.getAccessToken();
+  return newToken;
   }
 
   public static async create(): Promise<BaseConnector> {
