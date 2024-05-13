@@ -28,7 +28,7 @@ abstract class CachedTokenClient implements AuthorizationClient {
   }
   private _cachedToken? : CachedToken;
 
-  private initCachedToken (token:string, expiration:number) {
+  private initCachedToken (token:string, expiration:number) : void {
     this._cachedToken = new CachedToken(token, expiration);
   }
 
@@ -39,10 +39,10 @@ abstract class CachedTokenClient implements AuthorizationClient {
    */
   protected async getCachedTokenIfNotExpired (freshTokenGetter: AccessTokenWExpirationGetter) : Promise<string>{
     const currTime = Date.now();
-    if (this._cachedToken && !this._cachedToken?.IsExpired())
+    if (this._cachedToken && !this._cachedToken?.Expired)
       {
-      Logger.logInfo(LoggerCategories.Framework, `${currTime} Using Cached Token - Expires ${this._cachedToken.GetExpirationTime()}`);
-      return this._cachedToken.GetToken();
+      Logger.logInfo(LoggerCategories.Framework, `${currTime} Using Cached Token - Expires ${this._cachedToken.ExpirationTime}`);
+      return this._cachedToken.Token;
       }
     else{
       const tePair : TokenExpirationPair = await freshTokenGetter ();
@@ -107,20 +107,20 @@ class CachedToken {
   this._expiration = expiration;
   }
 
-  GetExpirationTime () :number {
+  get ExpirationTime () :number {
   return this._expiration;
   }
 
-  IsExpired () : boolean {
+  get Expired () : boolean {
     // current time
     const currentTime = Date.now();
 
     // expiration time = start time + duration time
-    const expirationTime = this.GetExpirationTime ();
+    const expirationTime = this.ExpirationTime;
     return currentTime >= expirationTime;
   }
 
-  GetToken () : string {
+  get Token () : string {
     return this._token;
   }
 
