@@ -100,11 +100,13 @@ type TokenExpirationPair = {token : string, expiration:number};
  */
 class CachedToken {
   private _token:string;
-  private _expiration: any;
-
-  constructor (token:string, expiration:number) {
+  private _expiration: number;  // milliseconds
+  private _expiryBuffer: number;// milliseconds
+  // default expiry buffer to 5 minutes in milliseconds
+  constructor (token:string, expiration:number, expiryBuffer: number = 60*5*1000) {
   this._token = token;
-  this._expiration = expiration;
+  this._expiration = expiration;    // milliseconds
+  this._expiryBuffer = expiryBuffer;// milliseconds
   }
 
   get ExpirationTime () :number {
@@ -112,12 +114,7 @@ class CachedToken {
   }
 
   get Expired () : boolean {
-    // current time
-    const currentTime = Date.now();
-
-    // expiration time = start time + duration time
-    const expirationTime = this.ExpirationTime;
-    return currentTime >= expirationTime;
+    return this.ExpirationTime - Date.now() <= this._expiryBuffer;
   }
 
   get Token () : string {
