@@ -2,7 +2,7 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
+import type { AuthorizationClient, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
 import type { Id64Arg, Id64String } from "@itwin/core-bentley";
 import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
@@ -18,6 +18,8 @@ import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
+import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+import {AccessTokenGetter, AccessTokenCallbackUrl, CallbackClient, CallbackUrlClient, } from "./ConnectorAuthenticationManager"
 
 type Path = string;
 
@@ -31,6 +33,36 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
+  private _authClient? : AuthorizationClient;
+
+
+  public initializeCallbackClient (authClient:AccessTokenGetter){
+      this._authClient = new CallbackClient (authClient);
+  }
+
+  public initializeCallbackUrlClient (authClient:AccessTokenCallbackUrl){
+      this._authClient = new CallbackUrlClient(authClient);
+  }
+
+  public initializeInteractiveClient (authClient:NodeCliAuthorizationConfiguration){
+          const ncliClient = new NodeCliAuthorizationClient(authClient);
+          // From docs... If signIn hasn't been called, the AccessToken will remain empty.
+          ncliClient.signIn();
+          this._authClient = ncliClient;
+  }
+
+  /**
+   * async method which returns the access token regardless of the type:
+   * interactive or non-interactive and cached or not cached
+   * @returns a string containing the access token
+   */ 
+  public async getAccessToken () : Promise<string> {
+  if (this._authClient === undefined)
+    throw ("Error: Auth Client is not defined!");
+
+  const newToken = await this._authClient.getAccessToken();
+  return newToken;
+  }
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -170,6 +202,7 @@ export class ConnectorRunner {
     if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
       Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
       await this.initAuthClient(this.hubArgs);
+      this.connector.AccessTokenCallback = this.getAccessToken;
     }
 
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
@@ -450,16 +483,16 @@ export class ConnectorRunner {
       return "notoken";
 
     if (hubArgs.doInteractiveSignIn)
-      this._connector?.initializeInteractiveClient(hubArgs.clientConfig!);
+      this.initializeInteractiveClient(hubArgs.clientConfig!);
     else if (hubArgs.tokenCallbackUrl)
-      this._connector?.initializeCallbackUrlClient(hubArgs.tokenCallbackUrl!);
+      this.initializeCallbackUrlClient(hubArgs.tokenCallbackUrl!);
     else if (hubArgs.tokenCallback)
-      this._connector?.initializeCallbackClient(hubArgs.tokenCallback);
+      this.initializeCallbackClient(hubArgs.tokenCallback);
     else {
       throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
 
-    return this._connector?.getAccessToken();
+    return this.getAccessToken();
   }
 
   private async loadDb() {
