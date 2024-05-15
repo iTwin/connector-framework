@@ -167,6 +167,10 @@ export default class TestConnector extends BaseConnector {
   }
   // __PUBLISH_EXTRACT_END__
 
+  // public override getChannelKey (): string {
+  //   return "TestConnectorChannel";
+  // }
+
   public override async unmapSource(source: string) {
     Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
     deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
@@ -219,6 +223,8 @@ export default class TestConnector extends BaseConnector {
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
 
     return this.synchronizer.imodel.models.insertModel({ classFullName: TestConnectorGroupModel.classFullName, modeledElement: { id: partitionId } });
+
+
   }
 
   private queryGroupModel(): Id64String | undefined {

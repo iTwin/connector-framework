@@ -6,7 +6,7 @@
  * @module Framework
  */
 
-import { ElementUniqueAspect } from "@itwin/core-backend";
+import { ChannelControl, ElementUniqueAspect } from "@itwin/core-backend";
 import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
 import type { Element } from "@itwin/core-backend";
 import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
@@ -209,11 +209,13 @@ export class Synchronizer {
   private _links = new Map<string, RecordDocumentResults>();
   private _jobSubjectId: string | undefined;
   private _ddp: DeletionDetectionParams;
+
   public constructor(
     public readonly imodel: IModelDb,
     private _supportsMultipleFilesPerChannel: boolean,
     protected _requestContext?: AccessToken,
-    private _scopeToPartition?: boolean
+    private _scopeToPartition?: boolean,
+    private _channelKey?: string
   ) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
@@ -223,6 +225,7 @@ export class Synchronizer {
   }
 
   /** @internal */
+  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName}
   public get linkCount() { return this._links.size; }
   public get unchangedSources() { return this._unchangedSources; }
 
