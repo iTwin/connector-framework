@@ -29,8 +29,7 @@
     "test:trimming": "npm run build && nyc mocha --grep trimming",
     "test:unmap": "npm run build && nyc mocha --grep unmap",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
-    "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
-
+    "documentation": "cross-env NODE_PROJECT_ROOT_DIRECTORY=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
   },
   "keywords": [
     "Bentley",
@@ -45,7 +44,7 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.6.0-dev.28",
+    "@itwin/build-tools": "^4.6.0",
     "@itwin/core-bentley": "^4.6.0-dev.28",
     "@itwin/core-common": "^4.6.0-dev.28",
     "@itwin/core-geometry": "^4.6.0-dev.28",
@@ -77,7 +76,7 @@
     "rimraf": "^3.0.2",
     "source-map-support": "^0.5.21",
     "ts-node": "10.8.0",
-    "typescript": "~4.9.5"
+    "typescript": "~5.3.3"
   },
   "peerDependencies": {
     "@itwin/core-bentley": "^4.6.0-dev.28",
