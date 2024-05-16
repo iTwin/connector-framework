@@ -440,13 +440,15 @@ export class ConnectorRunner {
   }
 
   private async getToken() {
+    if (this.needsToken()){
       if (this._authMgr === undefined)
         throw new Error("Unable to get access token - authentication manager is undefined.");
-
-    if (this.needsToken())
-      return this._authMgr.getAccessToken();
-    else
+      else
+        return this._authMgr.getAccessToken();
+    }
+    else {
       return "notoken";
+    }
   }
 
   private async initAuthClient(hubArgs:HubArgs) : Promise<string> {
