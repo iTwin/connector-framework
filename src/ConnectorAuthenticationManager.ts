@@ -1,6 +1,7 @@
 import { Logger, type AccessToken } from "@itwin/core-bentley";
 import type { AuthorizationClient } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
+import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
 
 export type AccessTokenGetter = (() => Promise<AccessToken>);
 export type AccessTokenCallbackUrl = string;
@@ -113,5 +114,43 @@ class CachedToken {
 }
 
 export class ConnectorAuthenticationManager {
-    
+    private _authClient : AuthorizationClient;
+    constructor (callback? : AccessTokenGetter, callbackUrl? :AccessTokenCallbackUrl, authClient? :NodeCliAuthorizationConfiguration) {
+    if (callback)
+        this._authClient = this.initializeCallbackClient (callback);
+    else if (callbackUrl)
+        this._authClient = this.initializeCallbackUrlClient(callbackUrl);
+    else if (authClient) 
+        this._authClient = this.initializeInteractiveClient(authClient);
+    else
+        throw (`ConnectorAuthenticationManager Error: must pass callback, callbackUrl or an auth client!`);
+    }
+
+    public initializeCallbackClient (callback:AccessTokenGetter) : CallbackClient {
+        return new CallbackClient (callback);
+    }
+  
+    public initializeCallbackUrlClient (authClient:AccessTokenCallbackUrl){
+        return new CallbackUrlClient(authClient);
+    }
+  
+    public initializeInteractiveClient (authClient:NodeCliAuthorizationConfiguration){
+            const ncliClient = new NodeCliAuthorizationClient(authClient);
+            // From docs... If signIn hasn't been called, the AccessToken will remain empty.
+            ncliClient.signIn();
+            return ncliClient;
+    }
+
+      /**
+   * async method which returns the access token regardless of the type:
+   * interactive or non-interactive and cached or not cached
+   * @returns a string containing the access token
+   */ 
+  public async getAccessToken () : Promise<string> {
+    if (this._authClient === undefined)
+      throw ("Error: Auth Client is not defined!");
+  
+    const newToken = await this._authClient.getAccessToken();
+    return newToken;
+    }
 }

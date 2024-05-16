@@ -106,6 +106,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (skipVerification)
       return;
 
+    // test authclient accessor in connector
+    const tokenFrConnector =  await runner.connector.getAccessToken();
+    expect(tokenFrConnector !== undefined && tokenFrConnector.length > 0);
     await verifyIModel(jobArgs, hubArgs);
   }
 

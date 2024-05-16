@@ -18,8 +18,7 @@ import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
-import { NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
-import {AccessTokenGetter, AccessTokenCallbackUrl, CallbackClient, CallbackUrlClient, } from "./ConnectorAuthenticationManager"
+import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager"
 
 type Path = string;
 
@@ -33,36 +32,8 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
-  private _authClient? : AuthorizationClient;
+  private _authMgr?: ConnectorAuthenticationManager;
 
-
-  public initializeCallbackClient (authClient:AccessTokenGetter){
-      this._authClient = new CallbackClient (authClient);
-  }
-
-  public initializeCallbackUrlClient (authClient:AccessTokenCallbackUrl){
-      this._authClient = new CallbackUrlClient(authClient);
-  }
-
-  public initializeInteractiveClient (authClient:NodeCliAuthorizationConfiguration){
-          const ncliClient = new NodeCliAuthorizationClient(authClient);
-          // From docs... If signIn hasn't been called, the AccessToken will remain empty.
-          ncliClient.signIn();
-          this._authClient = ncliClient;
-  }
-
-  /**
-   * async method which returns the access token regardless of the type:
-   * interactive or non-interactive and cached or not cached
-   * @returns a string containing the access token
-   */ 
-  public async getAccessToken () : Promise<string> {
-  if (this._authClient === undefined)
-    throw ("Error: Auth Client is not defined!");
-
-  const newToken = await this._authClient.getAccessToken();
-  return newToken;
-  }
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -202,7 +173,7 @@ export class ConnectorRunner {
     if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
       Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
       await this.initAuthClient(this.hubArgs);
-      this.connector.AccessTokenCallback = this.getAccessToken;
+      this.connector.AuthenticationManager = this._authMgr;
     }
 
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
@@ -469,11 +440,11 @@ export class ConnectorRunner {
   }
 
   private async getToken() {
-      if (this._connector === undefined)
-      throw ("Error: unable to get access token - connector is undefined.");
+      if (this._authMgr === undefined)
+      throw ("Error: unable to get access token - authentication manager is undefined.");
 
     if (this.needsToken())
-      return this._connector?.getAccessToken();
+      return this._authMgr.getAccessToken();
     else
       return "notoken";
   }
@@ -482,17 +453,23 @@ export class ConnectorRunner {
     if (!this._connector || !this.needsToken())
       return "notoken";
 
+    let clientConfig = undefined;
+    let callbackUrl = undefined;
+    let callback = undefined;
+
     if (hubArgs.doInteractiveSignIn)
-      this.initializeInteractiveClient(hubArgs.clientConfig!);
+      clientConfig = hubArgs.clientConfig;
     else if (hubArgs.tokenCallbackUrl)
-      this.initializeCallbackUrlClient(hubArgs.tokenCallbackUrl!);
+      callbackUrl = hubArgs.tokenCallbackUrl!;
     else if (hubArgs.tokenCallback)
-      this.initializeCallbackClient(hubArgs.tokenCallback);
+      callback = hubArgs.tokenCallback;
     else {
       throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
 
-    return this.getAccessToken();
+    this._authMgr = new ConnectorAuthenticationManager (callback , callbackUrl , clientConfig);
+
+    return this._authMgr.getAccessToken();
   }
 
   private async loadDb() {

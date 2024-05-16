@@ -11,6 +11,7 @@ import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
+import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -21,15 +22,15 @@ export abstract class BaseConnector {
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
-  private _getAccessTokenCallback?: () => Promise<string>;
+  private _authMgr?: ConnectorAuthenticationManager;
 
-  public AccessTokenCallback : (() => Promise<string>) | undefined;
-   set(callback:() => Promise<string>) {this._getAccessTokenCallback = callback;}
-   get () {return this._getAccessTokenCallback;}
+  public AuthenticationManager? : ConnectorAuthenticationManager;
+   set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
+   get () {return this._authMgr;}
 
   public async getAccessToken () : Promise<string|undefined> {
-  if (this.AccessTokenCallback)
-    return this.AccessTokenCallback();
+  if (this.AuthenticationManager)
+    return this.AuthenticationManager.getAccessToken();
 
   return undefined;
   }
