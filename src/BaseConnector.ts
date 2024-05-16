@@ -24,13 +24,9 @@ export abstract class BaseConnector {
   private _connectorArgs?: { [otherArg: string]: any };
   private _authMgr?: ConnectorAuthenticationManager;
 
-  public AuthenticationManager? : ConnectorAuthenticationManager;
-   set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
-   get () {return this._authMgr;}
-
   public async getAccessToken () : Promise<string|undefined> {
-  if (this.AuthenticationManager)
-    return this.AuthenticationManager.getAccessToken();
+  if (this._synchronizer?.AuthenticationManager)
+    return this._synchronizer.AuthenticationManager.getAccessToken();
 
   return undefined;
   }

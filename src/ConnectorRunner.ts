@@ -173,7 +173,6 @@ export class ConnectorRunner {
     if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
       Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
       await this.initAuthClient(this.hubArgs);
-      this.connector.AuthenticationManager = this._authMgr;
     }
 
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
@@ -562,7 +561,7 @@ export class ConnectorRunner {
 
   private async loadSynchronizer() {
     const ddp = this.connector.getDeletionDetectionParams();
-    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey());
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey(), this._authMgr);
     this.connector.synchronizer = synchronizer;
   }
 
