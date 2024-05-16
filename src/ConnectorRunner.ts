@@ -441,7 +441,7 @@ export class ConnectorRunner {
 
   private async getToken() {
       if (this._authMgr === undefined)
-      throw ("Error: unable to get access token - authentication manager is undefined.");
+        throw new Error("Unable to get access token - authentication manager is undefined.");
 
     if (this.needsToken())
       return this._authMgr.getAccessToken();

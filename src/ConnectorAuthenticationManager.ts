@@ -123,7 +123,7 @@ export class ConnectorAuthenticationManager {
     else if (authClient) 
         this._authClient = this.initializeInteractiveClient(authClient);
     else
-        throw (`ConnectorAuthenticationManager Error: must pass callback, callbackUrl or an auth client!`);
+      throw new Error(`Must pass callback, callbackUrl or an auth client!`);
     }
 
     public initializeCallbackClient (callback:AccessTokenGetter) : CallbackClient {
@@ -148,7 +148,7 @@ export class ConnectorAuthenticationManager {
    */ 
   public async getAccessToken () : Promise<string> {
     if (this._authClient === undefined)
-      throw ("Error: Auth Client is not defined!");
+      throw new Error("Auth Client is not defined!");
   
     const newToken = await this._authClient.getAccessToken();
     return newToken;
