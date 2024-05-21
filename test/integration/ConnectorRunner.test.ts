@@ -16,13 +16,15 @@ import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
+import { TestIModelManager } from "./TestIModelManager";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
-  let testIModelId: Id64String| undefined;
-  let updateIModelId: Id64String | undefined;
-  let unmapIModelId: Id64String | undefined;
+  let newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
+  let updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: newImodelName + "Update";
+  let unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: newImodelName + "Unmap";
+  
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
 
@@ -56,25 +58,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
     IModelHost.authorizationClient = client;
     testProjectId = process.env.test_project_id!;
-    let newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
-    let updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: newImodelName + "Update";
-
-
-    updateIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: updateImodelName });
-    if (!updateIModelId) {
-      updateIModelId = await IModelHost.hubAccess.createNewIModel({ iTwinId: testProjectId, iModelName: updateImodelName, accessToken: token });
-    }
-
-    testIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName});
-    if (!testIModelId) {
-      testIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName });
-    }
-
-    // TODO: change hardcoded iModel name
-    unmapIModelId = await IModelHost.hubAccess.queryIModelByName({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName + "Unmap"});
-    if (!unmapIModelId) {
-      unmapIModelId = await IModelHost.hubAccess.createNewIModel({ accessToken: token, iTwinId: testProjectId, iModelName: newImodelName + "Unmap" });
-    }
   });
 
   after(async () => {
@@ -121,6 +104,11 @@ describe("iTwin Connector Fwk (#integration)", () => {
   }
 
   it("should download and perform updates on a new imodel", async () => {
+    if (token === undefined)
+      throw new Error (`Can't create a test iModel without a token!`);
+
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, newImodelName);
+
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
       source: assetPath,
@@ -130,7 +118,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
-      iModelGuid: testIModelId,
+      iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
     hubArgs.clientConfig = testClientConfig;
@@ -141,11 +129,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await runConnector(jobArgs, hubArgs);
 
     // cleanup
-    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: testIModelId! });
+    await iModelMgr.deleteIModel(token);
   });
 
   it("should download and perform updates on an existing imodel", async () => {
-    // TODO: This test does not seem to operate on a fresh iModel; see before().
+    if (token === undefined)
+      throw new Error (`Can't create a test iModel without a token!`);
+
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, updateImodelName);
 
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
@@ -156,7 +147,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
-      iModelGuid: updateIModelId,
+      iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
     hubArgs.clientConfig = testClientConfig;
@@ -170,11 +161,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await runConnector(jobArgs, hubArgs);
 
     // cleanup
-    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: updateIModelId!});
+    await iModelMgr.deleteIModel(token);
   });
 
   it("should download and perform an unmap operation on an existing imodel", async () => {
-    // TODO: This test does not seem to operate on a fresh iModel; see before().
+
+    if (token === undefined)
+      throw new Error (`Can't create a test iModel without a token!`);
+
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, unmapImodelName);
 
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
@@ -185,7 +180,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     const hubArgs = new HubArgs({
       projectGuid: testProjectId,
-      iModelGuid: unmapIModelId,
+      iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
     hubArgs.clientConfig = testClientConfig;
@@ -209,6 +204,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await verifyIModel(jobArgs, hubArgs);
 
     // cleanup
-    await IModelHost.hubAccess.deleteIModel({accessToken: token, iTwinId: testProjectId, iModelId: unmapIModelId!});
+    await iModelMgr.deleteIModel(token);
   });
 });
