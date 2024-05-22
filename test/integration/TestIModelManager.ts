@@ -33,7 +33,7 @@ export class TestIModelManager {
         while (foundIModelId) {
             this._existingModels.push (foundIModelId);
             ++i;
-            currName = this._iModelName + i;
+            currName = `${this._iModelName}${i}`;
             foundIModelId = await IModelHost.hubAccess.queryIModelByName({ iTwinId: this._iTwinId, iModelName: currName});
         }
 
