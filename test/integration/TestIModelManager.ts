@@ -46,7 +46,7 @@ export class TestIModelManager {
     }
 
 /** @method
- * @name createIModel 
+ * @name tryDeleteIModel 
  * @param accessToken
  * @param iTwinId
  * @param iModelId
