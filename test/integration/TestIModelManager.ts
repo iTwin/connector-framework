@@ -45,16 +45,30 @@ export class TestIModelManager {
         return this._modelIdCreated;
     }
 
+/** @method
+ * @name createIModel 
+ * @param accessToken
+ * @param iTwinId
+ * @param iModelId
+ * @returns model id that was either found or created */
+    async tryDeleteIModel (accessToken: AccessToken, iTwinId: string, iModelId: string) {
+        try {
+            await IModelHost.hubAccess.deleteIModel({accessToken: accessToken, iTwinId: iTwinId, iModelId: iModelId});
+        }
+        catch {
+            throw new Error (`Exception thrown while attempting to delete iModel id ${iModelId} from iTwin id ${iTwinId} - check user has sufficient privileges to delete an iModel!`);
+        }
+    }
  /** @method
  * @name deleteIModel  
  * @param accessToken */ 
     async deleteIModel (accessToken: AccessToken) {
         if (this._modelIdCreated)
-            await IModelHost.hubAccess.deleteIModel({accessToken: accessToken, iTwinId: this._iTwinId, iModelId: this._modelIdCreated});
+            await this.tryDeleteIModel(accessToken, this._iTwinId, this._modelIdCreated);
 
         if (this._deleteExistingModels) {
             this._existingModels.forEach (async model => {
-                await IModelHost.hubAccess.deleteIModel({accessToken: accessToken, iTwinId: this._iTwinId, iModelId: model});
+                await this.tryDeleteIModel(accessToken, this._iTwinId, model);
             });
         }
 
