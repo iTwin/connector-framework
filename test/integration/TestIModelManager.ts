@@ -51,7 +51,7 @@ export class TestIModelManager {
  * @param iTwinId
  * @param iModelId
  * @returns model id that was either found or created */
-    async tryDeleteIModel (accessToken: AccessToken, iTwinId: string, iModelId: string) {
+    private async tryDeleteIModel (accessToken: AccessToken, iTwinId: string, iModelId: string) {
         try {
             await IModelHost.hubAccess.deleteIModel({accessToken: accessToken, iTwinId: iTwinId, iModelId: iModelId});
         }
