@@ -215,7 +215,7 @@ export class Synchronizer {
     private _supportsMultipleFilesPerChannel: boolean,
     protected _requestContext?: AccessToken,
     private _scopeToPartition?: boolean,
-    private _channelKey?: string
+    private _channelKey?: string,
   ) {
     if (imodel.isBriefcaseDb() && undefined === _requestContext)
       throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
@@ -225,7 +225,7 @@ export class Synchronizer {
   }
 
   /** @internal */
-  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName}
+  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName;}
   public get linkCount() { return this._links.size; }
   public get unchangedSources() { return this._unchangedSources; }
 
@@ -251,10 +251,10 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    const xseId : Id64String = this.imodel.elements.insertElement(xseProps);
+    const xseId: Id64String = this.imodel.elements.insertElement(xseProps);
     // xseCount = this.getExternalSourceCount();
     return xseId;
-    
+
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -494,8 +494,8 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private getRepositoryLinkId (docId: string) : Id64String|undefined {
-    let repLinkId = undefined;
+  private getRepositoryLinkId(docId: string): Id64String|undefined {
+    let repLinkId;
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, docId);
     const key = IModel.repositoryModelId + code.value.toLowerCase();
     const existing = this._links.get(key);
@@ -503,15 +503,15 @@ export class Synchronizer {
       repLinkId = existing.elementProps.id;
     }
 
-    return repLinkId
-  } 
+    return repLinkId;
+  }
 
   /** Creates a relationship between the SynchConfigLink and the ExternalSource if one doesn't exist already.
    * @param config The element id of the SynchronizationConfigLink
    * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
    * @beta
    */
-  public ensureRootSourceRelationshipExists (config: string, docId: string) {
+  public ensureRootSourceRelationshipExists(config: string, docId: string) {
     const repositoryLinkId = this.getRepositoryLinkId (docId);
 
     if (repositoryLinkId !== undefined) {
@@ -523,11 +523,9 @@ export class Synchronizer {
           return;
 
         this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
-      } 
-      else 
+      } else
         Logger.logWarning(LoggerCategories.Framework, `Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}`);
-    }
-    else 
+    } else
       Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
@@ -539,16 +537,16 @@ export class Synchronizer {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
 
-public getExternalSourceCount (): number {
-  let xseCount = 0;
-  this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
-    if (DbResult.BE_SQLITE_ROW, stmt.step()) {
-      const row = stmt.getRow();
-      xseCount = row.count;
-    }
-  });
-  return xseCount;
-}
+  public getExternalSourceCount(): number {
+    let xseCount = 0;
+    this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+      if (DbResult.BE_SQLITE_ROW, stmt.step()) {
+        const row = stmt.getRow();
+        xseCount = row.count;
+      }
+    });
+    return xseCount;
+  }
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
@@ -563,7 +561,7 @@ public getExternalSourceCount (): number {
         stmt.step();
         const row = stmt.getRow();
         sourceId = row.id;
-      }
+      },
     );
 
     if (sourceId) {
@@ -631,19 +629,16 @@ public getExternalSourceCount (): number {
     if (this.imodel.isSnapshotDb())
       return;
 
-    if (!this._ddp.fileBased || this._ddp.scopeToPartition)
-    {
+    if (!this._ddp.fileBased || this._ddp.scopeToPartition) {
       // ADO# 1334078
       // Note: channel based deletion detection is required for models
       // that are scoped to partion because xsas for aggregation elements in plantsight
       // are also scoped to partition and we don't want to delete them.
-    if (this._ddp.scopeToPartition)
+      if (this._ddp.scopeToPartition)
         Logger.logInfo(LoggerCategories.Framework, `Channel based deletion detection is required for models that are scoped to partition. Performing channel-based deletion detection!`);
 
-    this.detectDeletedElementsInChannel();
-    }
-    else      
-    {
+      this.detectDeletedElementsInChannel();
+    } else {
       this.detectDeletedElementsInFiles();
     }
   }

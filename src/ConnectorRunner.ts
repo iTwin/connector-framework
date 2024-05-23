@@ -148,11 +148,11 @@ export class ConnectorRunner {
     return this.connector.getJobSubjectName(this.jobArgs.source);
   }
 
-  public get channelKey (): string {
+  public get channelKey(): string {
     return this.connector.getChannelKey();
   }
 
-  public get usesSharedChannel (): boolean {
+  public get usesSharedChannel(): boolean {
     return this.channelKey===ChannelControl.sharedChannelName;
   }
 
@@ -221,7 +221,7 @@ export class ConnectorRunner {
         await this.connector.onOpenIModel();
         return config;
       },
-      "Write configuration and open source data."
+      "Write configuration and open source data.",
     );
 
     // ***
@@ -235,7 +235,7 @@ export class ConnectorRunner {
       async () => {
         return this.connector.importDomainSchema(await this.getReqContext());
       },
-      "Write domain schema."
+      "Write domain schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
@@ -243,7 +243,7 @@ export class ConnectorRunner {
       async () => {
         return this.connector.importDynamicSchema(await this.getReqContext());
       },
-      "Write dynamic schema."
+      "Write dynamic schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
@@ -254,7 +254,7 @@ export class ConnectorRunner {
         await this.connector.importDefinitions();
         return job;
       },
-      "Write job subject and definitions."
+      "Write job subject and definitions.",
     );
 
     if(this.jobArgs.shouldUnmapSource) {
@@ -264,7 +264,7 @@ export class ConnectorRunner {
           await this.connector.unmapSource(this.jobSubjectName);
           this.updateProjectExtent();
         },
-        "Unmapping source data"
+        "Unmapping source data",
       );
       return;
     }
@@ -275,7 +275,7 @@ export class ConnectorRunner {
         await this.connector.updateExistingData();
         this.updateDeletedElements();
       },
-      "Synchronize."
+      "Synchronize.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
@@ -285,7 +285,7 @@ export class ConnectorRunner {
         this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
       },
-      "Write synchronization finish time and extent."
+      "Write synchronization finish time and extent.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
@@ -414,7 +414,7 @@ export class ConnectorRunner {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
     const prevSynchConfigId = this.db.elements.queryElementIdByCode(
-      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
+      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     );
     let idToReturn: string;
     if (prevSynchConfigId === undefined) {

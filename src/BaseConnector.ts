@@ -105,7 +105,7 @@ export abstract class BaseConnector {
   }
 
   // override this method in the derived connector class if using not shared channel
-  public getChannelKey (): string {
+  public getChannelKey(): string {
     return ChannelControl.sharedChannelName;
   }
 

@@ -109,7 +109,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     this._reportDb.saveChanges();
   }
 
-  public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string,) {
+  public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string) {
     if (sourceId !== this._fileInfo.fileId) {
       Logger.logWarning(LoggerCategories.Framework, "Source file Id does not match value set in constructor");
     }
