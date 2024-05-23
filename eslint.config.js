@@ -1,0 +1,24 @@
+const iTwinPlugin = require("@itwin/eslint-plugin");
+const eslintBaseConfig = require("./config/eslint/eslint.config.base");
+
+module.exports = [
+  {
+    files: ["**/*.ts"],
+    ...iTwinPlugin.configs.iTwinjsRecommendedConfig,
+  },
+  {
+    files: ["**/*.ts"],
+    rules: {
+      "@itwin/public-extension-exports": [
+        "error",
+        {
+          "releaseTags": [
+            "public"
+          ],
+          "outputApiFile": false
+        }
+      ]
+    }
+  },
+  ...eslintBaseConfig,
+];

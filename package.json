@@ -30,7 +30,6 @@
     "test:unmap": "npm run build && nyc mocha --grep unmap",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
     "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
-
   },
   "keywords": [
     "Bentley",
@@ -51,6 +50,7 @@
     "@itwin/core-geometry": "^4.6.0",
     "@itwin/core-quantity": "^4.6.0",
     "@itwin/ecschema-metadata": "^4.6.0",
+    "@itwin/eslint-plugin": "^4.0.2",
     "@itwin/imodels-access-backend": "^5.0.4",
     "@itwin/imodels-client-authoring": "^5.3.1",
     "@itwin/node-cli-authorization": "^2.0.2",
@@ -66,7 +66,7 @@
     "chai-as-promised": "^7",
     "cpx2": "^3.0.0",
     "dotenv": "10.0.0",
-    "eslint": "^7.11.0",
+    "eslint": "^8.44.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.1",
     "mocha": "^10.2.0",
@@ -95,18 +95,8 @@
       "npm run lint:copyright --fix"
     ]
   },
-  "eslintConfig": {
-    "plugins": [
-      "@itwin"
-    ],
-    "extends": "plugin:@itwin/itwinjs-recommended",
-    "rules": {
-      "no-duplicate-imports": "off",
-      "@typescript-eslint/consistent-type-imports": "error"
-    }
-  },
   "dependencies": {
-    "cross-env": "^7.0.3",
-    "@itwin/core-backend": "^4.6.0"
+    "@itwin/core-backend": "^4.6.0",
+    "cross-env": "^7.0.3"
   }
 }
