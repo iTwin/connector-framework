@@ -27,6 +27,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
+  let callbackUrl : string|undefined;
 
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
@@ -45,6 +46,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
       scope: process.env.test_scopes!,
       authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`
     };
+
+    callbackUrl = process.env.test_callbackUrl!
 
     const userCred = {
       email: process.env.test_user_name!,
@@ -86,6 +89,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (skipVerification)
       return;
 
+    // test authclient accessor in connector
+    const tokenFrConnector =  await runner.connector.getAccessToken();
+    expect(tokenFrConnector !== undefined && tokenFrConnector.length > 0);
     await verifyIModel(jobArgs, hubArgs);
   }
 
@@ -121,10 +127,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
+  if (callbackUrl) {
+    hubArgs.tokenCallbackUrl = callbackUrl;  
+    }
+  else {
     hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return token!;
     };
+    }
 
     await runConnector(jobArgs, hubArgs);
 
@@ -150,10 +161,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
+  if (callbackUrl) {
+    hubArgs.tokenCallbackUrl = callbackUrl;  
+    }
+  else {
     hubArgs.clientConfig = testClientConfig;
     hubArgs.tokenCallback = async (): Promise<AccessToken> => {
       return token!;
     };
+    }
 
     await runConnector(jobArgs, hubArgs);
 
@@ -183,10 +199,15 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
-    hubArgs.clientConfig = testClientConfig;
-    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
-      return token!;
-    };
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;  
+      }
+    else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
+      }
 
     // First run to add data
     await runConnector(jobArgs, hubArgs);

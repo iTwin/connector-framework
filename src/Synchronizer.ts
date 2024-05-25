@@ -15,6 +15,7 @@ import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-
 import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
 import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
 import { LoggerCategories } from "./LoggerCategory";
+import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** The state of the given SourceItem against the iModelDb
  * @beta
@@ -215,10 +216,12 @@ export class Synchronizer {
     private _supportsMultipleFilesPerChannel: boolean,
     protected _requestContext?: AccessToken,
     private _scopeToPartition?: boolean,
-    private _channelKey?: string
+    private _channelKey?: string,
+    private _authMgr?: ConnectorAuthenticationManager
   ) {
-    if (imodel.isBriefcaseDb() && undefined === _requestContext)
-      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
+    // This is a redundant test. It is tested upstream from here
+    // if (imodel.isBriefcaseDb() && undefined === _requestContext)
+    //   throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
 
     this._ddp = {fileBased: _supportsMultipleFilesPerChannel, scopeToPartition : (_scopeToPartition === undefined? false:_scopeToPartition)};
 
@@ -343,6 +346,10 @@ export class Synchronizer {
     return results;
     // __PUBLISH_EXTRACT_END__
   }
+
+  public AuthenticationManager? : ConnectorAuthenticationManager;
+   set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
+   get () {return this._authMgr;}
 
   private setSourceItemDefaults(item: SourceItem) {
     if (item.scope === undefined)

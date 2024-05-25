@@ -12,6 +12,31 @@ The main branch used for 2.x, based on iTwin.js 4.x, will be the default locatio
 
 Version 1.x of the connector framework will be supported as long as iTwin.js 3.x is supported. Please refer to the [iTwin.js API deprecation policy](https://www.itwinjs.org/learning/api-support-policies/#package-support-policy).
 
+### Running the Integration Tests
+
+You may want to run the integration test and see the results hosted on the iModelHub.  This is possible by setting a few environment variables to specify private/confidential parameters such as iTwin (project) id and iModel id, an AuthClient id, and user name and password.
+
+An example .env file may look like ...
+
+``` shell
+
+test_client_id=<client id here in quotes>
+test_redirect_uri=<uri here in quotes>
+test_scopes="imodels:modify imodels:read itwin-platform"
+
+test_user_name=<valid email here in quotes>
+test_user_password=<password corresponding>
+
+# leave imjs_url_prefix undefined(or comment out) for prod
+imjs_url_prefix = "qa-"
+
+# if you optionally wish to authenticate with a callback URL and 
+# bypass the default authentication for the Integration tests,
+# you can specify test_callbackUrl
+# test_callbackUrl=<url goes here>
+
+```
+
 ### Quick Upgrade Guide
 
 #### To port TypeScript/JavaScript connectors based on previous versions <= 2.x of of the iTwin.js (iModel.js) SDK, the following changes must be made
