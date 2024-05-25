@@ -3,6 +3,7 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 import type { AccessToken } from "@itwin/core-bentley";
+import type { AuthorizationClient } from "@itwin/core-common";
 import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
 import { ChannelControl, type Subject } from "@itwin/core-backend";
 import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
@@ -10,6 +11,7 @@ import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
+import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -20,6 +22,14 @@ export abstract class BaseConnector {
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
+  private _authMgr?: ConnectorAuthenticationManager;
+
+  public async getAccessToken () : Promise<string|undefined> {
+  if (this._synchronizer?.AuthenticationManager)
+    return this._synchronizer.AuthenticationManager.getAccessToken();
+
+  return undefined;
+  }
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");

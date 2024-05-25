@@ -50,6 +50,11 @@ export * from "./Synchronizer";
  * @docs-group-description SqliteIssueReporter
  * A Subclass of a ConnectorIssueReporter for SQLite related issues.
  */
+
+/**
+ * @docs-group-description ConnectorAuthenticationManager
+ * A class for encapsulating and initializing auth clients and the retrieving and caching of tokens.
+ */
 	
 	
 	
