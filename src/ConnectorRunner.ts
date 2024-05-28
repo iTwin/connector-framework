@@ -2,19 +2,14 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
-import { IModel } from "@itwin/core-common";
-import type { Id64Arg, Id64String } from "@itwin/core-bentley";
-import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
-import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
-import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
-import { BriefcaseDb, BriefcaseManager, ChannelControl, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import type { BaseConnector } from "./BaseConnector";
-import { LoggerCategories } from "./LoggerCategory";
-import type { AllArgsProps } from "./Args";
-import { HubArgs, JobArgs } from "./Args";
-import { Synchronizer } from "./Synchronizer";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import {IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps} from "@itwin/core-common";
+import {assert, BentleyError, BentleyStatus, Guid, Id64Arg, Id64String, IModelHubStatus, Logger, LogLevel} from "@itwin/core-bentley";
+import {BriefcaseDb, BriefcaseManager, ChannelControl, IModelDb, LinkElement, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink} from "@itwin/core-backend";
+import {BaseConnector} from "./BaseConnector";
+import {LoggerCategories} from "./LoggerCategory";
+import {AllArgsProps, HubArgs, JobArgs} from "./Args";
+import {Synchronizer} from "./Synchronizer";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";

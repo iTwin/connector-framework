@@ -2,11 +2,10 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken } from "@itwin/core-bentley";
-import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
-import { ChannelControl, type Subject } from "@itwin/core-backend";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
+import {AccessToken, assert, BentleyStatus, Logger} from "@itwin/core-bentley";
+import {ChannelControl, type Subject} from "@itwin/core-backend";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
+import {DeletionDetectionParams, Synchronizer} from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";

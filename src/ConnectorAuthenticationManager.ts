@@ -137,7 +137,7 @@ export class ConnectorAuthenticationManager {
     return ncliClient;
   }
 
-  public async initialize () {
+  public async initialize() {
     if (this._callback)
       this._authClient = this.initializeCallbackClient (this._callback);
     else if (this._callbackUrl)

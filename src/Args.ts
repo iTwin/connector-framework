@@ -2,10 +2,9 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken } from "@itwin/core-bentley";
-import { Logger } from "@itwin/core-bentley";
-import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
-import { LoggerCategories } from "./LoggerCategory";
+import {AccessToken, Logger} from "@itwin/core-bentley";
+import {NodeCliAuthorizationConfiguration} from "@itwin/node-cli-authorization";
+import {LoggerCategories} from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 

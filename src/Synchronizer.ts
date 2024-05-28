@@ -6,15 +6,10 @@
  * @module Framework
  */
 
-import { ChannelControl, ElementUniqueAspect } from "@itwin/core-backend";
-import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
-import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
-import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
-import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
-import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
-import { LoggerCategories } from "./LoggerCategory";
+import {ChannelControl, DefinitionElement, deleteElementSubTrees, ECSqlStatement, Element, ElementOwnsChildElements, ElementUniqueAspect, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink, SynchronizationConfigSpecifiesRootSources} from "@itwin/core-backend";
+import {AccessToken, assert, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger} from "@itwin/core-bentley";
+import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps} from "@itwin/core-common";
+import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** The state of the given SourceItem against the iModelDb
@@ -547,7 +542,7 @@ export class Synchronizer {
   public getExternalSourceCount(): number {
     let xseCount = 0;
     this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
-      if (DbResult.BE_SQLITE_ROW, stmt.step()) {
+      if (DbResult.BE_SQLITE_ROW === stmt.step()) {
         const row = stmt.getRow();
         xseCount = row.count;
       }
