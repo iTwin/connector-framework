@@ -1,6 +1,15 @@
 # Change Log - @itwin/connector-framework
 
+## 2.1.2
+
+- move access token handling to synchronizer
+- check expiration before returning a cached token
+- improve creation and deletion of test imodels for integration tests
+- restore linting commands
+- fix errors reported by linting
+
 ## 2.1.0-dev.1
+
 - add support for channel keys
 - add connector's channel to key to allowed channels after briefcase is loaded
 - make the connector's job subject the channel root

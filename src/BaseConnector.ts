@@ -10,6 +10,7 @@ import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
+import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -20,6 +21,14 @@ export abstract class BaseConnector {
   private _jobSubject?: Subject;
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
+  private _authMgr?: ConnectorAuthenticationManager;
+
+  public async getAccessToken(): Promise<string|undefined> {
+    if (this._synchronizer?.authenticationManager)
+      return this._synchronizer.authenticationManager.getAccessToken();
+
+    return undefined;
+  }
 
   public static async create(): Promise<BaseConnector> {
     throw new Error("BaseConnector.create() is not implemented!");

@@ -4,12 +4,11 @@
 *--------------------------------------------------------------------------------------------*/
 import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
 import { IModel } from "@itwin/core-common";
-import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
+import type { Id64Arg, Id64String } from "@itwin/core-bentley";
 import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
 import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
 import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
 import { BriefcaseDb, BriefcaseManager, ChannelControl, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
 import type { BaseConnector } from "./BaseConnector";
 import { LoggerCategories } from "./LoggerCategory";
 import type { AllArgsProps } from "./Args";
@@ -19,6 +18,7 @@ import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
+import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 type Path = string;
 
@@ -32,7 +32,7 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
-  private _reqContext?: AccessToken;
+  private _authMgr?: ConnectorAuthenticationManager;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -95,35 +95,6 @@ export class ConnectorRunner {
     // __PUBLISH_EXTRACT_END__
 
     return runner;
-  }
-
-  // NEEDSWORK - How to check if string version od Access Token is expired
-  private get _isAccessTokenExpired(): boolean {
-    //  return this._reqContext.isExpired(5);
-    return true;
-  }
-
-  public async getAuthReqContext(): Promise<AccessToken> {
-    if (!this._reqContext)
-      throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (this._isAccessTokenExpired) {
-      this._reqContext = await this.getToken();
-      Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
-    }
-    return this._reqContext;
-  }
-
-  public async getReqContext(): Promise<AccessToken> {
-    if (!this._reqContext)
-      throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
-
-    let reqContext: AccessToken;
-    if (this.db.isBriefcaseDb())
-      reqContext = await this.getAuthReqContext();
-    else
-      reqContext = this._reqContext;
-
-    return reqContext;
   }
 
   public get jobArgs(): JobArgs {
@@ -198,11 +169,13 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Loading connector...");
     await this.loadConnector(connector);
 
+    if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
+      Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
+      await this.initAuthClient(this.hubArgs);
+    }
+
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
     this.loadIssueReporter();
-
-    Logger.logInfo(LoggerCategories.Framework, "Authenticating...");
-    await this.loadReqContext();
 
     Logger.logInfo(LoggerCategories.Framework, "Retrieving iModel...");
     await this.loadDb();
@@ -233,7 +206,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
     await this.doInRepositoryChannel(
       async () => {
-        return this.connector.importDomainSchema(await this.getReqContext());
+        return this.connector.importDomainSchema(await this.getToken());
       },
       "Write domain schema.",
     );
@@ -241,7 +214,7 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
     await this.doInRepositoryChannel(
       async () => {
-        return this.connector.importDynamicSchema(await this.getReqContext());
+        return this.connector.importDynamicSchema(await this.getToken());
       },
       "Write dynamic schema.",
     );
@@ -436,11 +409,6 @@ export class ConnectorRunner {
     this.db.elements.updateElement(synchConfigData);
   }
 
-  private async loadReqContext() {
-    const token = await this.getToken();
-    this._reqContext = token;
-  }
-
   private loadIssueReporter() {
     if (this.issueReporter) {
       this.connector.issueReporter = this.issueReporter;
@@ -464,38 +432,43 @@ export class ConnectorRunner {
     this.connector.issueReporter = this.issueReporter;
   }
 
-  private async getToken() {
-    let token: string;
+  private needsToken(): boolean {
     const kind = this._jobArgs.dbType;
-    if (kind === "snapshot" || kind === "standalone")
+    return ((kind === "snapshot" || kind === "standalone") ? false : true);
+  }
+
+  private async getToken() {
+    if (this.needsToken()){
+      if (this._authMgr === undefined)
+        throw new Error("Unable to get access token - authentication manager is undefined.");
+      else
+        return this._authMgr.getAccessToken();
+    } else {
+      return "notoken";
+    }
+  }
+
+  private async initAuthClient(hubArgs: HubArgs): Promise<string> {
+    if (!this._connector || !this.needsToken())
       return "notoken";
 
-    if (this.hubArgs.doInteractiveSignIn)
-      token = await this.getTokenInteractive();
-    else
-      token = await this.getTokenSilent();
-    return token;
-  }
+    let clientConfig;
+    let callbackUrl;
+    let callback;
 
-  private async getTokenSilent() {
-    let token: string;
-    if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
-      const response = await fetch(this.hubArgs.tokenCallbackUrl);
-      const tokenStr = await response.json();
-      token = tokenStr;
-    } else if (this.hubArgs && this.hubArgs.tokenCallback) {
-      token = await this.hubArgs.tokenCallback();
-    } else {
-      throw new Error("Define either HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to retrieve accessToken");
+    if (hubArgs.doInteractiveSignIn)
+      clientConfig = hubArgs.clientConfig;
+    else if (hubArgs.tokenCallbackUrl)
+      callbackUrl = hubArgs.tokenCallbackUrl!;
+    else if (hubArgs.tokenCallback)
+      callback = hubArgs.tokenCallback;
+    else {
+      throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
-    return token;
-  }
 
-  private async getTokenInteractive() {
-    const client = new NodeCliAuthorizationClient(this.hubArgs.clientConfig!);
-    Logger.logInfo(LoggerCategories.Framework, "token signin");
-    await client.signIn();
-    return client.getAccessToken();
+    this._authMgr = new ConnectorAuthenticationManager (callback , callbackUrl , clientConfig);
+    await this._authMgr.initialize();
+    return this._authMgr.getAccessToken();
   }
 
   private async loadDb() {
@@ -586,7 +559,7 @@ export class ConnectorRunner {
 
   private async loadSynchronizer() {
     const ddp = this.connector.getDeletionDetectionParams();
-    const synchronizer = new Synchronizer(this.db, ddp.fileBased , this._reqContext, ddp.scopeToPartition, this.connector.getChannelKey());
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey(), this._authMgr);
     this.connector.synchronizer = synchronizer;
   }
 
