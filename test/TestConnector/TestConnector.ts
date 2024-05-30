@@ -163,7 +163,7 @@ export default class TestConnector extends BaseConnector {
 
     this.convertGroupElements(groupModelId);
     this.convertPhysicalElements(physicalModelId, definitionModelId, groupModelId);
-    this.synchronizer.imodel.views.setDefaultViewId(this.createView(definitionModelId, physicalModelId, "TestConnectorView"));
+    this.createView(definitionModelId, physicalModelId, "TestConnectorView");
   }
   // __PUBLISH_EXTRACT_END__
 
