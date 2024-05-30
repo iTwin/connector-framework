@@ -461,7 +461,7 @@ export class ConnectorRunner {
       throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
 
-    this._authMgr = new ConnectorAuthenticationManager (callback , callbackUrl , clientConfig);
+    this._authMgr = new ConnectorAuthenticationManager ({callback , callbackUrl , authClientConfig : clientConfig});
     await this._authMgr.initialize();
     return this._authMgr.getAccessToken();
   }

@@ -89,6 +89,15 @@ export class CallbackClient implements AuthorizationClient {
 interface TokenExpirationPair {token: string, expiration: number}
 
 /**
+ * A type which holds the parameters for the ConnectorAuthenticationManager
+ */
+interface ConnectorAuthenticationManagerParams {
+  callback?: AccessTokenGetter;
+  callbackUrl?: AccessTokenCallbackUrl;
+  authClientConfig?: NodeCliAuthorizationConfiguration;
+}
+
+/**
  * A class used for caching tokens.  Has constructor and GetExpirationTime and IsExpired methods.
  */
 class CachedToken {
@@ -118,7 +127,7 @@ class CachedToken {
 
 export class ConnectorAuthenticationManager {
   private _authClient?: AuthorizationClient;
-  constructor(private _callback?: AccessTokenGetter, private _callbackUrl?: AccessTokenCallbackUrl, private _nodeCliClient?: NodeCliAuthorizationConfiguration) {
+  constructor(private _cAMParams: ConnectorAuthenticationManagerParams) {
 
   }
 
@@ -138,12 +147,12 @@ export class ConnectorAuthenticationManager {
   }
 
   public async initialize() {
-    if (this._callback)
-      this._authClient = this.initializeCallbackClient (this._callback);
-    else if (this._callbackUrl)
-      this._authClient = this.initializeCallbackUrlClient(this._callbackUrl);
-    else if (this._nodeCliClient)
-      this._authClient = await this.initializeInteractiveClient(this._nodeCliClient);
+    if (this._cAMParams.callback)
+      this._authClient = this.initializeCallbackClient (this._cAMParams.callback);
+    else if (this._cAMParams.callbackUrl)
+      this._authClient = this.initializeCallbackUrlClient(this._cAMParams.callbackUrl);
+    else if (this._cAMParams.authClientConfig)
+      this._authClient = await this.initializeInteractiveClient(this._cAMParams.authClientConfig);
     else
       throw new Error(`Must pass callback, callbackUrl or an auth client!`);
   }
