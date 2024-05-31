@@ -6,15 +6,10 @@
  * @module Framework
  */
 
-import { ChannelControl, ElementUniqueAspect } from "@itwin/core-backend";
-import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
-import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
-import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
-import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
-import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
-import { LoggerCategories } from "./LoggerCategory";
+import {ChannelControl, DefinitionElement, deleteElementSubTrees, ECSqlStatement, Element, ElementOwnsChildElements, ElementUniqueAspect, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink, SynchronizationConfigSpecifiesRootSources} from "@itwin/core-backend";
+import {AccessToken, assert, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger} from "@itwin/core-bentley";
+import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps} from "@itwin/core-common";
+import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 /** The state of the given SourceItem against the iModelDb
@@ -217,7 +212,7 @@ export class Synchronizer {
     protected _requestContext?: AccessToken,
     private _scopeToPartition?: boolean,
     private _channelKey?: string,
-    private _authMgr?: ConnectorAuthenticationManager
+    private _authMgr?: ConnectorAuthenticationManager,
   ) {
     // This is a redundant test. It is tested upstream from here
     // if (imodel.isBriefcaseDb() && undefined === _requestContext)
@@ -228,7 +223,7 @@ export class Synchronizer {
   }
 
   /** @internal */
-  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName}
+  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName;}
   public get linkCount() { return this._links.size; }
   public get unchangedSources() { return this._unchangedSources; }
 
@@ -254,10 +249,10 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    const xseId : Id64String = this.imodel.elements.insertElement(xseProps);
+    const xseId: Id64String = this.imodel.elements.insertElement(xseProps);
     // xseCount = this.getExternalSourceCount();
     return xseId;
-    
+
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -347,9 +342,9 @@ export class Synchronizer {
     // __PUBLISH_EXTRACT_END__
   }
 
-  public AuthenticationManager? : ConnectorAuthenticationManager;
-   set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
-   get () {return this._authMgr;}
+  public authenticationManager?: ConnectorAuthenticationManager;
+  public set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
+  public get() {return this._authMgr;}
 
   private setSourceItemDefaults(item: SourceItem) {
     if (item.scope === undefined)
@@ -501,8 +496,8 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private getRepositoryLinkId (docId: string) : Id64String|undefined {
-    let repLinkId = undefined;
+  private getRepositoryLinkId(docId: string): Id64String|undefined {
+    let repLinkId;
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, docId);
     const key = IModel.repositoryModelId + code.value.toLowerCase();
     const existing = this._links.get(key);
@@ -510,15 +505,15 @@ export class Synchronizer {
       repLinkId = existing.elementProps.id;
     }
 
-    return repLinkId
-  } 
+    return repLinkId;
+  }
 
   /** Creates a relationship between the SynchConfigLink and the ExternalSource if one doesn't exist already.
    * @param config The element id of the SynchronizationConfigLink
    * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
    * @beta
    */
-  public ensureRootSourceRelationshipExists (config: string, docId: string) {
+  public ensureRootSourceRelationshipExists(config: string, docId: string) {
     const repositoryLinkId = this.getRepositoryLinkId (docId);
 
     if (repositoryLinkId !== undefined) {
@@ -530,11 +525,9 @@ export class Synchronizer {
           return;
 
         this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
-      } 
-      else 
+      } else
         Logger.logWarning(LoggerCategories.Framework, `Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}`);
-    }
-    else 
+    } else
       Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
@@ -546,16 +539,16 @@ export class Synchronizer {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
 
-public getExternalSourceCount (): number {
-  let xseCount = 0;
-  this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
-    if (DbResult.BE_SQLITE_ROW, stmt.step()) {
-      const row = stmt.getRow();
-      xseCount = row.count;
-    }
-  });
-  return xseCount;
-}
+  public getExternalSourceCount(): number {
+    let xseCount = 0;
+    this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+      if (DbResult.BE_SQLITE_ROW === stmt.step()) {
+        const row = stmt.getRow();
+        xseCount = row.count;
+      }
+    });
+    return xseCount;
+  }
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
@@ -570,7 +563,7 @@ public getExternalSourceCount (): number {
         stmt.step();
         const row = stmt.getRow();
         sourceId = row.id;
-      }
+      },
     );
 
     if (sourceId) {
@@ -638,19 +631,16 @@ public getExternalSourceCount (): number {
     if (this.imodel.isSnapshotDb())
       return;
 
-    if (!this._ddp.fileBased || this._ddp.scopeToPartition)
-    {
+    if (!this._ddp.fileBased || this._ddp.scopeToPartition) {
       // ADO# 1334078
       // Note: channel based deletion detection is required for models
       // that are scoped to partion because xsas for aggregation elements in plantsight
       // are also scoped to partition and we don't want to delete them.
-    if (this._ddp.scopeToPartition)
+      if (this._ddp.scopeToPartition)
         Logger.logInfo(LoggerCategories.Framework, `Channel based deletion detection is required for models that are scoped to partition. Performing channel-based deletion detection!`);
 
-    this.detectDeletedElementsInChannel();
-    }
-    else      
-    {
+      this.detectDeletedElementsInChannel();
+    } else {
       this.detectDeletedElementsInFiles();
     }
   }
