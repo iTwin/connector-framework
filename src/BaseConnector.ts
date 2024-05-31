@@ -2,12 +2,10 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken } from "@itwin/core-bentley";
-import type { AuthorizationClient } from "@itwin/core-common";
-import { assert, BentleyStatus, Logger } from "@itwin/core-bentley";
-import { ChannelControl, type Subject } from "@itwin/core-backend";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import type { DeletionDetectionParams, Synchronizer } from "./Synchronizer";
+import {AccessToken, assert, BentleyStatus, Logger} from "@itwin/core-bentley";
+import {ChannelControl, type Subject} from "@itwin/core-backend";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
+import {DeletionDetectionParams, Synchronizer} from "./Synchronizer";
 import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
@@ -24,11 +22,11 @@ export abstract class BaseConnector {
   private _connectorArgs?: { [otherArg: string]: any };
   private _authMgr?: ConnectorAuthenticationManager;
 
-  public async getAccessToken () : Promise<string|undefined> {
-  if (this._synchronizer?.AuthenticationManager)
-    return this._synchronizer.AuthenticationManager.getAccessToken();
+  public async getAccessToken(): Promise<string|undefined> {
+    if (this._synchronizer?.authenticationManager)
+      return this._synchronizer.authenticationManager.getAccessToken();
 
-  return undefined;
+    return undefined;
   }
 
   public static async create(): Promise<BaseConnector> {
@@ -115,7 +113,7 @@ export abstract class BaseConnector {
   }
 
   // override this method in the derived connector class if using not shared channel
-  public getChannelKey (): string {
+  public getChannelKey(): string {
     return ChannelControl.sharedChannelName;
   }
 

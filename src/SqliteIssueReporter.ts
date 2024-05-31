@@ -2,11 +2,10 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { GuidString} from "@itwin/core-bentley";
-import { DbResult, Guid, Logger } from "@itwin/core-bentley";
-import { ECDb } from "@itwin/core-backend";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
-import { LoggerCategories } from "./LoggerCategory";
+import {DbResult, Guid, GuidString, Logger} from "@itwin/core-bentley";
+import {ECDb} from "@itwin/core-backend";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
+import {LoggerCategories} from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -109,7 +108,7 @@ export class SqliteIssueReporter implements ConnectorIssueReporter {
     this._reportDb.saveChanges();
   }
 
-  public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string,) {
+  public recordSourceFileInfo(sourceId: string, name: string, uniqueName: string, itemType: string, dataSource: string, state: string, failureReason: string, exists: boolean, fileSize: number, foundByConnector: boolean, downloadUrl?: string) {
     if (sourceId !== this._fileInfo.fileId) {
       Logger.logWarning(LoggerCategories.Framework, "Source file Id does not match value set in constructor");
     }

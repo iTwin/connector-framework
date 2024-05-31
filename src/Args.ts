@@ -2,10 +2,9 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken } from "@itwin/core-bentley";
-import { Logger } from "@itwin/core-bentley";
-import type { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
-import { LoggerCategories } from "./LoggerCategory";
+import {AccessToken, Logger} from "@itwin/core-bentley";
+import {NodeCliAuthorizationConfiguration} from "@itwin/node-cli-authorization";
+import {LoggerCategories} from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -40,46 +39,45 @@ export interface JobArgsProps {
  * Arguments specific to a connector job
  */
 export class JobArgs implements JobArgsProps, Validatable {
-  /** Source File 
+  /** Source File
    */
   public source: string;
-    /** Staging Directory
+  /** Staging Directory
    */
   public stagingDir: string = path.join(__dirname, "staging");
-    /** Revision Header 
+  /** Revision Header
    */
   public revisionHeader: string = "JSFWK";
-    /** Database Type 
+  /** Database Type
    */
   public dbType: "briefcase" | "snapshot" | "standalone" = "briefcase";
-      /** Activity Id 
+  /** Activity Id
    */
   public activityId?: string;
-      /** Issues Database Directory (optional) 
+  /** Issues Database Directory (optional)
    */
   public issuesDbDir?: string;
-      /** Logger Configuration File (optional) 
+  /** Logger Configuration File (optional)
    */
   public loggerConfigJSONFile?: string;
-      /** Error File 
+  /** Error File
    */
   public errorFile: string;
-      /** Pass true to update the domain schemas
+  /** Pass true to update the domain schemas
    */
   public updateDomainSchemas: boolean = true;
-      /** Pass true to update db profile
+  /** Pass true to update db profile
    */
   public updateDbProfile: boolean = true;
-      /** Synchronization Config File (optional) 
+  /** Synchronization Config File (optional)
    */
   public synchConfigFile?: string;
-      /** Pass true to unmap the source file (optional)
+  /** Pass true to unmap the source file (optional)
    */
   public shouldUnmapSource?: boolean = false;
-      /** Arguments to be passed through to Connector (optional)
+  /** Arguments to be passed through to Connector (optional)
    */
   public connectorArgs?: { [otherArg: string]: any };
-
 
   constructor(props: JobArgsProps) {
     this.source = props.source;
@@ -126,37 +124,37 @@ export interface HubArgsProps {
  * Arguments specific to iModelHub used in a connector job
  */
 export class HubArgs implements HubArgsProps, Validatable {
-  /** Briefcase File 
+  /** Briefcase File
    */
   public briefcaseFile?: string;
-    /** Briefcase Id (optional) 
+  /** Briefcase Id (optional)
    */
   public briefcaseId?: number;
-    /** Project Guid
+  /** Project Guid
    */
   public projectGuid: string;
-    /** iModel Guid
+  /** iModel Guid
    */
   public iModelGuid: string;
-    /** Connect Region  "0" | "102" | "103"
+  /** Connect Region  "0" | "102" | "103"
    */
   public region: ConnectRegion = "0";
-/** Node Cli Authorization Configuration (optional)
+  /** Node Cli Authorization Configuration (optional)
    */
   public clientConfig?: NodeCliAuthorizationConfiguration;
-    /** Token Callback Url (optional)
+  /** Token Callback Url (optional)
    */
   public tokenCallbackUrl?: string;
-    /** Token Callback (optional)
+  /** Token Callback (optional)
    */
   public tokenCallback?: () => Promise<AccessToken>;
   /** Whether or not to require input from user to authenticate
    */
   public doInteractiveSignIn: boolean = false;
-  /** Number of attempts to obtain a lock before failing 
+  /** Number of attempts to obtain a lock before failing
    */
   public maxLockRetries = 3;
-    /** Number of seconds to wait before retrying to obtain lock 
+  /** Number of seconds to wait before retrying to obtain lock
    */
   public maxLockRetryWaitSeconds = 5;
 

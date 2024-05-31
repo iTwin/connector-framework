@@ -2,23 +2,18 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AuthorizationClient, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
-import { IModel } from "@itwin/core-common";
-import type { Id64Arg, Id64String } from "@itwin/core-bentley";
-import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
-import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
-import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
-import { BriefcaseDb, BriefcaseManager, ChannelControl, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import type { BaseConnector } from "./BaseConnector";
-import { LoggerCategories } from "./LoggerCategory";
-import type { AllArgsProps } from "./Args";
-import { HubArgs, JobArgs } from "./Args";
-import { Synchronizer } from "./Synchronizer";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import {IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps} from "@itwin/core-common";
+import {assert, BentleyError, BentleyStatus, Guid, Id64Arg, Id64String, IModelHubStatus, Logger, LogLevel} from "@itwin/core-bentley";
+import {BriefcaseDb, BriefcaseManager, ChannelControl, IModelDb, LinkElement, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink} from "@itwin/core-backend";
+import {BaseConnector} from "./BaseConnector";
+import {LoggerCategories} from "./LoggerCategory";
+import {AllArgsProps, HubArgs, JobArgs} from "./Args";
+import {Synchronizer} from "./Synchronizer";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
-import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager"
+import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
 type Path = string;
 
@@ -33,7 +28,6 @@ export class ConnectorRunner {
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
   private _authMgr?: ConnectorAuthenticationManager;
-
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -120,11 +114,11 @@ export class ConnectorRunner {
     return this.connector.getJobSubjectName(this.jobArgs.source);
   }
 
-  public get channelKey (): string {
+  public get channelKey(): string {
     return this.connector.getChannelKey();
   }
 
-  public get usesSharedChannel (): boolean {
+  public get usesSharedChannel(): boolean {
     return this.channelKey===ChannelControl.sharedChannelName;
   }
 
@@ -195,7 +189,7 @@ export class ConnectorRunner {
         await this.connector.onOpenIModel();
         return config;
       },
-      "Write configuration and open source data."
+      "Write configuration and open source data.",
     );
 
     // ***
@@ -209,7 +203,7 @@ export class ConnectorRunner {
       async () => {
         return this.connector.importDomainSchema(await this.getToken());
       },
-      "Write domain schema."
+      "Write domain schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
@@ -217,7 +211,7 @@ export class ConnectorRunner {
       async () => {
         return this.connector.importDynamicSchema(await this.getToken());
       },
-      "Write dynamic schema."
+      "Write dynamic schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
@@ -228,7 +222,7 @@ export class ConnectorRunner {
         await this.connector.importDefinitions();
         return job;
       },
-      "Write job subject and definitions."
+      "Write job subject and definitions.",
     );
 
     if(this.jobArgs.shouldUnmapSource) {
@@ -238,7 +232,7 @@ export class ConnectorRunner {
           await this.connector.unmapSource(this.jobSubjectName);
           this.updateProjectExtent();
         },
-        "Unmapping source data"
+        "Unmapping source data",
       );
       return;
     }
@@ -249,7 +243,7 @@ export class ConnectorRunner {
         await this.connector.updateExistingData();
         this.updateDeletedElements();
       },
-      "Synchronize."
+      "Synchronize.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
@@ -259,7 +253,7 @@ export class ConnectorRunner {
         this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
       },
-      "Write synchronization finish time and extent."
+      "Write synchronization finish time and extent.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
@@ -388,7 +382,7 @@ export class ConnectorRunner {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
     const prevSynchConfigId = this.db.elements.queryElementIdByCode(
-      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
+      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     );
     let idToReturn: string;
     if (prevSynchConfigId === undefined) {
@@ -433,7 +427,7 @@ export class ConnectorRunner {
     this.connector.issueReporter = this.issueReporter;
   }
 
-  private needsToken() : boolean {
+  private needsToken(): boolean {
     const kind = this._jobArgs.dbType;
     return ((kind === "snapshot" || kind === "standalone") ? false : true);
   }
@@ -444,19 +438,18 @@ export class ConnectorRunner {
         throw new Error("Unable to get access token - authentication manager is undefined.");
       else
         return this._authMgr.getAccessToken();
-    }
-    else {
+    } else {
       return "notoken";
     }
   }
 
-  private async initAuthClient(hubArgs:HubArgs) : Promise<string> {
+  private async initAuthClient(hubArgs: HubArgs): Promise<string> {
     if (!this._connector || !this.needsToken())
       return "notoken";
 
-    let clientConfig = undefined;
-    let callbackUrl = undefined;
-    let callback = undefined;
+    let clientConfig;
+    let callbackUrl;
+    let callback;
 
     if (hubArgs.doInteractiveSignIn)
       clientConfig = hubArgs.clientConfig;
@@ -468,8 +461,8 @@ export class ConnectorRunner {
       throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
 
-    this._authMgr = new ConnectorAuthenticationManager (callback , callbackUrl , clientConfig);
-
+    this._authMgr = new ConnectorAuthenticationManager ({callback , callbackUrl , authClientConfig : clientConfig});
+    await this._authMgr.initialize();
     return this._authMgr.getAccessToken();
   }
 
