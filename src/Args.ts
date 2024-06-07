@@ -7,7 +7,6 @@ import {NodeCliAuthorizationConfiguration} from "@itwin/node-cli-authorization";
 import {LoggerCategories} from "./LoggerCategory";
 import * as fs from "fs";
 import * as path from "path";
-import {LoggerCategories as something} from ">/LoggerCategory";
 
 interface Validatable {
   isValid: boolean;
