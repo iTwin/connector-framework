@@ -59,7 +59,7 @@ stages:
         displayName: 'Install Node.js'
 
       - script: |
-          npm install
+          npm install --legacy-peer-deps 
         displayName: 'install packages'
 
       # - script: |
