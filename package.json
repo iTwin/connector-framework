@@ -97,6 +97,7 @@
   },
   "dependencies": {
     "@itwin/core-backend": "^4.7.0-dev.15",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "typedoc": "^0.25.13"
   }
 }
