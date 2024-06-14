@@ -44,14 +44,14 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@itwin/build-tools": "^4.7.0-dev.15",
-    "@itwin/core-bentley": "^4.7.0-dev.15",
-    "@itwin/core-common": "^4.7.0-dev.15",
-    "@itwin/core-geometry": "^4.7.0-dev.15",
-    "@itwin/core-quantity": "^4.7.0-dev.15",
-    "@itwin/ecschema-metadata": "^4.7.0-dev.15",
+    "@itwin/build-tools": "^4.7.1",
+    "@itwin/core-bentley": "^4.7.1",
+    "@itwin/core-common": "^4.7.1",
+    "@itwin/core-geometry": "^4.7.1",
+    "@itwin/core-quantity": "^4.7.1",
+    "@itwin/ecschema-metadata": "^4.7.1",
     "@itwin/eslint-plugin": "^4.0.2",
-    "@itwin/imodels-access-backend": "^5.1.1",
+    "@itwin/imodels-access-backend": "^5.1.2",
     "@itwin/imodels-client-authoring": "^5.5.0",
     "@itwin/node-cli-authorization": "^2.0.2",
     "@itwin/oidc-signin-tool": "^4.3.5",
@@ -80,8 +80,8 @@
     "typescript": "~5.3.3"
   },
   "peerDependencies": {
-    "@itwin/core-bentley": "^4.7.0-dev.15",
-    "@itwin/core-common": "^4.7.0-dev.15",
+    "@itwin/core-bentley": "^4.7.1",
+    "@itwin/core-common": "^4.7.1",
     "@itwin/node-cli-authorization": "^2.0.1"
   },
   "husky": {
@@ -96,7 +96,7 @@
     ]
   },
   "dependencies": {
-    "@itwin/core-backend": "^4.7.0-dev.15",
+    "@itwin/core-backend": "^4.7.1",
     "cross-env": "^7.0.3",
     "typedoc": "^0.25.13"
   }
