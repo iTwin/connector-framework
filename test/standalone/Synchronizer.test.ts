@@ -3,18 +3,19 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import type { ExternalSourceAspectProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModelError, IModelStatus } from "@itwin/core-common";
-import type { Subject } from "@itwin/core-backend";
-import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb } from "@itwin/core-backend";
+import type { ExternalSourceAspectProps, RepositoryLinkProps, UrlLinkProps } from "@itwin/core-common";
+import { Code, IModel, IModelError, IModelStatus } from "@itwin/core-common";
+import type { Subject} from "@itwin/core-backend";
+import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb, UrlLink } from "@itwin/core-backend";
 import { assert } from "chai";
 import { join } from "path";
 import * as fs from "fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
-import type { SourceItem } from "../../src/Synchronizer";
+import type { SourceDocument, SourceItem, SynchronizationResults } from "../../src/Synchronizer";
 import { ItemState, Synchronizer } from "../../src/Synchronizer";
 import { berryGroups } from "./toys";
+import type { Id64String } from "@itwin/core-bentley";
 
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
@@ -249,6 +250,102 @@ describe("synchronizer #standalone", () => {
 
       assert.strictEqual(found.description!, "all about berries 🍓");
       assert.strictEqual(aspect.version!, "1.0.1");
+    });
+
+    it("update element with more than one external source", () => {
+      const synchronizer = new Synchronizer(imodel, false);
+
+      const meta = (anchor: string, source: Id64String, scope: Id64String, kind: string, version: string): SourceItem => ({
+        scope, source,
+        id: anchor, kind, version,
+      });
+
+      const document = (anchor: string, modified: string): SourceDocument => ({
+        docid: anchor,
+        lastModifiedTime: modified,
+      });
+
+      // Make two repositories.
+
+      const some = synchronizer.recordDocument(
+        document("some repository", "1.0.0")
+      ).elementProps.id;
+
+      assert.exists(some);
+
+      const other = synchronizer.recordDocument(
+        document("other repository", "1.0.0")
+      ).elementProps.id;
+
+      assert.exists(other);
+
+      // Make the URL.
+
+      const url: UrlLinkProps = {
+        classFullName: UrlLink.classFullName,
+        model: IModel.repositoryModelId,
+        code: Code.createEmpty(),
+        url: "https://developer.bentley.com",
+      };
+
+      const sync: SynchronizationResults = {
+        elementProps: url,
+        itemState: ItemState.New,
+      };
+
+      // Sync the two source aspects.
+
+      const someMeta = meta(
+        "some url", synchronizer.getExternalSourceElementByLinkId(some!)!.id!,
+        some!, "json", "1.0.0"
+      );
+
+      synchronizer.updateIModel(sync, someMeta);
+
+      const otherMeta = meta(
+        "some url", synchronizer.getExternalSourceElementByLinkId(other!)!.id!,
+        other!, "json", "1.0.0"
+      ); // <- Same identifier, different scope!
+
+      synchronizer.updateIModel(sync, otherMeta);
+
+      assert.strictEqual(
+        sourceAspect(someMeta).version, "1.0.0"
+      );
+
+      let otherAspect = sourceAspect(otherMeta);
+
+      assert.strictEqual(
+        imodel.elements.getElement<UrlLink>(otherAspect.element.id).url,
+        "https://developer.bentley.com",
+      );
+
+      assert.strictEqual(
+        otherAspect.version, "1.0.0"
+      );
+
+      // Update the URL.
+
+      url.url = "https://qa-developer.bentley.com";
+
+      sync.itemState = ItemState.Changed;
+
+      otherMeta.version = "1.0.1"; // <- Update!
+
+      synchronizer.updateIModel(sync, otherMeta);
+
+      assert.strictEqual(sourceAspect(someMeta).version, "1.0.0");
+
+      otherAspect = sourceAspect(otherMeta);
+
+      assert.strictEqual(
+        imodel.elements.getElement<UrlLink>(otherAspect.element.id).url,
+        "https://qa-developer.bentley.com", // <- Element updates!
+      );
+
+      assert.strictEqual(
+        otherAspect.version, "1.0.1" // <- The second source aspect updates!
+      );
     });
   });
 
