@@ -1,6 +1,6 @@
 # Change Log - @itwin/connector-framework
 
-## 2.1.2
+## 2.2.0-dev.1
 
 - move access token handling to synchronizer
 - check expiration before returning a cached token
