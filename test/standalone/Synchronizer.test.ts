@@ -298,7 +298,7 @@ describe("synchronizer #standalone", () => {
     // TODO: This one fails, skipping so that it passes CI. Need to fix, it's a bug in the
     // synchronizer!
     // vvvv
-    it("update modified root element with children, larger source set", () => {
+    it("update modified root element with children, larger-source-set", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
