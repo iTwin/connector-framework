@@ -3,18 +3,16 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import type { ExternalSourceAspectProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModelError, IModelStatus } from "@itwin/core-common";
-import type { Subject } from "@itwin/core-backend";
-import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb } from "@itwin/core-backend";
+import { Code, ExternalSourceAspectProps, IModelError, IModelStatus, RepositoryLinkProps } from "@itwin/core-common";
+import { DefinitionGroup, ExternalSourceAspect, RepositoryLink, SnapshotDb, Subject } from "@itwin/core-backend";
 import { assert } from "chai";
 import { join } from "path";
 import * as fs from "fs";
 import * as utils from "../ConnectorTestUtils";
 import { KnownTestLocations } from "../KnownTestLocations";
-import type { SourceItem } from "../../src/Synchronizer";
-import { ItemState, Synchronizer } from "../../src/Synchronizer";
+import { ItemState, SourceItem, Synchronizer } from "../../src/Synchronizer";
 import { berryGroups } from "./toys";
+import {after, before} from "mocha";
 
 describe("synchronizer #standalone", () => {
   const name = "my-fruits";
@@ -300,7 +298,7 @@ describe("synchronizer #standalone", () => {
     // TODO: This one fails, skipping so that it passes CI. Need to fix, it's a bug in the
     // synchronizer!
     // vvvv
-    it.skip("update modified root element with children, larger source set", () => {
+    it("update modified root element with children, larger source set", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
