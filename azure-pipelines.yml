@@ -175,11 +175,11 @@ stages:
 
 - stage: GitReleaseTag
   displayName: GitReleaseTag
-  condition: and(succeeded())
+  condition: succeeded()
   dependsOn: Build
   jobs:
     - job: ReleaseTag
-      displayName: Tag Docs
+      displayName: Release Tag
       pool:
         vmImage: 'ubuntu-latest'
       steps:
