@@ -186,8 +186,6 @@ stages:
         dryrun: false
 - stage: Publish2
   displayName: Publish2
-  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
-  dependsOn: Build
   jobs:
     - job: ReleaseTag
       displayName: Tag Docs
