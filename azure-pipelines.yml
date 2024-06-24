@@ -173,20 +173,9 @@ stages:
         displayName: 'Publish Connector Framework Artifact'
         condition: and(succeeded(), eq(variables['info.shouldPublish'], 'true'))
 
-- stage: Publish
-  displayName: Publish
-  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
-  dependsOn: Build
-  jobs:
-    - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
-      parameters:
-        path: '*.tgz'
-        artifactName: connector-framework
-        name: ConnectorFramework
-        dryrun: false
-- stage: Publish2
-  displayName: Publish2
-  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
+- stage: GitReleaseTag
+  displayName: GitReleaseTag
+  condition: and(succeeded())
   dependsOn: Build
   jobs:
     - job: ReleaseTag
@@ -203,6 +192,18 @@ stages:
           git tag -a testTagName-logan123 -m 'Handy message'
           git push origin testTagName-logan123
         displayName: 'test git tag'
+
+- stage: Publish
+  displayName: Publish
+  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
+  dependsOn: Build
+  jobs:
+    - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
+      parameters:
+        path: '*.tgz'
+        artifactName: connector-framework
+        name: ConnectorFramework
+        dryrun: false
 
 - stage: Validate_Docs
   dependsOn: Build
