@@ -184,6 +184,24 @@ stages:
         artifactName: connector-framework
         name: ConnectorFramework
         dryrun: false
+- stage: Publish2
+  displayName: Publish2
+  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
+  dependsOn: Build
+  jobs:
+    - job: ReleaseTag
+      displayName: Tag Docs
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: self
+        persistCredentials: true
+      - script: |
+          git config user.name "imodeljs-admin"
+          git config user.email "38288322+imodeljs-admin@users.noreply.github.com"
+          git tag -a testTagName-logan123 -m 'Handy message'
+          git push origin testTagName-logan123
+        displayName: 'test git tag'
 
 - stage: Validate_Docs
   dependsOn: Build
