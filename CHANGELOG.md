@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.2.2
+
+- fixed bug in synchronizer for updating mixed bag of new and changed child elements.  New element(s) would be skipped.
+
 ## 2.2.0-dev.1
 
 - move access token handling to synchronizer
