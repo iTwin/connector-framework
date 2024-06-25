@@ -180,9 +180,6 @@ stages:
   jobs:
     - job: ReleaseTag
       displayName: Release Tag
-      variables:
-        - name: versionNum
-          value: 0.0.0-null
       pool:
         vmImage: 'ubuntu-latest'
       steps:
@@ -190,12 +187,11 @@ stages:
         persistCredentials: true
         clean: true
       - pwsh: |
-          Write-Host "##vso[task.setvariable variable=versionNum](Get-Content ./package.json | ConvertFrom-Json).version"
-      - script: |
+          $versionNum=(Get-Content ./package.json | ConvertFrom-Json).version
           git config user.name 'imodeljs-admin'
           git config user.email '38288322+imodeljs-admin@users.noreply.github.com'
-          git tag -a testTagName-$(versionNum)
-          git push origin testTagName-$(versionNum)
+          git tag -a testTagName-$versionNum
+          git push origin testTagName-$versionNum
         displayName: 'test git tag'
 
 - stage: Publish
