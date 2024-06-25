@@ -789,6 +789,10 @@ export class Synchronizer {
           if (stat !== IModelStatus.Success) {
             return stat;
           }
+        } else if (childRes.itemState === ItemState.New) {
+          const stat = this.insertResultsIntoIModel(childRes, parentAspectProps);
+          if (stat !== IModelStatus.Success)
+            return stat;
         }
       }
       return IModelStatus.Success;
