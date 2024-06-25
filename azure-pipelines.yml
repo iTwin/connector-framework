@@ -190,9 +190,9 @@ stages:
           $versionNum=(Get-Content ./package.json | ConvertFrom-Json).version
           git config user.name 'imodeljs-admin'
           git config user.email '38288322+imodeljs-admin@users.noreply.github.com'
-          git tag -a testTagName-$versionNum -m 'Handy message'
-          git push origin testTagName-$versionNum
-        displayName: 'test git tag'
+          git tag -a "TEST-release/$versionNum" -m "v$versionNum"
+          git push origin "TEST-release/$versionNum"
+        displayName: 'git tag'
 
 - stage: Publish
   displayName: Publish
