@@ -1,5 +1,5 @@
 import { assert } from "chai";
-import { ConnectorAuthenticationManager } from "../../src/ConnectorAuthenticationManager";
+import { ConnectorAuthenticationManager, DummyCallbackUrlParams } from "../../src/ConnectorAuthenticationManager";
 import {loadEnv} from "../../test/ConnectorTestUtils";
 import * as path from "path";
 import { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
@@ -57,6 +57,24 @@ describe("AuthClient (#standalone) - using callback", async () => {
       return token!;
     };
     authManager = new ConnectorAuthenticationManager({callback: tokenCallback});
+    await authManager.initialize();
+    assert.isDefined(await authManager.getAccessToken());
+  });
+});
+
+describe("AuthClient (#standalone) - using (dummy) callback URL", async () => {
+  let authManager: ConnectorAuthenticationManager;
+
+  // beforeEach(async () => {});
+
+  it("getAccessToken should return a token", async () => {
+    const dummyParams:  DummyCallbackUrlParams = {
+      callbackUrl: "http://localhost:3000",
+      token: "dummy",
+      expiration: 3600,
+    };
+
+    authManager = new ConnectorAuthenticationManager({dummyParams});
     await authManager.initialize();
     assert.isDefined(await authManager.getAccessToken());
   });
