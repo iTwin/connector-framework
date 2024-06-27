@@ -175,7 +175,7 @@ stages:
 
 - stage: Publish
   displayName: Publish
-  condition: and(succeeded(), true)
+  condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
   dependsOn: Build
   jobs:
     - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
@@ -183,7 +183,7 @@ stages:
         path: '*.tgz'
         artifactName: connector-framework
         name: ConnectorFramework
-        dryrun: true
+        dryrun: false
     - job: ReleaseTag
       displayName: Release Tag
       pool:
@@ -196,8 +196,8 @@ stages:
           $versionNum=(Get-Content ./package.json | ConvertFrom-Json).version
           git config user.name 'imodeljs-admin'
           git config user.email '38288322+imodeljs-admin@users.noreply.github.com'
-          git tag -a "TEST-release/$versionNum" -m "v$versionNum"
-          git push origin "TEST-release/$versionNum"
+          git tag -a "release/$versionNum" -m "v$versionNum"
+          git push origin "release/$versionNum"
         displayName: 'git tag'
 
 - stage: Validate_Docs
