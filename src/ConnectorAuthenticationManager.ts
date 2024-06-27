@@ -51,10 +51,6 @@ abstract class CachedTokenClient implements AuthorizationClient {
  */
 export class CallbackUrlClient extends CachedTokenClient {
   private _callbackUrl: AccessTokenCallbackUrl;
-  protected _fetch = async (): Promise<Response> => {
-    const response =await fetch(this._callbackUrl);
-    return response;
-  };
 
   constructor(callbackUrl: AccessTokenCallbackUrl) {
     super();
@@ -63,7 +59,7 @@ export class CallbackUrlClient extends CachedTokenClient {
   public override async getAccessToken(): Promise<string> {
     return this.getCachedTokenIfNotExpired (async () => {
 
-      const response = await this._fetch();
+      const response = await this.fetch();
       const responseJSON = await response.json();
       const tokenStr = responseJSON.access_token;
       const expiresIn = await responseJSON.expires_in;
@@ -71,6 +67,11 @@ export class CallbackUrlClient extends CachedTokenClient {
       const tePair: TokenExpirationPair = {token:tokenStr, expiration};
       return tePair;
     });
+  }
+
+  protected  async fetch(): Promise<Response> {
+    const response =await fetch(this._callbackUrl);
+    return response;
   }
 }
 
@@ -88,24 +89,13 @@ export class DummyCallbackUrlClient extends CallbackUrlClient {
     super(dummyParams.callbackUrl);
     this._dummyToken = dummyParams.token;
     this._dummyExpiration = dummyParams.expiration;
-    this._fetch = async (): Promise<Response> => {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      return new Response(JSON.stringify({access_token: this._dummyToken, expires_in: this._dummyExpiration}));
-    };
+
   }
 
-  public override async getAccessToken(): Promise<string> {
-    return this.getCachedTokenIfNotExpired (async () => {
-
-      const response = await this._fetch();
-      const responseJSON = await response.json();
-      const tokenStr = responseJSON.access_token;
-      const expiresIn = await responseJSON.expires_in;
-      const expiration = Date.now() + expiresIn*1E3; // convert to milliseconds
-      const tePair: TokenExpirationPair = {token:tokenStr, expiration};
-      return tePair;
-    });
-  }
+  protected override async fetch(): Promise<Response> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    return new Response(JSON.stringify({access_token: this._dummyToken, expires_in: this._dummyExpiration}));
+  };
 }
 
 /**
