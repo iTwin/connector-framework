@@ -6,6 +6,7 @@
     "configurations": [
 
 
+
       {
         "name": "Documentation",
         "request": "launch",
@@ -83,6 +84,18 @@
             "test:integration"
           ]
       },
+      {
+        "name": "iTwinConnectorFwk Tests (larger-source-set)",
+        "cwd": "${workspaceFolder}",
+        "type": "node",
+        "request": "launch",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": [
+          "run",
+          "test:larger-source-set"
+        ]
+    },
+      
       {
         "name": "pretest",
         "cwd": "${workspaceFolder}",
