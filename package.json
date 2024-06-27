@@ -1,6 +1,6 @@
 {
   "name": "@itwin/connector-framework",
-  "version": "2.2.0-dev.2",
+  "version": "2.2.0-dev.1",
   "description": "iTwin Connector Framework",
   "main": "lib/src/connector-framework.js",
   "typings": "lib/src/connector-framework.d.ts",
