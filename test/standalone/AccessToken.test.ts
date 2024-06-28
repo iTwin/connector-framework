@@ -5,7 +5,7 @@ import * as path from "path";
 import { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
 import { TestBrowserAuthorizationClient } from "@itwin/oidc-signin-tool";
 import { AccessToken } from "@itwin/core-bentley";
-describe("AuthClient (#standalone) - using Node Cli Client", async () => {
+describe("AuthClient - using Node Cli Client", async () => {
   let authManager: ConnectorAuthenticationManager;
   loadEnv(path.join(__dirname, "../../", ".env"));
 
@@ -27,7 +27,7 @@ describe("AuthClient (#standalone) - using Node Cli Client", async () => {
   });
 });
 
-describe("AuthClient (#standalone) - using callback", async () => {
+describe("AuthClient - using callback", async () => {
   let authManager: ConnectorAuthenticationManager;
   let token;
   loadEnv(path.join(__dirname, "../../", ".env"));
@@ -94,7 +94,7 @@ describe("AuthClient (#standalone) - using (dummy) callback URL", async () => {
     await new Promise((resolve) => setTimeout(resolve, (shortExpiration + 1)*1E3));
 
     // Token should be expired
-    // This is admittedly not the greatest test.  It's already tested on first request
+    // This is admittedly not the greatest test b/c we can't be certain we're not getting a cached token.
     // Since the cached token is tested with the integration tests and b/c we are already at 84% coverage, ...
     // we won't take this farther at this time. We could make the CachedTokenClient and CachedToken public
     // through accessor methods and test the expiration directly.
