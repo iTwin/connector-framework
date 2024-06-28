@@ -176,8 +176,8 @@ export default class TestConnector extends BaseConnector {
     deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
     this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);      
     // bf: ADO# 1387737 - Also delete the ExternalSource
-    if (this._externalSourceId != undefined)
-       this.synchronizer.imodel.elements.deleteElement(this._externalSourceId);
+    if (this._externalSourceId !== undefined)
+      this.synchronizer.imodel.elements.deleteElement(this._externalSourceId);
   }
 
   public getApplicationVersion(): string {
@@ -223,8 +223,6 @@ export default class TestConnector extends BaseConnector {
     const partitionId = this.synchronizer.imodel.elements.insertElement(partitionProps);
 
     return this.synchronizer.imodel.models.insertModel({ classFullName: TestConnectorGroupModel.classFullName, modeledElement: { id: partitionId } });
-
-
   }
 
   private queryGroupModel(): Id64String | undefined {

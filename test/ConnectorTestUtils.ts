@@ -45,7 +45,7 @@ export function setupLoggingWithAPIMRateTrap() {
 /* eslint-disable no-console */
 
 /** Loads the provided `.env` file into process.env */
-function loadEnv(envFile: string) {
+export function loadEnv(envFile: string) {
   if (!fs.existsSync(envFile))
     return;
 
