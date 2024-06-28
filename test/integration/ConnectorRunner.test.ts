@@ -2,15 +2,12 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { AccessToken, Id64String} from "@itwin/core-bentley";
-import { BentleyStatus } from "@itwin/core-bentley";
+import { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import type { TestBrowserAuthorizationClientConfiguration} from "@itwin/oidc-signin-tool";
-import { TestUtility} from "@itwin/oidc-signin-tool";
+import { TestBrowserAuthorizationClientConfiguration, TestUtility} from "@itwin/oidc-signin-tool";
 import { expect } from "chai";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
-import type { HubArgsProps} from "../../src/Args";
-import { HubArgs, JobArgs } from "../../src/Args";
+import { HubArgs, HubArgsProps, JobArgs } from "../../src/Args";
 import { KnownTestLocations } from "../KnownTestLocations";
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
@@ -21,13 +18,13 @@ import { TestIModelManager } from "./TestIModelManager";
 describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
-  let newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
-  let updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: newImodelName + "Update";
-  let unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: newImodelName + "Unmap";
-  
+  const newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
+  const updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: `${newImodelName  }Update`;
+  const unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: `${newImodelName  }Unmap`;
+
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
-  let callbackUrl : string|undefined;
+  let callbackUrl: string|undefined;
 
   const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
@@ -44,10 +41,10 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
-      authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`
+      authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`,
     };
 
-    callbackUrl = process.env.test_callbackUrl!
+    callbackUrl = process.env.test_callbackUrl!;
 
     const userCred = {
       email: process.env.test_user_name!,
@@ -128,7 +125,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     } as HubArgsProps);
 
   if (callbackUrl) {
-    hubArgs.tokenCallbackUrl = callbackUrl;  
+    hubArgs.tokenCallbackUrl = callbackUrl;
     }
   else {
     hubArgs.clientConfig = testClientConfig;
@@ -162,7 +159,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     } as HubArgsProps);
 
   if (callbackUrl) {
-    hubArgs.tokenCallbackUrl = callbackUrl;  
+    hubArgs.tokenCallbackUrl = callbackUrl;
     }
   else {
     hubArgs.clientConfig = testClientConfig;
@@ -200,7 +197,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     } as HubArgsProps);
 
     if (callbackUrl) {
-      hubArgs.tokenCallbackUrl = callbackUrl;  
+      hubArgs.tokenCallbackUrl = callbackUrl;
       }
     else {
       hubArgs.clientConfig = testClientConfig;

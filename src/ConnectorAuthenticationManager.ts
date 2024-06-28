@@ -51,6 +51,7 @@ abstract class CachedTokenClient implements AuthorizationClient {
  */
 export class CallbackUrlClient extends CachedTokenClient {
   private _callbackUrl: AccessTokenCallbackUrl;
+
   constructor(callbackUrl: AccessTokenCallbackUrl) {
     super();
     this._callbackUrl = callbackUrl;
@@ -58,7 +59,7 @@ export class CallbackUrlClient extends CachedTokenClient {
   public override async getAccessToken(): Promise<string> {
     return this.getCachedTokenIfNotExpired (async () => {
 
-      const response = await fetch(this._callbackUrl);
+      const response = await this.fetch();
       const responseJSON = await response.json();
       const tokenStr = responseJSON.access_token;
       const expiresIn = await responseJSON.expires_in;
@@ -67,6 +68,34 @@ export class CallbackUrlClient extends CachedTokenClient {
       return tePair;
     });
   }
+
+  protected  async fetch(): Promise<Response> {
+    const response =await fetch(this._callbackUrl);
+    return response;
+  }
+}
+
+export interface DummyCallbackUrlParams {
+  callbackUrl: AccessTokenCallbackUrl;  // dummy callback URL - for show only
+  token: string;                        // the token to return
+  expiration: number;                   // in seconds
+}
+
+export class DummyCallbackUrlClient extends CallbackUrlClient {
+  private _dummyToken: string;
+  private _dummyExpiration: number;
+
+  constructor(dummyParams: DummyCallbackUrlParams) {
+    super(dummyParams.callbackUrl);
+    this._dummyToken = dummyParams.token;
+    this._dummyExpiration = dummyParams.expiration;
+
+  }
+
+  protected override async fetch(): Promise<Response> {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    return new Response(JSON.stringify({access_token: this._dummyToken, expires_in: this._dummyExpiration}));
+  };
 }
 
 /**
@@ -95,6 +124,7 @@ interface ConnectorAuthenticationManagerParams {
   callback?: AccessTokenGetter;
   callbackUrl?: AccessTokenCallbackUrl;
   authClientConfig?: NodeCliAuthorizationConfiguration;
+  dummyParams?: DummyCallbackUrlParams;
 }
 
 /**
@@ -131,19 +161,23 @@ export class ConnectorAuthenticationManager {
 
   }
 
-  public initializeCallbackClient(callback: AccessTokenGetter): CallbackClient {
+  private initializeCallbackClient(callback: AccessTokenGetter): CallbackClient {
     return new CallbackClient (callback);
   }
 
-  public initializeCallbackUrlClient(authClient: AccessTokenCallbackUrl){
+  private initializeCallbackUrlClient(authClient: AccessTokenCallbackUrl){
     return new CallbackUrlClient(authClient);
   }
 
-  public async initializeInteractiveClient(authClient: NodeCliAuthorizationConfiguration){
+  private async initializeInteractiveClient(authClient: NodeCliAuthorizationConfiguration){
     const ncliClient = new NodeCliAuthorizationClient(authClient);
     // From docs... If signIn hasn't been called, the AccessToken will remain empty.
     await ncliClient.signIn();
     return ncliClient;
+  }
+
+  private async initializeDummyCallbackUrlClient(dummyParams: DummyCallbackUrlParams){
+    return new DummyCallbackUrlClient(dummyParams);
   }
 
   public async initialize() {
@@ -153,6 +187,8 @@ export class ConnectorAuthenticationManager {
       this._authClient = this.initializeCallbackUrlClient(this._cAMParams.callbackUrl);
     else if (this._cAMParams.authClientConfig)
       this._authClient = await this.initializeInteractiveClient(this._cAMParams.authClientConfig);
+    else if (this._cAMParams.dummyParams)
+      this._authClient = await this.initializeDummyCallbackUrlClient(this._cAMParams.dummyParams);
     else
       throw new Error(`Must pass callback, callbackUrl or an auth client!`);
   }
