@@ -184,6 +184,21 @@ stages:
         artifactName: connector-framework
         name: ConnectorFramework
         dryrun: false
+    - job: ReleaseTag
+      displayName: Release Tag
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: self
+        persistCredentials: true
+        clean: true
+      - pwsh: |
+          $versionNum=(Get-Content ./package.json | ConvertFrom-Json).version
+          git config user.name 'imodeljs-admin'
+          git config user.email '38288322+imodeljs-admin@users.noreply.github.com'
+          git tag -a "release/$versionNum" -m "v$versionNum"
+          git push origin "release/$versionNum"
+        displayName: 'git tag'
 
 - stage: Validate_Docs
   dependsOn: Build
