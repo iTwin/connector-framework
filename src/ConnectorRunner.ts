@@ -14,7 +14,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
 import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
-import {ChangeSetGroup, IModelHubProxy, IModelServiceClientProxy} from "./IModelServerClientProxy";
+import {ChangeSetGroup, IModelHubProxy} from "./ChangeSetGroup";
 type Path = string;
 
 enum BeforeRetry { Nothing = 0, PullMergePush = 1 }
@@ -29,7 +29,7 @@ export class ConnectorRunner {
   private _issueReporter?: ConnectorIssueReporter;
   private _authMgr?: ConnectorAuthenticationManager;
   private _changeSetGroup?: ChangeSetGroup;
-  private _iModelClient: IModelServiceClientProxy;
+  private _iModelClient: IModelHubProxy;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -592,8 +592,9 @@ export class ConnectorRunner {
     if (!this._iModelClient.connected)
       return "";
 
-    this._changeSetGroup = this._iModelClient.createChangeSetGroupId(description);
-    if (!this._changeSetGroup.valid)
+    IModelHubProxy.token = await this.getToken();
+    this._changeSetGroup = await IModelHubProxy.create(description, this.hubArgs.iModelGuid);
+    if (!this._changeSetGroup)
       return "";
 
     return this._changeSetGroup.id;
