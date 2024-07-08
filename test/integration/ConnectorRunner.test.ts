@@ -41,7 +41,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
-      authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`,
+      authority: `https://${process.env.imjs_url_prefix ?? ""}ims.bentley.com`,
     };
 
     callbackUrl = process.env.test_callbackUrl!;
@@ -124,14 +124,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
-  if (callbackUrl) {
-    hubArgs.tokenCallbackUrl = callbackUrl;
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;
     }
-  else {
-    hubArgs.clientConfig = testClientConfig;
-    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
-      return token!;
-    };
+    else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
     }
 
     await runConnector(jobArgs, hubArgs);
@@ -158,14 +158,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
       iModelGuid: await iModelMgr.createIModel(token),
     } as HubArgsProps);
 
-  if (callbackUrl) {
-    hubArgs.tokenCallbackUrl = callbackUrl;
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;
     }
-  else {
-    hubArgs.clientConfig = testClientConfig;
-    hubArgs.tokenCallback = async (): Promise<AccessToken> => {
-      return token!;
-    };
+    else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
     }
 
     await runConnector(jobArgs, hubArgs);
@@ -198,13 +198,12 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     if (callbackUrl) {
       hubArgs.tokenCallbackUrl = callbackUrl;
-      }
-    else {
+    } else {
       hubArgs.clientConfig = testClientConfig;
       hubArgs.tokenCallback = async (): Promise<AccessToken> => {
         return token!;
       };
-      }
+    }
 
     // First run to add data
     await runConnector(jobArgs, hubArgs);
