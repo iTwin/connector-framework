@@ -186,88 +186,11 @@ export class IModelHubProxy{
   }
 
   public static async close(modelId: string, changesetGroupId: string, state: CloseState = "completed"): Promise<ChangeSetGroup | undefined> {
-    const fetcher = new CloseFetcher({token: this.token, state, modelId, changesetGroupId, hostName: this.hostName,
-      callback: (json) => {return ChangeSetGroup.create(json.changesetGroup) ;}});
+    const fetcher = new CloseFetcher({token: this.token, state, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
   }
 
-  /*
-  public static async create2(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
-    let csGrp: ChangeSetGroup | undefined;
-    const reqInit = {
-      method: "POST",
-      headers: {
-        "Accept": "application/vnd.bentley.itwin-platform.v2+json",
-        "Authorization": this.token,
-        "Content-type": "application/json",
-      },
-      body: JSON.stringify({  description      }),
-    };
-
-    const url: string = `https://api.bentley.com/imodels/${modelId}/changesetgroups`;
-
-    // dumpFetchParams (url, reqInit);
-
-    await fetch(url, reqInit)
-      .then(async (response) => response.json())
-      .then((json) => {csGrp = ChangeSetGroup.create(json.changesetGroup) ;});
-
-    return csGrp;
-  }
-
-  public static async get2(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined>{
-    let csGrp: ChangeSetGroup | undefined;
-    await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups/${changesetGroupId}`,
-      {
-        method: "GET",
-        headers: {
-          "Accept": "application/vnd.bentley.itwin-platform.v2+json",
-          "Authorization": this.token,
-          "Content-type": "application/json",
-        },
-      })
-      .then(async (response) => response.json())
-      .then((json) => {csGrp = ChangeSetGroup.create(json.changesetGroup) ;});
-
-    return csGrp;
-  }
-
-  public static async getAll2(modelId: string): Promise<ChangeSetGroup[]|undefined> {
-    let csGrpArr: ChangeSetGroup[]|undefined;
-    await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups`,
-      {
-        method: "GET",
-        headers: {
-          "Accept": "application/vnd.bentley.itwin-platform.v2+json",
-          "Authorization": this.token,
-          "Content-type": "application/json",
-        },
-      })
-      .then(async (response) => response.json())
-      .then((json) => {csGrpArr = ChangeSetGroup.createArray(json);});
-
-    return csGrpArr;
-  }
-
-  public static async close2(modelId: string, changesetGroupId: string, state: CloseState = "completed") {
-    let csGrp: ChangeSetGroup | undefined;
-    await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups/${changesetGroupId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Accept": "application/vnd.bentley.itwin-platform.v2+json",
-          "Authorization": this.token,
-          "Content-type": "application/json",
-        },
-        body: JSON.stringify({state}),
-      })
-      .then(async (response) => response.json())
-      .then((json) => {csGrp = ChangeSetGroup.create(json.changesetGroup) ;});
-
-    return csGrp;
-  }
-*/
   private _connected: boolean = false;
 
   public connect(): void {
