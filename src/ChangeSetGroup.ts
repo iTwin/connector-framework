@@ -11,27 +11,40 @@ type fetcherCallback = (json: any) => void;
 interface FetcherParams {
   hostName: string;
   token: string;
-  callback: fetcherCallback;
+  modelId: string;
+  callback?: fetcherCallback;
 }
 
 interface CreateFetcherParams extends FetcherParams {
   description: string;
-  modelId: string;
+}
+
+interface GetFetcherParams extends FetcherParams {
+  changesetGroupId: string;
+}
+
+interface CloseFetcherParams extends FetcherParams {
+  state: CloseState;
+  changesetGroupId: string;
 }
 
 abstract class Fetcher {
   protected _hostName: string;
   protected _token: string;
-  protected _callback: fetcherCallback;
+  protected _callback?: fetcherCallback;
   protected _method: "POST"|"GET"|"PATCH";
   protected _urlFolderPath: string;
+  protected _modelId: string;
 
   constructor(params: FetcherParams) {
     this._hostName = params.hostName;
     this._token = params.token;
-    this._callback = params.callback;
     this._urlFolderPath = "";
     this._method = "GET"; // default to get but should be overridden by derived class
+    this._modelId = params.modelId;
+    this._callback = (json) => {
+      return ChangeSetGroup.create(json.changesetGroup);
+    };
   }
 
   protected get url(): string{
@@ -45,11 +58,15 @@ abstract class Fetcher {
     };
   }
   public async execute() {
-    await fetch(this.url,
-      {
-        method: this._method,
-        headers: this.headers,
-      });
+    let returndata: any;
+    const reqInit = {
+      method: this._method,
+      headers: this.headers,
+    };
+    await fetch(this.url, reqInit)
+      .then(async (response) => response.json())
+      .then((json) => returndata = (this._callback ? this._callback(json): undefined));
+    return returndata;
   }
 }
 
@@ -57,6 +74,7 @@ abstract class FetcherWithBody extends Fetcher {
   protected _body: any;
   constructor(params: FetcherParams) {
     super(params);
+
   }
 
   public override async execute(): Promise<any> {
@@ -69,25 +87,59 @@ abstract class FetcherWithBody extends Fetcher {
     // dumpFetchParams (this.url, reqInit);
     await fetch(this.url, reqInit)
       .then(async (response) => response.json())
-      .then((json) => returndata = this._callback(json));
+      .then((json) => returndata = (this._callback ? this._callback(json): undefined));
     return returndata;
   }
 }
 
 class CreateFetcher extends FetcherWithBody {
-  private _modelId: string;
   constructor(params: CreateFetcherParams) {
     super(params);
     this._method = "POST";
     this._body = {description: params.description};
-    this._modelId = params.modelId;
+  }
+
+  protected override get url(): string {
+    return `${this._hostName}/imodels/${this._modelId}/changesetgroups`;
+  }
+}
+
+class GetFetcher extends Fetcher {
+  private _changesetGroupId: string;
+  constructor(params: GetFetcherParams) {
+    super(params);
+    this._changesetGroupId = params.changesetGroupId;
+  }
+
+  protected override get url(): string {
+    return `${this._hostName}/imodels/${this._modelId}/changesetgroups/${this._changesetGroupId}`;
+  }
+}
+
+class GetAllFetcher extends Fetcher {
+  constructor(params: FetcherParams) {
+    super(params);
     this._callback = (json) => {
-      return ChangeSetGroup.create(json.changesetGroup);
+      return ChangeSetGroup.createArray(json);
     };
   }
 
   protected override get url(): string {
     return `${this._hostName}/imodels/${this._modelId}/changesetgroups`;
+  }
+}
+
+class CloseFetcher extends FetcherWithBody {
+  private _changesetGroupId: string;
+  constructor(params: CloseFetcherParams) {
+    super(params);
+    this._method = "PATCH";
+    this._body = {state: params.state};
+    this._changesetGroupId = params.changesetGroupId;
+  }
+
+  protected override get url(): string {
+    return `${this._hostName}/imodels/${this._modelId}/changesetgroups/${this._changesetGroupId}`;
   }
 }
 
@@ -116,14 +168,31 @@ export class IModelHubProxy{
   }
 
   public static async create(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
-    const fetcher = new CreateFetcher({token: this.token, description, modelId, hostName: this.hostName,
-      callback: (json) => {
-        return ChangeSetGroup.create(json.changesetGroup);
-      }});
+    const fetcher = new CreateFetcher({token: this.token, description, modelId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
   }
 
+  public static async get(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+    const fetcher = new GetFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
+    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  public static async getAll(modelId: string): Promise<ChangeSetGroup[] | undefined> {
+    const fetcher = new GetAllFetcher({token: this.token, modelId, hostName: this.hostName});
+    const chgSetGrp: ChangeSetGroup[] = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  public static async close(modelId: string, changesetGroupId: string, state: CloseState = "completed"): Promise<ChangeSetGroup | undefined> {
+    const fetcher = new CloseFetcher({token: this.token, state, modelId, changesetGroupId, hostName: this.hostName,
+      callback: (json) => {return ChangeSetGroup.create(json.changesetGroup) ;}});
+    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  /*
   public static async create2(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
     let csGrp: ChangeSetGroup | undefined;
     const reqInit = {
@@ -147,7 +216,7 @@ export class IModelHubProxy{
     return csGrp;
   }
 
-  public static async get(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined>{
+  public static async get2(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined>{
     let csGrp: ChangeSetGroup | undefined;
     await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups/${changesetGroupId}`,
       {
@@ -164,7 +233,7 @@ export class IModelHubProxy{
     return csGrp;
   }
 
-  public static async getAll(modelId: string): Promise<ChangeSetGroup[]|undefined> {
+  public static async getAll2(modelId: string): Promise<ChangeSetGroup[]|undefined> {
     let csGrpArr: ChangeSetGroup[]|undefined;
     await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups`,
       {
@@ -181,7 +250,7 @@ export class IModelHubProxy{
     return csGrpArr;
   }
 
-  public static async close(modelId: string, changesetGroupId: string, state: CloseState = "completed") {
+  public static async close2(modelId: string, changesetGroupId: string, state: CloseState = "completed") {
     let csGrp: ChangeSetGroup | undefined;
     await fetch(`https://api.bentley.com/imodels/${modelId}/changesetgroups/${changesetGroupId}`,
       {
@@ -198,7 +267,7 @@ export class IModelHubProxy{
 
     return csGrp;
   }
-
+*/
   private _connected: boolean = false;
 
   public connect(): void {
@@ -255,7 +324,19 @@ export class ChangeSetGroup {
   public get valid(): boolean {
     return this._groupId.length > 0;
   }
-  public get id(): string | PromiseLike<string> {
+  public get id(): string {
     return this._groupId;
+  }
+  public get description(): string {
+    return this._description;
+  }
+  public get state(): string {
+    return this._state;
+  }
+  public get creatorId(): string {
+    return this._creatorId;
+  }
+  public get createdDateTime(): string {
+    return this._createdDateTime;
   }
 }

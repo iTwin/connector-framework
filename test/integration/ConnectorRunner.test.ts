@@ -5,7 +5,7 @@
 import { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
 import { TestBrowserAuthorizationClientConfiguration, TestUtility} from "@itwin/oidc-signin-tool";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { HubArgs, HubArgsProps, JobArgs } from "../../src/Args";
 import { KnownTestLocations } from "../KnownTestLocations";
@@ -14,19 +14,21 @@ import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import { TestIModelManager } from "./TestIModelManager";
+import { IModelHubProxy } from "../../src/ChangeSetGroup";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
   let testProjectId: Id64String;
   const newImodelName = process.env.test_new_imodel_name ? process.env.test_new_imodel_name : "ConnectorFramework";
-  const updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: `${newImodelName  }Update`;
-  const unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: `${newImodelName  }Unmap`;
+  const updateImodelName = process.env.test_existing_imodel_name? process.env.test_existing_imodel_name: `${newImodelName}Update`;
+  const unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: `${newImodelName}Unmap`;
+  const changeSetGroupIModelName = process.env.test_change_set_group_name? process.env.test_change_set_group_name: `${newImodelName}ChangeSetGroup`;
 
   let testClientConfig: TestBrowserAuthorizationClientConfiguration;
   let token: AccessToken| undefined;
   let callbackUrl: string|undefined;
 
-  const testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
+  let testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
 
   before(async () => {
     await utils.startBackend();
@@ -106,6 +108,20 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
   }
 
+  async function verifyChangeSetGroups(hubArgs: HubArgs) {
+
+    IModelHubProxy.token = await IModelHost.authorizationClient!.getAccessToken();
+    IModelHubProxy.hostName = `https://${process.env.imjs_url_prefix ?? ""}api.bentley.com`;
+    const csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
+    assert.isDefined(csgArr);
+
+    if (csgArr){
+      assert.equal(csgArr.length, 1);
+      assert.equal(csgArr[0].state, "completed");
+    }
+
+  }
+
   it("should download and perform updates on a new imodel", async () => {
     if (token === undefined)
       throw new Error (`Can't create a test iModel without a token!`);
@@ -126,8 +142,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     if (callbackUrl) {
       hubArgs.tokenCallbackUrl = callbackUrl;
-    }
-    else {
+    } else {
       hubArgs.clientConfig = testClientConfig;
       hubArgs.tokenCallback = async (): Promise<AccessToken> => {
         return token!;
@@ -160,8 +175,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     if (callbackUrl) {
       hubArgs.tokenCallbackUrl = callbackUrl;
-    }
-    else {
+    } else {
       hubArgs.clientConfig = testClientConfig;
       hubArgs.tokenCallback = async (): Promise<AccessToken> => {
         return token!;
@@ -223,4 +237,47 @@ describe("iTwin Connector Fwk (#integration)", () => {
     // cleanup
     await iModelMgr.deleteIModel(token);
   });
+
+  it("should create change set groups", async () => {
+
+    if (token === undefined)
+      throw new Error (`Can't create a test iModel without a token!`);
+
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName);
+
+    const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: assetPath,
+      issuesDbDir: KnownTestLocations.outputDir,
+      stagingDir: KnownTestLocations.outputDir,
+    });
+
+    const hubArgs = new HubArgs({
+      projectGuid: testProjectId,
+      iModelGuid: await iModelMgr.createIModel(token),
+    } as HubArgsProps);
+
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;
+    } else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
+    }
+
+    testConnector = path.join("..", "lib", "test", "TestConnector", "ChangeSetGroupTestConnector.js");
+
+    // First run to add data
+    await runConnector(jobArgs, hubArgs);
+
+    // Verify that second model is deleted
+    jobArgs.source = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    await verifyChangeSetGroups(hubArgs);
+
+    // cleanup
+    await iModelMgr.deleteIModel(token);
+  });
+
 });
+

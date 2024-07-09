@@ -257,11 +257,19 @@ export class ConnectorRunner {
         this.updateProjectExtent();
         this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
+        await this.closeChangeSetGroup();
       },
       "Write synchronization finish time and extent.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
+  }
+
+  private async closeChangeSetGroup() {
+    if (this._changeSetGroup) {
+      await IModelHubProxy.close(this.hubArgs.iModelGuid, this._changeSetGroup.id, "completed");
+      this._changeSetGroup = undefined;
+    }
   }
 
   private async onFailure(err: any) {
@@ -562,17 +570,6 @@ export class ConnectorRunner {
     const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey(), this._authMgr);
     this.connector.synchronizer = synchronizer;
   }
-  /**
- * Tests the feature flag
- * @param featureName to test
- * @returns true if the feature flag is set to true otherwise false
- */
-  private testFeatureFlag(featureName: string): boolean {
-    const flag = process.env[featureName];
-    if (flag === undefined)
-      return false;
-    return flag.toLowerCase() === "true";
-  }
 
   /**
    * Fetches the group id of the changeset
@@ -580,8 +577,7 @@ export class ConnectorRunner {
    * @returns the group id of the changeset
    */
   private async fetchChangeSetGroupId(description: string): Promise<string> {
-    let enableChangeSetGrouping: boolean = false;
-    enableChangeSetGrouping = this.testFeatureFlag("imodelbridge-enableChangeSetGrouping" );
+    const enableChangeSetGrouping: boolean = this._connector?.createChangeSetGroup() ?? false;
 
     if (!enableChangeSetGrouping)
       return "";
@@ -593,6 +589,8 @@ export class ConnectorRunner {
       return "";
 
     IModelHubProxy.token = await this.getToken();
+    // NEEDSWORK: don't hardcode the host name here.
+    IModelHubProxy.hostName = `https://qa-api.bentley.com`;
     this._changeSetGroup = await IModelHubProxy.create(description, this.hubArgs.iModelGuid);
     if (!this._changeSetGroup)
       return "";
