@@ -257,17 +257,29 @@ export class ConnectorRunner {
         this.updateProjectExtent();
         this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
-        await this.closeChangeSetGroup();
       },
       "Write synchronization finish time and extent.",
     );
+
+    Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
+    await this.doInRepositoryChannel(
+      async () => {
+        this.updateProjectExtent();
+        this.connector.synchronizer.updateRepositoryLinks();
+        this.updateSynchronizationConfigLink(synchConfig);
+      },
+      "Write synchronization finish time and extent.",
+    );
+
+    await this.closeChangeSetGroup();
 
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
   }
 
   private async closeChangeSetGroup() {
     if (this._changeSetGroup) {
-      await IModelHubProxy.close(this.hubArgs.iModelGuid, this._changeSetGroup.id, "completed");
+      Logger.logInfo(LoggerCategories.Framework, `Closing ChangeSetGroup ${this._changeSetGroup.id}`);
+      await IModelHubProxy.close(this.hubArgs.iModelGuid, this._changeSetGroup.id);
       this._changeSetGroup = undefined;
     }
   }
