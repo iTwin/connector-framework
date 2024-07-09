@@ -112,7 +112,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     IModelHubProxy.token = await IModelHost.authorizationClient!.getAccessToken();
     IModelHubProxy.hostName = `https://${process.env.imjs_url_prefix ?? ""}api.bentley.com`;
-    const csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
+    let csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr){
@@ -120,6 +120,39 @@ describe("iTwin Connector Fwk (#integration)", () => {
       assert.equal(csgArr[0].state, "completed");
     }
 
+    // try some other methods
+    const newCSG = await IModelHubProxy.create ("second", hubArgs.iModelGuid);
+    assert.isDefined(newCSG);
+
+    let id = newCSG?.id;
+
+    const fromGet = await IModelHubProxy.get (hubArgs.iModelGuid, id!);
+
+    assert.isDefined(fromGet);
+    assert.equal(fromGet?.state, "inProgress");
+
+    id = fromGet?.id;
+
+    let closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!/*, "timedOut"*/);
+    assert.isDefined(closed);
+
+    closed = await IModelHubProxy.get (hubArgs.iModelGuid, id!);
+    assert.isDefined(closed);
+    assert.equal(closed?.state, "completed");
+
+    const thirdCSG = await IModelHubProxy.create ("third", hubArgs.iModelGuid);
+    assert.isDefined(thirdCSG);
+    assert.equal(thirdCSG?.state, "inProgress");
+
+    id = thirdCSG?.id;
+    closed = await IModelHubProxy.close (hubArgs.iModelGuid, id! /*,"forciblyClosed"*/);
+    assert.isDefined(closed);
+
+    csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
+    assert.isDefined(csgArr);
+
+    if (csgArr)
+      assert.equal(csgArr.length, 3);
   }
 
   it("should download and perform updates on a new imodel", async () => {
