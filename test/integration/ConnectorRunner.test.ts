@@ -238,7 +238,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await iModelMgr.deleteIModel(token);
   });
 
-  it("should create change set groups", async () => {
+  it("should create a change-set-group", async () => {
 
     if (token === undefined)
       throw new Error (`Can't create a test iModel without a token!`);
