@@ -261,16 +261,6 @@ export class ConnectorRunner {
       "Write synchronization finish time and extent.",
     );
 
-    Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
-    await this.doInRepositoryChannel(
-      async () => {
-        this.updateProjectExtent();
-        this.connector.synchronizer.updateRepositoryLinks();
-        this.updateSynchronizationConfigLink(synchConfig);
-      },
-      "Write synchronization finish time and extent.",
-    );
-
     await this.closeChangeSetGroup();
 
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
