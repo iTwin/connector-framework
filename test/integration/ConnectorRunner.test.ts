@@ -133,7 +133,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     id = fromGet?.id;
 
-    let closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!/*, "timedOut"*/);
+    let closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
     closed = await IModelHubProxy.get (hubArgs.iModelGuid, id!);
@@ -145,7 +145,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     assert.equal(thirdCSG?.state, "inProgress");
 
     id = thirdCSG?.id;
-    closed = await IModelHubProxy.close (hubArgs.iModelGuid, id! /*,"forciblyClosed"*/);
+    closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
     csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
@@ -276,7 +276,9 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (token === undefined)
       throw new Error (`Can't create a test iModel without a token!`);
 
-    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName);
+    const reuseExistingModel = false;
+    const deleteExistingModels = false;
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName, reuseExistingModel, deleteExistingModels);
 
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
@@ -304,10 +306,11 @@ describe("iTwin Connector Fwk (#integration)", () => {
     // First run to add data
     await runConnector(jobArgs, hubArgs);
 
-    // Verify that second model is deleted
+    // Verify that change set group is created
     jobArgs.source = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     await verifyChangeSetGroups(hubArgs);
 
+    await verifyIModel(jobArgs, hubArgs);
     // cleanup
     await iModelMgr.deleteIModel(token);
   });
