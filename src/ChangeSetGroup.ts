@@ -2,14 +2,17 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
+import { LoggerCategories } from "./LoggerCategory";
+import {Logger} from "@itwin/core-bentley";
 
 /* eslint-disable @typescript-eslint/naming-convention */
-/*
-function dumpFetchParams (url:string, reqInit : any) {
-  console.log (url);
-  console.log (reqInit);
+
+function dumpFetchParams(url: string, method: string, body?: string) {
+  Logger.logInfo (LoggerCategories.Framework, `fetching ${url}`);
+  Logger.logInfo (LoggerCategories.Framework, `method ${method}`);
+  if (body)
+    Logger.logInfo (LoggerCategories.Framework, `body ${body}`);
 }
-*/
 
 /**
  * @module ChangeSetGroup
@@ -137,6 +140,7 @@ abstract class Fetcher {
       method: this._method,
       headers: this.headers,
     };
+    dumpFetchParams (this.url, reqInit.method);
     await fetch(this.url, reqInit)
       .then(async (response) => response.json())
       .then((json) => returndata = (this._callback ? this._callback(json): undefined));
@@ -172,7 +176,7 @@ abstract class FetcherWithBody extends Fetcher {
       headers: this.headers,
       body: JSON.stringify(this._body),
     };
-    // dumpFetchParams (this.url, reqInit);
+    dumpFetchParams (this.url, reqInit.method, reqInit.body);
     await fetch(this.url, reqInit)
       .then(async (response) => response.json())
       .then((json) => returndata = (this._callback ? this._callback(json): undefined));
@@ -321,6 +325,7 @@ export class IModelHubProxy{
    * @static
    */
   public static async createChangeSetGroup(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `createChangeSetGroup - fetching a new changeset group for model ${modelId} with description ${description}`);
     const fetcher = new CreateFetcher({token: this.token, description, modelId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
@@ -333,6 +338,7 @@ export class IModelHubProxy{
    * @returns the changeset group matching the changesetGroupId or undefined if not found
    */
   public static async getChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroup - fetching changeset group ${changesetGroupId} for model ${modelId}`);
     const fetcher = new GetFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
@@ -344,6 +350,7 @@ export class IModelHubProxy{
    * @returns an array of ChangeSetGroup(s) or undefined if none found
    */
   public static async getChangeSetGroups(modelId: string): Promise<ChangeSetGroup[] | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroups - fetching all changeset groups for model ${modelId }`);
     const fetcher = new GetAllFetcher({token: this.token, modelId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup[] = await fetcher.execute();
     return chgSetGrp;
@@ -356,6 +363,7 @@ export class IModelHubProxy{
    * @returns The closed ChangeSetGroup
    */
   public static async closeChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `closeChangeSetGroup - closing changeset group ${changesetGroupId} for model ${modelId}`);
     const fetcher = new CloseFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
