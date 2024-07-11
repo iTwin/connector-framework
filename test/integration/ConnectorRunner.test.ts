@@ -111,7 +111,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
   async function verifyChangeSetGroups(hubArgs: HubArgs) {
 
     IModelHubProxy.token = await IModelHost.authorizationClient!.getAccessToken();
-    IModelHubProxy.hostName = `https://${process.env.imjs_url_prefix ?? ""}api.bentley.com`;
     let csgArr = await IModelHubProxy.getChangeSetGroups (hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 

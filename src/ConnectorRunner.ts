@@ -15,6 +15,7 @@ import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
 import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 import {ChangeSetGroup, IModelHubProxy} from "./ChangeSetGroup";
+
 type Path = string;
 
 enum BeforeRetry { Nothing = 0, PullMergePush = 1 }
@@ -591,8 +592,7 @@ export class ConnectorRunner {
       return "";
 
     IModelHubProxy.token = await this.getToken();
-    // NEEDSWORK: don't hardcode the host name here.
-    IModelHubProxy.hostName = `https://qa-api.bentley.com`;
+
     this._changeSetGroup = await IModelHubProxy.createChangeSetGroup(description, this.hubArgs.iModelGuid);
     if (!this._changeSetGroup)
       return "";

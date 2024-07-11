@@ -280,7 +280,6 @@ class CloseFetcher extends FetcherWithBody {
  */
 export class IModelHubProxy{
   private static _token: string;
-  private static _hostName: string = "https://api.bentley.com";
   public static get token() {
     return this._token;
   }
@@ -293,19 +292,6 @@ export class IModelHubProxy{
   public static set token(token: string) {
     this._token = token;
   }
-  /**
- * @method  hostName
- * @param {string} value - The host name
- * @description The host name
- * @static
- * @throws {Error} url cannot be empty
- */
-  public static set hostName(value: string) {
-    if (value === "")
-      throw new Error("url cannot be empty");
-
-    this._hostName = value;
-  }
 
   /**
    * @method  hostName
@@ -314,7 +300,11 @@ export class IModelHubProxy{
    * @returns {string} The host name
    */
   public static get hostName() {
-    return this._hostName;
+    const urlPrefix = process.env.imjs_url_prefix;
+    if (urlPrefix)
+      return `https://${urlPrefix}api.bentley.com`;
+    else
+      return "https://api.bentley.com";
   }
 
   /**
