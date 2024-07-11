@@ -352,8 +352,8 @@ export class IModelHubProxy{
   public static async getChangeSetGroups(modelId: string): Promise<ChangeSetGroup[] | undefined> {
     Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroups - fetching all changeset groups for model ${modelId }`);
     const fetcher = new GetAllFetcher({token: this.token, modelId, hostName: this.hostName});
-    const chgSetGrp: ChangeSetGroup[] = await fetcher.execute();
-    return chgSetGrp;
+    const chgSetGrpArr: ChangeSetGroup[] = await fetcher.execute();
+    return chgSetGrpArr;
   }
 
   /**
