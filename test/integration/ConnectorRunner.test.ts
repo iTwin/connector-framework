@@ -118,6 +118,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (csgArr){
       assert.equal(csgArr.length, 1);
       assert.equal(csgArr[0].state, "completed");
+      assert.equal(csgArr[0].description, "TestConnector");
     }
 
     // try some other methods
