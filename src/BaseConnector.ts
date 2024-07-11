@@ -122,6 +122,11 @@ export abstract class BaseConnector {
     return false;
   }
 
+  // override this method to provide a custom description for the change set group
+  public getChangeSetGroupDescription(): string {
+    return this.getConnectorName();
+  }
+
   /** Overridable function that must me implemented when the flag shouldUnmapSource is set to true. This method is used to unmap an existing source file in the iModel */
   public async unmapSource(source: string): Promise<void> {
     Logger.logError(LoggerCategories.Framework, `Unmap method is not defined while unmapping ${source}`);

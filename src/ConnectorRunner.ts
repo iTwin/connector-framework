@@ -607,7 +607,7 @@ export class ConnectorRunner {
     if (!isStandalone && this.db.isBriefcaseDb()) {
       this._db = this.db;
       await this.db.pullChanges();
-      const chgSetGrpId = await this.fetchChangeSetGroupId (comment);
+      const chgSetGrpId = await this.fetchChangeSetGroupId (this.connector.getChangeSetGroupDescription ());
       Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
       await this.db.pushChanges({ description: comment });
