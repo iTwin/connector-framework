@@ -269,7 +269,7 @@ export class ConnectorRunner {
   private async closeChangeSetGroup() {
     if (this._changeSetGroup) {
       Logger.logInfo(LoggerCategories.Framework, `Closing ChangeSetGroup ${this._changeSetGroup.id}`);
-      await IModelHubProxy.close(this.hubArgs.iModelGuid, this._changeSetGroup.id);
+      await IModelHubProxy.closeChangeSetGroup(this.hubArgs.iModelGuid, this._changeSetGroup.id);
       this._changeSetGroup = undefined;
     }
   }
@@ -593,7 +593,7 @@ export class ConnectorRunner {
     IModelHubProxy.token = await this.getToken();
     // NEEDSWORK: don't hardcode the host name here.
     IModelHubProxy.hostName = `https://qa-api.bentley.com`;
-    this._changeSetGroup = await IModelHubProxy.create(description, this.hubArgs.iModelGuid);
+    this._changeSetGroup = await IModelHubProxy.createChangeSetGroup(description, this.hubArgs.iModelGuid);
     if (!this._changeSetGroup)
       return "";
 

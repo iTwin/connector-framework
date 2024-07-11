@@ -112,7 +112,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     IModelHubProxy.token = await IModelHost.authorizationClient!.getAccessToken();
     IModelHubProxy.hostName = `https://${process.env.imjs_url_prefix ?? ""}api.bentley.com`;
-    let csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
+    let csgArr = await IModelHubProxy.getChangeSetGroups (hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr){
@@ -121,34 +121,34 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     // try some other methods
-    const newCSG = await IModelHubProxy.create ("second", hubArgs.iModelGuid);
+    const newCSG = await IModelHubProxy.createChangeSetGroup ("second", hubArgs.iModelGuid);
     assert.isDefined(newCSG);
 
     let id = newCSG?.id;
 
-    const fromGet = await IModelHubProxy.get (hubArgs.iModelGuid, id!);
+    const fromGet = await IModelHubProxy.getChangeSetGroup (hubArgs.iModelGuid, id!);
 
     assert.isDefined(fromGet);
     assert.equal(fromGet?.state, "inProgress");
 
     id = fromGet?.id;
 
-    let closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!);
+    let closed = await IModelHubProxy.closeChangeSetGroup (hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    closed = await IModelHubProxy.get (hubArgs.iModelGuid, id!);
+    closed = await IModelHubProxy.getChangeSetGroup (hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
     assert.equal(closed?.state, "completed");
 
-    const thirdCSG = await IModelHubProxy.create ("third", hubArgs.iModelGuid);
+    const thirdCSG = await IModelHubProxy.createChangeSetGroup ("third", hubArgs.iModelGuid);
     assert.isDefined(thirdCSG);
     assert.equal(thirdCSG?.state, "inProgress");
 
     id = thirdCSG?.id;
-    closed = await IModelHubProxy.close (hubArgs.iModelGuid, id!);
+    closed = await IModelHubProxy.closeChangeSetGroup (hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    csgArr = await IModelHubProxy.getAll (hubArgs.iModelGuid);
+    csgArr = await IModelHubProxy.getChangeSetGroups (hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr)

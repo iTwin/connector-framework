@@ -314,48 +314,48 @@ export class IModelHubProxy{
   }
 
   /**
-   * @method  create a ChangeSetGroup
+   * @method  create a new ChangeSetGroup in a given model
    * @param {string} description - The description
    * @param {string} modelId - The model id
    * @returns {Promise<ChangeSetGroup | undefined>} The newlt created ChangeSetGroup
    * @static
    */
-  public static async create(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
+  public static async createChangeSetGroup(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
     const fetcher = new CreateFetcher({token: this.token, description, modelId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
   }
 
   /**
-   * @method  get a ChangeSetGroup
+   * @method  getChangeSetGroup - get a ChangeSetGroup of a given id in a given model
    * @param modelId
    * @param changesetGroupId
    * @returns the changeset group matching the changesetGroupId or undefined if not found
    */
-  public static async get(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+  public static async getChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
     const fetcher = new GetFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
   }
 
   /**
-   * @method  getAll ChangeSetGroups in a given model
+   * @method  getChangeSetGroups - Get all ChangeSetGroups in a given model
    * @param modelId
    * @returns an array of ChangeSetGroup(s) or undefined if none found
    */
-  public static async getAll(modelId: string): Promise<ChangeSetGroup[] | undefined> {
+  public static async getChangeSetGroups(modelId: string): Promise<ChangeSetGroup[] | undefined> {
     const fetcher = new GetAllFetcher({token: this.token, modelId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup[] = await fetcher.execute();
     return chgSetGrp;
   }
 
   /**
-   * @method  close a ChangeSetGroup
+   * @method  closeChangeSetGroup - close a ChangeSetGroup of a given id in a given model
    * @param modelId
    * @param changesetGroupId
    * @returns The closed ChangeSetGroup
    */
-  public static async close(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+  public static async closeChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
     const fetcher = new CloseFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
