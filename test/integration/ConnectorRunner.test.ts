@@ -276,9 +276,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (token === undefined)
       throw new Error (`Can't create a test iModel without a token!`);
 
-    const reuseExistingModel = false;
-    const deleteExistingModels = false;
-    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName, reuseExistingModel, deleteExistingModels);
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName);
 
     const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
     const jobArgs = new JobArgs({
