@@ -276,112 +276,6 @@ class CloseFetcher extends FetcherWithBody {
 }
 
 /**
- * Proxy class to represent an IModelHub
- */
-export class IModelHubProxy{
-  private static _token: string;
-  public static get token() {
-    return this._token;
-  }
-  /**
-   * @method  token
-   * @param {string} token - The auth token
-   * @description The auth token
-   * @static
-   */
-  public static set token(token: string) {
-    this._token = token;
-  }
-
-  /**
-   * @method  hostName
-   * @description The host name
-   * @static
-   * @returns {string} The host name
-   */
-  public static get hostName() {
-    const urlPrefix = process.env.imjs_url_prefix;
-    if (urlPrefix)
-      return `https://${urlPrefix}api.bentley.com`;
-    else
-      return "https://api.bentley.com";
-  }
-
-  /**
-   * @method  create a new ChangeSetGroup in a given model
-   * @param {string} description - The description
-   * @param {string} modelId - The model id
-   * @returns {Promise<ChangeSetGroup | undefined>} The newlt created ChangeSetGroup
-   * @static
-   */
-  public static async createChangeSetGroup(description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
-    Logger.logInfo (LoggerCategories.Framework, `createChangeSetGroup - fetching a new changeset group for model ${modelId} with description ${description}`);
-    const fetcher = new CreateFetcher({token: this.token, description, modelId, hostName: this.hostName});
-    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
-    return chgSetGrp;
-  }
-
-  /**
-   * @method  getChangeSetGroup - get a ChangeSetGroup of a given id in a given model
-   * @param modelId
-   * @param changesetGroupId
-   * @returns the changeset group matching the changesetGroupId or undefined if not found
-   */
-  public static async getChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
-    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroup - fetching changeset group ${changesetGroupId} for model ${modelId}`);
-    const fetcher = new GetFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
-    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
-    return chgSetGrp;
-  }
-
-  /**
-   * @method  getChangeSetGroups - Get all ChangeSetGroups in a given model
-   * @param modelId
-   * @returns an array of ChangeSetGroup(s) or undefined if none found
-   */
-  public static async getChangeSetGroups(modelId: string): Promise<ChangeSetGroup[] | undefined> {
-    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroups - fetching all changeset groups for model ${modelId }`);
-    const fetcher = new GetAllFetcher({token: this.token, modelId, hostName: this.hostName});
-    const chgSetGrpArr: ChangeSetGroup[] = await fetcher.execute();
-    return chgSetGrpArr;
-  }
-
-  /**
-   * @method  closeChangeSetGroup - close a ChangeSetGroup of a given id in a given model
-   * @param modelId
-   * @param changesetGroupId
-   * @returns The closed ChangeSetGroup
-   */
-  public static async closeChangeSetGroup(modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
-    Logger.logInfo (LoggerCategories.Framework, `closeChangeSetGroup - closing changeset group ${changesetGroupId} for model ${modelId}`);
-    const fetcher = new CloseFetcher({token: this.token, modelId, changesetGroupId, hostName: this.hostName});
-    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
-    return chgSetGrp;
-  }
-
-  private _connected: boolean = false;
-
-  /**
-   * @method  connect
-   * @description Connect set the connected member variable to true
-   * @returns {void}
-   */
-  public connect(): void {
-    this._connected = true;
-  }
-
-  /**
-   * @method  connected
-   * @description Connected
-   * @returns true if connected otherwise false
-   */
-  public get connected(): boolean {
-    return this._connected;
-  }
-
-}
-
-/**
  * @interface ChangeSetGroupParams
  * @description Interface for parameters used by ChangeSetGroup
  * @property {string} id - The id
@@ -408,7 +302,77 @@ export class ChangeSetGroup {
   private _creatorId: string;
   private _createdDateTime: string;
   /**
- * @method  createArray
+   * @method  hostName
+   * @description The host name
+   * @static
+   * @returns {string} The host name
+   */
+  public static get hostName() {
+    const urlPrefix = process.env.imjs_url_prefix;
+    if (urlPrefix)
+      return `https://${urlPrefix}api.bentley.com`;
+    else
+      return "https://api.bentley.com";
+  }
+
+  /**
+   * @method  create a new ChangeSetGroup in a given model
+   * @param {string} token - authorization header with valid bearer token for scope itwin-platform.
+   * @param {string} description - The description
+   * @param {string} modelId - The model id
+   * @returns {Promise<ChangeSetGroup | undefined>} The newlt created ChangeSetGroup
+   * @static
+   */
+  public static async createChangeSetGroup(token: string, description: string, modelId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `createChangeSetGroup - fetching a new changeset group for model ${modelId} with description ${description}`);
+    const fetcher = new CreateFetcher({token, description, modelId, hostName: this.hostName});
+    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  /**
+   * @method  getChangeSetGroup - get a ChangeSetGroup of a given id in a given model
+   * @param {string} token - authorization header with valid bearer token for scope itwin-platform.
+   * @param modelId
+   * @param changesetGroupId
+   * @returns the changeset group matching the changesetGroupId or undefined if not found
+   */
+  public static async getChangeSetGroup(token: string, modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroup - fetching changeset group ${changesetGroupId} for model ${modelId}`);
+    const fetcher = new GetFetcher({token, modelId, changesetGroupId, hostName: this.hostName});
+    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  /**
+   * @method  getChangeSetGroups - Get all ChangeSetGroups in a given model
+   * @param {string} token - authorization header with valid bearer token for scope itwin-platform.
+   * @param modelId
+   * @returns an array of ChangeSetGroup(s) or undefined if none found
+   */
+  public static async getChangeSetGroups(token: string, modelId: string): Promise<ChangeSetGroup[] | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroups - fetching all changeset groups for model ${modelId }`);
+    const fetcher = new GetAllFetcher({token, modelId, hostName: this.hostName});
+    const chgSetGrpArr: ChangeSetGroup[] = await fetcher.execute();
+    return chgSetGrpArr;
+  }
+
+  /**
+   * @method closeChangeSetGroup - close a ChangeSetGroup of a given id in a given model
+   * @param {string} token - authorization header with valid bearer token for scope itwin-platform.
+   * @param modelId
+   * @param changesetGroupId
+   * @returns The closed ChangeSetGroup
+   */
+  public static async closeChangeSetGroup(token: string, modelId: string, changesetGroupId: string): Promise<ChangeSetGroup | undefined> {
+    Logger.logInfo (LoggerCategories.Framework, `closeChangeSetGroup - closing changeset group ${changesetGroupId} for model ${modelId}`);
+    const fetcher = new CloseFetcher({token, modelId, changesetGroupId, hostName: this.hostName});
+    const chgSetGrp: ChangeSetGroup = await fetcher.execute();
+    return chgSetGrp;
+  }
+
+  /**
+ * @method  createArray - factory method to create an array of ChangeSetGroup(s)
  * @param json from response to fetch
  * @returns array of ChangeSetGroup(s) parsed from json
  */
@@ -424,7 +388,7 @@ export class ChangeSetGroup {
   }
 
   /**
- * @method  create
+ * @method  create - factory method to create a ChangeSetGroup
  * @param json from response to fetch
  * @returns ChangeSetGroup parsed from json
  */

@@ -14,7 +14,7 @@ import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
 import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import { TestIModelManager } from "./TestIModelManager";
-import { IModelHubProxy } from "../../src/ChangeSetGroup";
+import { ChangeSetGroup } from "../../src/ChangeSetGroup";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -110,8 +110,8 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function verifyChangeSetGroups(hubArgs: HubArgs) {
 
-    IModelHubProxy.token = await IModelHost.authorizationClient!.getAccessToken();
-    let csgArr = await IModelHubProxy.getChangeSetGroups (hubArgs.iModelGuid);
+    const vcsgToken = await IModelHost.authorizationClient!.getAccessToken();
+    let csgArr = await ChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr){
@@ -121,34 +121,34 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     // try some other methods
-    const newCSG = await IModelHubProxy.createChangeSetGroup ("second", hubArgs.iModelGuid);
+    const newCSG = await ChangeSetGroup.createChangeSetGroup (vcsgToken, "second", hubArgs.iModelGuid);
     assert.isDefined(newCSG);
 
     let id = newCSG?.id;
 
-    const fromGet = await IModelHubProxy.getChangeSetGroup (hubArgs.iModelGuid, id!);
+    const fromGet = await ChangeSetGroup.getChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
 
     assert.isDefined(fromGet);
     assert.equal(fromGet?.state, "inProgress");
 
     id = fromGet?.id;
 
-    let closed = await IModelHubProxy.closeChangeSetGroup (hubArgs.iModelGuid, id!);
+    let closed = await ChangeSetGroup.closeChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    closed = await IModelHubProxy.getChangeSetGroup (hubArgs.iModelGuid, id!);
+    closed = await ChangeSetGroup.getChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
     assert.equal(closed?.state, "completed");
 
-    const thirdCSG = await IModelHubProxy.createChangeSetGroup ("third", hubArgs.iModelGuid);
+    const thirdCSG = await ChangeSetGroup.createChangeSetGroup (vcsgToken, "third", hubArgs.iModelGuid);
     assert.isDefined(thirdCSG);
     assert.equal(thirdCSG?.state, "inProgress");
 
     id = thirdCSG?.id;
-    closed = await IModelHubProxy.closeChangeSetGroup (hubArgs.iModelGuid, id!);
+    closed = await ChangeSetGroup.closeChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    csgArr = await IModelHubProxy.getChangeSetGroups (hubArgs.iModelGuid);
+    csgArr = await ChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr)

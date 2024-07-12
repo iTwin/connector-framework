@@ -14,7 +14,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
 import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
-import {ChangeSetGroup, IModelHubProxy} from "./ChangeSetGroup";
+import {ChangeSetGroup} from "./ChangeSetGroup";
 
 type Path = string;
 
@@ -30,7 +30,6 @@ export class ConnectorRunner {
   private _issueReporter?: ConnectorIssueReporter;
   private _authMgr?: ConnectorAuthenticationManager;
   private _changeSetGroup?: ChangeSetGroup;
-  private _iModelClient: IModelHubProxy;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -45,9 +44,6 @@ export class ConnectorRunner {
         throw new Error("Invalid hubArgs");
       this._hubArgs = hubArgs;
     }
-
-    this._iModelClient = new IModelHubProxy();
-    this._iModelClient.connect();
 
     Logger.initializeToConsole();
     const { loggerConfigJSONFile } = jobArgs;
@@ -270,7 +266,8 @@ export class ConnectorRunner {
   private async closeChangeSetGroup() {
     if (this._changeSetGroup) {
       Logger.logInfo(LoggerCategories.Framework, `Closing ChangeSetGroup ${this._changeSetGroup.id}`);
-      await IModelHubProxy.closeChangeSetGroup(this.hubArgs.iModelGuid, this._changeSetGroup.id);
+      const token = await this.getToken();
+      await ChangeSetGroup.closeChangeSetGroup(token,this.hubArgs.iModelGuid, this._changeSetGroup.id);
       this._changeSetGroup = undefined;
     }
   }
@@ -588,12 +585,9 @@ export class ConnectorRunner {
     if (this._changeSetGroup)
       return this._changeSetGroup.id;
 
-    if (!this._iModelClient.connected)
-      return "";
+    const token = await this.getToken();
 
-    IModelHubProxy.token = await this.getToken();
-
-    this._changeSetGroup = await IModelHubProxy.createChangeSetGroup(description, this.hubArgs.iModelGuid);
+    this._changeSetGroup = await ChangeSetGroup.createChangeSetGroup(token, description, this.hubArgs.iModelGuid);
     if (!this._changeSetGroup)
       return "";
 
