@@ -15,6 +15,7 @@ import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import { TestIModelManager } from "./TestIModelManager";
 import { ChangeSetGroup } from "../../src/ChangeSetGroup";
+import {TestChangeSetGroup} from "./TestChangeSetGroup"
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -111,7 +112,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
   async function verifyChangeSetGroups(hubArgs: HubArgs) {
 
     const vcsgToken = await IModelHost.authorizationClient!.getAccessToken();
-    let csgArr = await ChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
+    let csgArr = await TestChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr){
@@ -148,7 +149,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     closed = await ChangeSetGroup.closeChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    csgArr = await ChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
+    csgArr = await TestChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr)

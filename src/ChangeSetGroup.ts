@@ -29,7 +29,7 @@ type fetcherCallback = (json: any) => void;
  * @property {string} modelId - The model id
  * @property {fetcherCallback} [callback] - The callback used to process the response
  */
-interface FetcherParams {
+export interface FetcherParams {
   hostName: string;
   token: string;
   modelId: string;
@@ -81,7 +81,7 @@ interface CloseFetcherParams extends FetcherParams {
  * @abstract
  * @implements FetcherParams
  */
-abstract class Fetcher {
+export abstract class Fetcher {
   protected _hostName: string;
   protected _token: string;
   protected _callback?: fetcherCallback;
@@ -231,27 +231,6 @@ class GetFetcher extends Fetcher {
 }
 
 /**
- * @class GetAllFetcher
- * @description Class to get all ChangeSetGroups
- * @extends Fetcher
- * @method {string} url - The url
- * @method {object} headers - The headers
- * @method {Promise<any>} execute - The execute method
- * @implements FetcherParams
- */
-class GetAllFetcher extends Fetcher {
-  constructor(params: FetcherParams) {
-    super(params);
-    this._callback = (json) => {
-      return ChangeSetGroup.createArray(json);
-    };
-  }
-
-  protected override get url(): string {
-    return `${this._hostName}/imodels/${this._modelId}/changesetgroups`;
-  }
-}
-/**
  * @class CloseFetcher
  * @description Class to close a ChangeSetGroup
  * @extends FetcherWithBody
@@ -342,19 +321,6 @@ export class ChangeSetGroup {
     const fetcher = new GetFetcher({token, modelId, changesetGroupId, hostName: this.hostName});
     const chgSetGrp: ChangeSetGroup = await fetcher.execute();
     return chgSetGrp;
-  }
-
-  /**
-   * @method  getChangeSetGroups - Get all ChangeSetGroups in a given model
-   * @param {string} token - authorization header with valid bearer token for scope itwin-platform.
-   * @param modelId
-   * @returns an array of ChangeSetGroup(s) or undefined if none found
-   */
-  public static async getChangeSetGroups(token: string, modelId: string): Promise<ChangeSetGroup[] | undefined> {
-    Logger.logInfo (LoggerCategories.Framework, `getChangeSetGroups - fetching all changeset groups for model ${modelId }`);
-    const fetcher = new GetAllFetcher({token, modelId, hostName: this.hostName});
-    const chgSetGrpArr: ChangeSetGroup[] = await fetcher.execute();
-    return chgSetGrpArr;
   }
 
   /**

@@ -118,7 +118,7 @@ export abstract class BaseConnector {
   }
 
   // override this method to create a single change set group with each connector run
-  public createChangeSetGroup(): boolean {
+  public shouldCreateChangeSetGroup(): boolean {
     return false;
   }
 

@@ -577,7 +577,7 @@ export class ConnectorRunner {
    * @returns the group id of the changeset
    */
   private async fetchChangeSetGroupId(description: string): Promise<string> {
-    const enableChangeSetGrouping: boolean = this._connector?.createChangeSetGroup() ?? false;
+    const enableChangeSetGrouping: boolean = this._connector?.shouldCreateChangeSetGroup() ?? false;
 
     if (!enableChangeSetGrouping)
       return "";

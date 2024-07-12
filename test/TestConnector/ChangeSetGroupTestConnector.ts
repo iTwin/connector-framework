@@ -2,7 +2,7 @@ import TestConnector from "./TestConnector";
 
 export default class ChangeSetGroupTestConnector extends TestConnector {
 
-  public override createChangeSetGroup(): boolean {
+  public override shouldCreateChangeSetGroup(): boolean {
     return true;
   }
 
