@@ -16,7 +16,7 @@ function getResultIdStatus(result: SynchronizationResults): boolean {
   if (undefined !== result.elementProps && result.elementProps.id !== undefined && Id64.isValidId64(result.elementProps.id))
     return true;
   else
-    return (result.itemState === ItemState.New ? true : false);
+    return (result.itemState === ItemState.New ? true: false);
 }
 
 /** The state of the given SourceItem against the iModelDb
@@ -766,15 +766,19 @@ export class Synchronizer {
       return IModelStatus.Success;
     }
     let idsOk: boolean = true; // ok means no missing ids
-
+    let numNew = 0;
     if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
-      if (!getResultIdStatus(child))
+
+      if (!getResultIdStatus (child))
         idsOk = false; // if any one child is missing an id, then the group of children is considered missing
+
+      if (child.itemState === ItemState.New)
+        numNew++;
 
       const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
@@ -812,10 +816,24 @@ export class Synchronizer {
     }
 
     // The specified children do not have ElementIds.
-    const count = Math.min(existingChildren.length, results.childElements.length);
+    // JC: This is the no id case and the first thing it checks in updateResultsInIModel is if the id is undefined.
+    // So, if we get here, we have a problem.
+    Logger.logWarning(LoggerCategories.Framework, "Child elements do not have ElementIds.  Attempting to update the children by mapping to existing children.");
+    // We need to match existingChildren with only child elements that are changed or unchanged.
+    const count = Math.min(existingChildren.length, results.childElements.length - numNew);
     let i = 0;
-    for (; i < count; i++) {
-      this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+    for (; i < count; ) {
+      // If we have new elements, then we should insert them.
+      // rather than update them.
+      if (results.childElements[i].itemState === ItemState.New) {
+        this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
+        numNew--;
+      } else {
+      // reuse ids of existing children
+        results.childElements[i].elementProps.id = existingChildren[i];
+        this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+        i++;
+      }
     }
     for (; i < results.childElements.length; i++) {
       this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
