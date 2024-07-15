@@ -12,26 +12,11 @@ import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IMod
 import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
-enum ResultIdStatus {
-  NoId  = 0,
-  HasId = 1,
-}
-
-enum ResultsIdStatus {
-  Mixed = -1,
-  NoIds  = 0,
-  HasIds = 1,
-}
-
-function mapResultsIdStatus(status: ResultIdStatus): ResultsIdStatus {
-  return (status === ResultIdStatus.NoId) ? ResultsIdStatus.NoIds : ResultsIdStatus.HasIds;
-}
-
-function getResultIdStatus(result: SynchronizationResults): ResultIdStatus {
+function getResultIdStatus(result: SynchronizationResults): boolean {
   if (undefined !== result.elementProps && result.elementProps.id !== undefined && Id64.isValidId64(result.elementProps.id))
-    return ResultIdStatus.HasId;
+    return true;
   else
-    return ResultIdStatus.NoId;
+    return (result.itemState === ItemState.New ? true : false);
 }
 
 /** The state of the given SourceItem against the iModelDb
@@ -780,8 +765,7 @@ export class Synchronizer {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
-
-    let resultsIdStat: ResultsIdStatus|undefined;
+    let idsOk: boolean = true; // ok means no missing ids
 
     if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
@@ -789,11 +773,8 @@ export class Synchronizer {
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
-      const rIdStat: ResultIdStatus = getResultIdStatus(child);
-      if (resultsIdStat === undefined)
-        resultsIdStat = mapResultsIdStatus(rIdStat);  // first time through the loop
-      else if (resultsIdStat !== ResultsIdStatus.Mixed && resultsIdStat !== mapResultsIdStatus(rIdStat))
-        resultsIdStat = ResultsIdStatus.Mixed;
+      if (!getResultIdStatus(child))
+        idsOk = false; // if any one child is missing an id, then the group of children is considered missing
 
       const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
@@ -809,7 +790,8 @@ export class Synchronizer {
 
     // If the specified children have ElementIds, then match existing child elements by ElementId.
     // This is generally the case only when updating an existing parent element.
-    if (resultsIdStat!== ResultsIdStatus.NoIds) {
+
+    if (idsOk) {
       for (const childRes of results.childElements) {
         if (undefined === childRes.elementProps) {
           continue;
