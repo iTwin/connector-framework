@@ -820,9 +820,10 @@ export class Synchronizer {
     // So, if we get here, we have a problem.
     Logger.logWarning(LoggerCategories.Framework, "Child elements do not have ElementIds.  Attempting to update the children by mapping to existing children.");
     // We need to match existingChildren with only child elements that are changed or unchanged.
-    const count = Math.min(existingChildren.length, results.childElements.length - numNew);
+    const numUpdates = Math.min(existingChildren.length, results.childElements.length - numNew);
     let i = 0;
-    for (; i < count; ) {
+
+    for (let updated = 0; updated < numUpdates; i++) {
       // If we have new elements, then we should insert them.
       // rather than update them.
       if (results.childElements[i].itemState === ItemState.New) {
@@ -830,13 +831,13 @@ export class Synchronizer {
         numNew--;
       } else {
       // reuse ids of existing children
-        results.childElements[i].elementProps.id = existingChildren[i];
+        results.childElements[i].elementProps.id = existingChildren[updated];
         this.updateResultsInIModel(results.childElements[i], parentAspectProps);
-        i++;
+        updated++;
       }
     }
-    for (; i < results.childElements.length; i++) {
-      this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
+    for (let j = 0; j < numNew; j++) {
+      this.insertResultsIntoIModel(results.childElements[i+j], parentAspectProps);
     }
     return IModelStatus.Success;
   }
