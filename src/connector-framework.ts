@@ -52,3 +52,8 @@ export * from "./Synchronizer";
  * A class for encapsulating and initializing auth clients and the retrieving and caching of tokens.
  */
 
+/**
+ * @docs-group-description ChangeSetGroup
+ * A class with methods for creating, getting and closing ChangeSetGroups which is used by the ConnectorRunner.
+ * Should not need to be used directly by Connector developers.
+ */

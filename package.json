@@ -30,6 +30,7 @@
     "test:unmap": "npm run build && nyc mocha --grep unmap",
     "test:larger-source-set":"npm run build && nyc mocha --grep larger-source-set",
     "test:authclient":"npm run build && nyc mocha --grep AuthClient",
+    "test:change-set-group":"npm run build && nyc mocha --grep change-set-group",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
     "documentation": "cross-env RUSHSTACK_FILE_ERROR_BASE_FOLDER=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/file.json --tsIndexFile=./connector-framework.ts --onlyJson"
   },

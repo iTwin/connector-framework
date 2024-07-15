@@ -1,8 +1,8 @@
-import TestConnector from './TestConnector';
+import TestConnector from "./TestConnector";
 
 export default class NonSharedChannelKeyTestConnector extends TestConnector {
 
-   override getChannelKey (): string {
+  public override getChannelKey(): string {
     return "TestConnectorChannel";
   }
 

@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.3.0-dev.1
+
+- add support for ChangeSetGroups
+
 ## 2.2.2
 
 - fixed bug in synchronizer for updating mixed bag of new and changed child elements.  New element(s) would be skipped.

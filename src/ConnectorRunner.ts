@@ -14,6 +14,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
 import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
+import {ChangeSetGroup} from "./ChangeSetGroup";
 
 type Path = string;
 
@@ -28,6 +29,7 @@ export class ConnectorRunner {
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
   private _authMgr?: ConnectorAuthenticationManager;
+  private _changeSetGroup?: ChangeSetGroup;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -256,7 +258,18 @@ export class ConnectorRunner {
       "Write synchronization finish time and extent.",
     );
 
+    await this.closeChangeSetGroup();
+
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
+  }
+
+  private async closeChangeSetGroup() {
+    if (this._changeSetGroup) {
+      Logger.logInfo(LoggerCategories.Framework, `Closing ChangeSetGroup ${this._changeSetGroup.id}`);
+      const token = await this.getToken();
+      await ChangeSetGroup.closeChangeSetGroup(token,this.hubArgs.iModelGuid, this._changeSetGroup.id);
+      this._changeSetGroup = undefined;
+    }
   }
 
   private async onFailure(err: any) {
@@ -558,6 +571,29 @@ export class ConnectorRunner {
     this.connector.synchronizer = synchronizer;
   }
 
+  /**
+   * Fetches the group id of the changeset
+   * @param description of grouped changeset
+   * @returns the group id of the changeset
+   */
+  private async fetchChangeSetGroupId(description: string): Promise<string> {
+    const enableChangeSetGrouping: boolean = this._connector?.shouldCreateChangeSetGroup() ?? false;
+
+    if (!enableChangeSetGrouping)
+      return "";
+
+    if (this._changeSetGroup)
+      return this._changeSetGroup.id;
+
+    const token = await this.getToken();
+
+    this._changeSetGroup = await ChangeSetGroup.createChangeSetGroup(token, description, this.hubArgs.iModelGuid);
+    if (!this._changeSetGroup)
+      return "";
+
+    return this._changeSetGroup.id;
+  }
+
   private async persistChanges(changeDesc: string) {
     const { revisionHeader } = this.jobArgs;
     const comment = `${revisionHeader} - ${changeDesc}`;
@@ -565,6 +601,8 @@ export class ConnectorRunner {
     if (!isStandalone && this.db.isBriefcaseDb()) {
       this._db = this.db;
       await this.db.pullChanges();
+      const chgSetGrpId = await this.fetchChangeSetGroupId (this.connector.getChangeSetGroupDescription ());
+      Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
       await this.db.pushChanges({ description: comment });
       await this.db.locks.releaseAllLocks(); // in case there were no changes

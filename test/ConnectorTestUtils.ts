@@ -152,6 +152,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   assert.isTrue(scopeId !== undefined);
   assert.isTrue(Id64.isValidId64(scopeId!));
 
+
   // Verify some elements
   if (!isUpdate) {
     const ids = ExternalSourceAspect.findAllBySource(imodel, scopeId!, "Tile", "e1aa3ec3-0c2e-4328-89d0-08e1b4d446c8");
