@@ -12,6 +12,28 @@ import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IMod
 import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
+enum ResultIdStatus {
+  NoId  = 0,
+  HasId = 1,
+}
+
+enum ResultsIdStatus {
+  Mixed = -1,
+  NoIds  = 0,
+  HasIds = 1,
+}
+
+function mapResultsIdStatus(status: ResultIdStatus): ResultsIdStatus {
+  return (status === ResultIdStatus.NoId) ? ResultsIdStatus.NoIds : ResultsIdStatus.HasIds;
+}
+
+function getResultIdStatus(result: SynchronizationResults): ResultIdStatus {
+  if (undefined !== result.elementProps && result.elementProps.id !== undefined && Id64.isValidId64(result.elementProps.id))
+    return ResultIdStatus.HasId;
+  else
+    return ResultIdStatus.NoId;
+}
+
 /** The state of the given SourceItem against the iModelDb
  * @beta
  */
@@ -218,7 +240,7 @@ export class Synchronizer {
     // if (imodel.isBriefcaseDb() && undefined === _requestContext)
     //   throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
 
-    this._ddp = {fileBased: _supportsMultipleFilesPerChannel, scopeToPartition : (_scopeToPartition === undefined? false:_scopeToPartition)};
+    this._ddp = {fileBased: this._supportsMultipleFilesPerChannel, scopeToPartition : (this._scopeToPartition ?? false)};
 
   }
 
@@ -758,12 +780,21 @@ export class Synchronizer {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
+
+    let resultsIdStat: ResultsIdStatus|undefined;
+
     if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
+      const rIdStat: ResultIdStatus = getResultIdStatus(child);
+      if (resultsIdStat === undefined)
+        resultsIdStat = mapResultsIdStatus(rIdStat);  // first time through the loop
+      else if (resultsIdStat !== ResultsIdStatus.Mixed && resultsIdStat !== mapResultsIdStatus(rIdStat))
+        resultsIdStat = ResultsIdStatus.Mixed;
+
       const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
     });
@@ -778,7 +809,7 @@ export class Synchronizer {
 
     // If the specified children have ElementIds, then match existing child elements by ElementId.
     // This is generally the case only when updating an existing parent element.
-    if (undefined !== results.childElements[0].elementProps && results.childElements[0].elementProps.id !== undefined && Id64.isValidId64(results.childElements[0].elementProps.id)) {
+    if (resultsIdStat!== ResultsIdStatus.NoIds) {
       for (const childRes of results.childElements) {
         if (undefined === childRes.elementProps) {
           continue;
