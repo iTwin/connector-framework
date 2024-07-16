@@ -832,10 +832,9 @@ export class Synchronizer {
     for (let updated = 0; updated < numUpdates; i++) {
       // If we have new elements, then we should insert them.
       // rather than update them.
-      if (results.childElements[i].itemState === ItemState.New) {
+      if (results.childElements[i].itemState === ItemState.New)
         this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
-        numNew--;
-      } else {
+      else {
       // reuse ids of existing children
         results.childElements[i].elementProps.id = existingChildren[updated];
         this.updateResultsInIModel(results.childElements[i], parentAspectProps);
