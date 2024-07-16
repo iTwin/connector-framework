@@ -774,7 +774,7 @@ export class Synchronizer {
     }
     results.childElements.forEach((child) => {
 
-      if (!getResultIdStatus (child))
+      if (idsOk && !getResultIdStatus (child))
         idsOk = false; // if any one child is missing an id, then the group of children is considered missing
 
       if (child.itemState === ItemState.New)
@@ -818,9 +818,15 @@ export class Synchronizer {
     // The specified children do not have ElementIds.
     // JC: This is the no id case and the first thing it checks in updateResultsInIModel is if the id is undefined.
     // So, if we get here, we have a problem.
-    Logger.logWarning(LoggerCategories.Framework, "Child elements do not have ElementIds.  Attempting to update the children by mapping to existing children.");
+    Logger.logWarning(LoggerCategories.Framework, "At least one child element requiring update is missing an ElementId.  Attempting to update the children by arbitrarily mapping to existing children.");
     // We need to match existingChildren with only child elements that are changed or unchanged.
-    const numUpdates = Math.min(existingChildren.length, results.childElements.length - numNew);
+    const numReqUpdates = results.childElements.length - numNew;
+    let numUpdates = numReqUpdates;
+    if (numReqUpdates > existingChildren.length) {
+      Logger.logError(LoggerCategories.Framework, `More child elements than existing children.  ${numReqUpdates - existingChildren.length} child elements will be added as new.`);
+      numUpdates = existingChildren.length;
+    }
+
     let i = 0;
 
     for (let updated = 0; updated < numUpdates; i++) {

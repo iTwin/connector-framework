@@ -325,7 +325,7 @@ describe("synchronizer #standalone", () => {
       count(query("blueberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set but w/ new child element first in list", () => {
+    it("update modified ..., larger ... but w/ new child element first in list", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
@@ -356,7 +356,7 @@ describe("synchronizer #standalone", () => {
       count(query("blueberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set but w/ one new child elements and no id", () => {
+    it("update modified ..., larger ... but w/ one new child elements and no id", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
@@ -386,7 +386,7 @@ describe("synchronizer #standalone", () => {
       count(query("blueberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set and w/ existing child elements but all missing ids", () => {
+    it("update modified ..., larger ... and w/ existing child elements but all missing ids", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
@@ -412,7 +412,7 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set but w/ existing child elements and several new elements interspersed all missing ids", () => {
+    it("update modified ..., larger ... but w/ existing child elements and several new elements interspersed all missing ids", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
@@ -467,7 +467,7 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set but w/ existing child elements and several new elements interspersed w Ids", () => {
+    it("update modified ..., larger ... but w/ existing child elements and several new elements interspersed w Ids", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
@@ -520,7 +520,7 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 1);
     });
 
-    it("update modified root element with children, larger-source-set but w/ more unchanged child elements than existing (some need to be inserted as new)", () => {
+    it("update modified ..., larger ... but w/ more unchanged child elements than existing (some need to be inserted as new)", () => {
       const synchronizer = new Synchronizer(imodel, false);
       const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
 
