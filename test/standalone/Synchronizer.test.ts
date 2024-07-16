@@ -466,5 +466,117 @@ describe("synchronizer #standalone", () => {
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
     });
+
+    it("update modified root element with children, larger-source-set but w/ existing child elements and several new elements interspersed w Ids", () => {
+      const synchronizer = new Synchronizer(imodel, false);
+      const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const blueberryPropsArr: DefinitionGroup[] = [];
+
+      for (let i = 0; i < 4; i++) {
+        const blueberryProps = DefinitionGroup.create (imodel, model.id!, Code.createEmpty(), false);
+        blueberryProps.userLabel = `definitions of blueberries`;
+        blueberryPropsArr.push(blueberryProps);
+      }
+
+      const poppedChild = berryTree.childElements!.pop ();
+
+      berryTree.childElements!.unshift({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[0].toJSON(),
+      });
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[1].toJSON(),
+      });
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[2].toJSON(),
+      });
+
+      berryTree.childElements!.push(poppedChild!);
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[3].toJSON(),
+      });
+
+      berryTree.childElements![1].itemState = ItemState.Unchanged;
+      berryTree.childElements![4].itemState = ItemState.Unchanged;
+
+      // Patch berry definition group.
+      berryTreeMeta.version = "1.0.1";
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
+
+      count(query("blueberries"), 4);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+    });
+
+    it("update modified root element with children, larger-source-set but w/ more unchanged child elements than existing (some need to be inserted as new)", () => {
+      const synchronizer = new Synchronizer(imodel, false);
+      const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const blueberryPropsArr: DefinitionGroup[] = [];
+
+      for (let i = 0; i < 4; i++) {
+        const blueberryProps = DefinitionGroup.create (imodel, model.id!, Code.createEmpty(), false);
+        blueberryProps.userLabel = `definitions of blueberries`;
+        blueberryPropsArr.push(blueberryProps);
+      }
+
+      const poppedChild = berryTree.childElements!.pop ();
+
+      berryTree.childElements!.unshift({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[0].toJSON(),
+      });
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[1].toJSON(),
+      });
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[2].toJSON(),
+      });
+
+      berryTree.childElements!.push(poppedChild!);
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryPropsArr[3].toJSON(),
+      });
+
+      berryTree.childElements![1].itemState = ItemState.Unchanged;
+      berryTree.childElements![1].elementProps.id = undefined;
+      berryTree.childElements![2].itemState = ItemState.Unchanged;
+      berryTree.childElements![2].elementProps.id = undefined;
+      berryTree.childElements![3].itemState = ItemState.Unchanged;
+      berryTree.childElements![3].elementProps.id = undefined;
+      berryTree.childElements![4].itemState = ItemState.Unchanged;
+      berryTree.childElements![4].elementProps.id = undefined;
+
+      // Patch berry definition group.
+      berryTreeMeta.version = "1.0.1";
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
+
+      count(query("blueberries"), 4);
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+    });
   });
 });

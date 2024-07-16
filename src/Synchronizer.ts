@@ -836,8 +836,8 @@ export class Synchronizer {
         updated++;
       }
     }
-    for (let j = 0; j < numNew; j++) {
-      this.insertResultsIntoIModel(results.childElements[i+j], parentAspectProps);
+    for (;i < results.childElements.length; i++) {
+      this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
     }
     return IModelStatus.Success;
   }
