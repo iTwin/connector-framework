@@ -276,7 +276,8 @@ export class ConnectorRunner {
     try {
       if (this._db && this._db.isBriefcaseDb()) {
         this._db.abandonChanges();
-        await this.db.locks.releaseAllLocks();
+        // _releaseAllLocks internal only method - see note in LockControl.d.ts
+        // await this.db.locks._releaseAllLocks();
       }
     } catch (err1) {
       // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
@@ -605,7 +606,7 @@ export class ConnectorRunner {
       Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
       await this.db.pushChanges({ description: comment });
-      await this.db.locks.releaseAllLocks(); // in case there were no changes
+      // await this.db.locks._releaseAllLocks(); // in case there were no changes
     } else {
       this.db.saveChanges(comment);
     }
