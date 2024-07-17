@@ -327,5 +327,31 @@ describe("synchronizer #standalone", () => {
       count(query("raspberries"), 1);
       count(query("blueberries"), 1);
     });
+
+    it("update modified ..., larger ... and w/ existing child elements but all-missing-ids", () => {
+      const synchronizer = new Synchronizer(imodel, false);
+      const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const blueberryProps = DefinitionGroup.create (imodel, model.id!, Code.createEmpty(), false);
+      blueberryProps.userLabel = "definitions of blueberries";
+
+      // wipe out ids so it falls into no ids case
+      berryTree.childElements![0].itemState = ItemState.Unchanged;
+      berryTree.childElements![0].elementProps.id = undefined;
+      berryTree.childElements![1].itemState = ItemState.Unchanged;
+      berryTree.childElements![1].elementProps.id = undefined;
+
+      // Patch berry definition group.
+      berryTreeMeta.version = "1.0.1";
+      const changes = synchronizer.detectChanges(berryTreeMeta);
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const query = (label: string) => `select count(*) from bis:DefinitionGroup where UserLabel = 'definitions of ${label}'`;
+
+      count(query("strawberries"), 1);
+      count(query("raspberries"), 1);
+    });
   });
 });
