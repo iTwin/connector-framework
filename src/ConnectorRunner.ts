@@ -276,6 +276,7 @@ export class ConnectorRunner {
     try {
       if (this._db && this._db.isBriefcaseDb()) {
         this._db.abandonChanges();
+        await this.db.locks.releaseAllLocks();
       }
     } catch (err1) {
       // don't allow a further exception to prevent onFailure from reporting and returning. We need to finish the abend sequence.
