@@ -370,7 +370,6 @@ export class ConnectorRunner {
         this.db.channels.makeChannelRoot({elementId: newSubjectId, channelKey: this.channelKey});
 
       subject = this.db.elements.getElement<Subject>(newSubjectId);
-      // await this.db.locks.releaseAllLocks();
     }
 
     this.connector.jobSubject = subject;
@@ -604,8 +603,7 @@ export class ConnectorRunner {
       const chgSetGrpId = await this.fetchChangeSetGroupId (this.connector.getChangeSetGroupDescription ());
       Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
-      await this.db.pushChanges({ description: comment });
-      await this.db.locks.releaseAllLocks(); // in case there were no changes
+      await this.db.pushChanges({ description: comment});
     } else {
       this.db.saveChanges(comment);
     }
