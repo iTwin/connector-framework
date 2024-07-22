@@ -12,6 +12,13 @@ import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IMod
 import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
+function getResultIdStatus(result: SynchronizationResults): boolean {
+  if (undefined !== result.elementProps && result.elementProps.id !== undefined && Id64.isValidId64(result.elementProps.id))
+    return true;
+  else
+    return (result.itemState === ItemState.New ? true: false);
+}
+
 /** The state of the given SourceItem against the iModelDb
  * @beta
  */
@@ -218,7 +225,7 @@ export class Synchronizer {
     // if (imodel.isBriefcaseDb() && undefined === _requestContext)
     //   throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
 
-    this._ddp = {fileBased: _supportsMultipleFilesPerChannel, scopeToPartition : (_scopeToPartition === undefined? false:_scopeToPartition)};
+    this._ddp = {fileBased: this._supportsMultipleFilesPerChannel, scopeToPartition : (this._scopeToPartition ?? false)};
 
   }
 
@@ -758,12 +765,21 @@ export class Synchronizer {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
+    let idsOk: boolean = true; // ok means no missing ids
+    let numNew = 0;
     if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
+
+      if (idsOk && !getResultIdStatus (child))
+        idsOk = false; // if any one child is missing an id, then the group of children is considered missing
+
+      if (child.itemState === ItemState.New)
+        numNew++;
+
       const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
     });
@@ -778,7 +794,8 @@ export class Synchronizer {
 
     // If the specified children have ElementIds, then match existing child elements by ElementId.
     // This is generally the case only when updating an existing parent element.
-    if (undefined !== results.childElements[0].elementProps && results.childElements[0].elementProps.id !== undefined && Id64.isValidId64(results.childElements[0].elementProps.id)) {
+
+    if (idsOk) {
       for (const childRes of results.childElements) {
         if (undefined === childRes.elementProps) {
           continue;
@@ -790,6 +807,9 @@ export class Synchronizer {
             return stat;
           }
         } else if (childRes.itemState === ItemState.New) {
+          if (childRes.elementProps.id !== undefined) {
+            throw new IModelError(IModelStatus.InvalidId, "New child element should not have an id!");
+          }
           const stat = this.insertResultsIntoIModel(childRes, parentAspectProps);
           if (stat !== IModelStatus.Success)
             return stat;
@@ -799,12 +819,32 @@ export class Synchronizer {
     }
 
     // The specified children do not have ElementIds.
-    const count = Math.min(existingChildren.length, results.childElements.length);
-    let i = 0;
-    for (; i < count; i++) {
-      this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+    // JC: This is the no id case and the first thing it checks in updateResultsInIModel is if the id is undefined.
+    // So, if we get here, we have a problem.
+    Logger.logWarning(LoggerCategories.Framework, "At least one child element requiring update is missing an ElementId.  Attempting to update the children by arbitrarily mapping to existing children.");
+    // We need to match existingChildren with only child elements that are changed or unchanged.
+    const numReqUpdates = results.childElements.length - numNew;
+    let numUpdates = numReqUpdates;
+    if (numReqUpdates > existingChildren.length) {
+      Logger.logError(LoggerCategories.Framework, `More child elements than existing children.  ${numReqUpdates - existingChildren.length} child elements will be added as new.`);
+      numUpdates = existingChildren.length;
     }
-    for (; i < results.childElements.length; i++) {
+
+    let i = 0;
+
+    for (let updated = 0; updated < numUpdates; i++) {
+      // If we have new elements, then we should insert them.
+      // rather than update them.
+      if (results.childElements[i].itemState === ItemState.New)
+        this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
+      else {
+      // reuse ids of existing children
+        results.childElements[i].elementProps.id = existingChildren[updated];
+        this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+        updated++;
+      }
+    }
+    for (;i < results.childElements.length; i++) {
       this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
     }
     return IModelStatus.Success;

@@ -3,6 +3,7 @@
 ## 2.3.0-dev.1
 
 - add support for ChangeSetGroups
+- refactor updateResultsInIModelForChildren in Synchronizer.ts
 
 ## 2.2.2
 
