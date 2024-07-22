@@ -578,5 +578,34 @@ describe("synchronizer #standalone", () => {
       count(query("strawberries"), 1);
       count(query("raspberries"), 1);
     });
+    it("update modified ..., larger ... but w/ one new child element but HAS id", () => {
+      const synchronizer = new Synchronizer(imodel, false);
+      const { model, berryTree, berryTreeMeta } = berryGroups(synchronizer);
+
+      assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+
+      const blueberryProps = DefinitionGroup.create (imodel, model.id!, Code.createEmpty(), false);
+      blueberryProps.userLabel = "definitions of blueberries";
+
+      berryTree.childElements!.push({
+        itemState: ItemState.New,
+        elementProps: blueberryProps.toJSON(),
+      });
+
+      berryTree.childElements![0].itemState = ItemState.Unchanged;
+      berryTree.childElements![1].itemState = ItemState.Unchanged;
+      berryTree.childElements![2].itemState = ItemState.New;
+      berryTree.childElements![2].elementProps.id = "New elements should NOT have Ids!";
+
+      // Patch berry definition group.
+      berryTreeMeta.version = "1.0.1";
+      try {
+        assert.strictEqual(synchronizer.updateIModel(berryTree, berryTreeMeta), IModelStatus.Success);
+      } catch (e: any) {
+        assert.strictEqual(e.errorNumber, IModelStatus.InvalidId);
+        return;
+      }
+      assert (false, `${berryTree.childElements![2].elementProps.id} - should have thrown an error`);
+    });
   });
 });

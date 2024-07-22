@@ -807,6 +807,9 @@ export class Synchronizer {
             return stat;
           }
         } else if (childRes.itemState === ItemState.New) {
+          if (childRes.elementProps.id !== undefined) {
+            throw new IModelError(IModelStatus.InvalidId, "New child element should not have an id!");
+          }
           const stat = this.insertResultsIntoIModel(childRes, parentAspectProps);
           if (stat !== IModelStatus.Success)
             return stat;
