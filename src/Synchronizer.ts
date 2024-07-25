@@ -192,15 +192,19 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
  * external source aspects scope to the physical partition for example.  The test connector in this repository
  * incorrectly set the external source aspects this way and it is likely other connectors followed this example.
 */
+
+// __PUBLISH_EXTRACT_START__ Syncronizer-DeletionDetectionParams.connector-framework-code
 export interface DeletionDetectionParams {
   /** true for file based (recommended for new connectors)
-   * false for channel based i.e. under JobSubject */
+     * false for channel based i.e. under JobSubject */
   fileBased: boolean;
   /** false is recommended, but, true is required for legacy connectors that create
-   * external source aspects that scope to a physical partition instead of repository
-   *  links ingored for channel based deletion detection */
+     * external source aspects that scope to a physical partition instead of repository
+     *  links ingored for channel based deletion detection */
   scopeToPartition: boolean;
 }
+
+// __PUBLISH_EXTRACT_END__
 
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
