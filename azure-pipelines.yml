@@ -207,7 +207,8 @@ stages:
       - template: common/config/azure-pipelines/jobs/docs-build.yaml@itwinjs-core
         parameters:
           checkout: itwinjs-core
-          useCurrentConnectorFrameworkDocsArtifact: true
+          branches: jchick-connector-doc-new-overrides
+          useCurrentConnectorFrameworkDocsArtifact: false
 
 - stage: Tag_Docs
   dependsOn: Validate_Docs
