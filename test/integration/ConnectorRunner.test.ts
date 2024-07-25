@@ -79,7 +79,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, skipVerification?: boolean) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
-    // __PUBLISH_EXTRACT_START__ ConnectorRunnerTest.run.example-code
+    // __PUBLISH_EXTRACT_START__ ConnectorRunnerTest.run.cf-code
     const status = await runner.run(testConnector);
     // __PUBLISH_EXTRACT_END_
 

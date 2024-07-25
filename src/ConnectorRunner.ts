@@ -79,7 +79,7 @@ export class ConnectorRunner {
     if (!json.version || json.version !== supportedVersion)
       throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
 
-    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.example-code
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.cf-code
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
@@ -227,6 +227,7 @@ export class ConnectorRunner {
       "Write job subject and definitions.",
     );
 
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-shouldUnmapSource.cf-code
     if(this.jobArgs.shouldUnmapSource) {
       Logger.logInfo(LoggerCategories.Framework, "Unmapping source data...");
       await this.doInRepositoryChannel(
@@ -238,6 +239,7 @@ export class ConnectorRunner {
       );
       return;
     }
+    // __PUBLISH_EXTRACT_END__
 
     Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
     await this.doInConnectorChannel(jobSubject.id,

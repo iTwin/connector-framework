@@ -30,7 +30,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "../../src/LoggerCategory";
 
-// __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.example-code
+// __PUBLISH_EXTRACT_START__ TestConnector-extendsBaseConnector.cf-code
 export default class TestConnector extends BaseConnector {
 // __PUBLISH_EXTRACT_END__
   // _data is the contents of the external source read into memory
@@ -54,11 +54,12 @@ export default class TestConnector extends BaseConnector {
     return ddp;
   }
 
+  // __PUBLISH_EXTRACT_START__ TestConnector-getDeletionDetectionParams.cf-code
   public override getDeletionDetectionParams(): DeletionDetectionParams {
-    // to avoid legacy channel based deleted element detection, override this method and set fileBased to true
-
+  // to avoid legacy channel based deleted element detection, override this method and set fileBased to true
     return this.getDDParamsFromEnv();
   }
+  // __PUBLISH_EXTRACT_END__
 
   public static override async create(): Promise<TestConnector> {
     return new TestConnector();
@@ -70,7 +71,7 @@ export default class TestConnector extends BaseConnector {
     return this._repositoryLinkId;
   }
 
-  // __PUBLISH_EXTRACT_START__ TestConnector-initializeJob.example-code
+  // __PUBLISH_EXTRACT_START__ TestConnector-initializeJob.cf-code
   public async initializeJob(): Promise<void> {
     if (ItemState.New === this._sourceDataState) {
       this.createGroupModel();
@@ -81,7 +82,7 @@ export default class TestConnector extends BaseConnector {
 
   // __PUBLISH_EXTRACT_END__
 
-  // __PUBLISH_EXTRACT_START__ TestConnector-openSourceData.example-code
+  // __PUBLISH_EXTRACT_START__ TestConnector-openSourceData.cf-code
   public async openSourceData(sourcePath: string): Promise<void> {
     // ignore the passed in source and open the test file
     const json = fs.readFileSync(sourcePath, "utf8");
@@ -97,7 +98,7 @@ export default class TestConnector extends BaseConnector {
   }
   // __PUBLISH_EXTRACT_END__
 
-  // __PUBLISH_EXTRACT_START__ TestConnector-importDomainSchema.example-code
+  // __PUBLISH_EXTRACT_START__ TestConnector-importDomainSchema.cf-code
   public async importDomainSchema(_requestContext: AccessToken): Promise<any> {
 
     if (this._sourceDataState === ItemState.Unchanged) {
@@ -124,7 +125,7 @@ export default class TestConnector extends BaseConnector {
       return;
   }
 
-  // __PUBLISH_EXTRACT_START__ TestConnector-importDefinitions.example-code
+  // __PUBLISH_EXTRACT_START__ TestConnector-importDefinitions.cf-code
 
   // importDefinitions is for definitions that are written to shared models such as DictionaryModel
   public async importDefinitions(): Promise<any> {
@@ -135,7 +136,7 @@ export default class TestConnector extends BaseConnector {
   }
   // __PUBLISH_EXTRACT_END__
 
-  // __PUBLISH_EXTRACT_START__ TestConnector-updateExistingData.example-code
+  // __PUBLISH_EXTRACT_START__ TestConnector-updateExistingData.cf-code
   public async updateExistingData() {
     const groupModelId = this.queryGroupModel();
     const physicalModelId = this.queryPhysicalModel();
@@ -167,18 +168,16 @@ export default class TestConnector extends BaseConnector {
   }
   // __PUBLISH_EXTRACT_END__
 
-  // public override getChannelKey (): string {
-  //   return "TestConnectorChannel";
-  // }
-
+  // __PUBLISH_EXTRACT_START__ TestConnector-unmapSource.cf-code
   public override async unmapSource(source: string) {
     Logger.logInfo(LoggerCategories.Framework, `Unmapping ${source}`);
     deleteElementTree(this.synchronizer.imodel, this.jobSubject.id);
-    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);      
+    this.synchronizer.imodel.elements.deleteElement(this.repositoryLinkId);
     // bf: ADO# 1387737 - Also delete the ExternalSource
     if (this._externalSourceId !== undefined)
       this.synchronizer.imodel.elements.deleteElement(this._externalSourceId);
   }
+  // __PUBLISH_EXTRACT_END__
 
   public getApplicationVersion(): string {
     return "1.0.0.0";

@@ -28,7 +28,9 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
+// __PUBLISH_EXTRACT_START__ CRWHMTest-LegacyChannelBasedDeletionDetection.cf-code
 describe("iTwin Connector Fwk (#standalone) - Legacy Channel Based Deletion Detection", () => {
+  // __PUBLISH_EXTRACT_END__
 
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
