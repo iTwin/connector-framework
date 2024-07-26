@@ -28,8 +28,9 @@ async function openBriefcase(hubArgs: HubArgs) {
   return db;
 }
 
+// __PUBLISH_EXTRACT_START__ CRWHMTest-FileBaseDeletionDetection.cf-code
 describe("iTwin Connector Fwk (#standalone) - file-based deletion detection", () => {
-
+// __PUBLISH_EXTRACT_END__
   let jobArgs: JobArgs;
   let hubArgs: HubArgs;
 

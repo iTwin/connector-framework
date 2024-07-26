@@ -192,15 +192,19 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
  * external source aspects scope to the physical partition for example.  The test connector in this repository
  * incorrectly set the external source aspects this way and it is likely other connectors followed this example.
 */
+
+// __PUBLISH_EXTRACT_START__ Syncronizer-DeletionDetectionParams.cf-code
 export interface DeletionDetectionParams {
   /** true for file based (recommended for new connectors)
-   * false for channel based i.e. under JobSubject */
+     * false for channel based i.e. under JobSubject */
   fileBased: boolean;
   /** false is recommended, but, true is required for legacy connectors that create
-   * external source aspects that scope to a physical partition instead of repository
-   *  links ingored for channel based deletion detection */
+     * external source aspects that scope to a physical partition instead of repository
+     *  links ingored for channel based deletion detection */
   scopeToPartition: boolean;
 }
+
+// __PUBLISH_EXTRACT_END__
 
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
@@ -241,7 +245,7 @@ export class Synchronizer {
     return this._jobSubjectId;
   }
 
-  // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.example-code
+  // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.cf-code
   private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
     const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
     if (xse !== undefined) {
@@ -271,7 +275,7 @@ export class Synchronizer {
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
 
-  // __PUBLISH_EXTRACT_START__ Synchronizer-recordDocument.example-code
+  // __PUBLISH_EXTRACT_START__ Synchronizer-recordDocument.cf-code
   public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, sourceDocument.docid);
 
@@ -301,7 +305,7 @@ export class Synchronizer {
       source: "", // see below
     } as RecordDocumentResults;
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-detectChanges.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-detectChanges.cf-code
     const changeResults = this.detectChanges(sourceItem);
     if (Id64.isValidId64(repositoryLink.id) && changeResults.state === ItemState.New) {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
@@ -314,7 +318,7 @@ export class Synchronizer {
     results.preChangeAspect = changeResults.existingExternalSourceAspect;
     // __PUBLISH_EXTRACT_END__
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-onElementsSeen.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-onElementsSeen.cf-code
     if (changeResults.state === ItemState.Unchanged) {
       assert(changeResults.id !== undefined);
       results.elementProps.id = changeResults.id;
@@ -329,7 +333,7 @@ export class Synchronizer {
     }
     // __PUBLISH_EXTRACT_END__
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.cf-code
     // Changed or New
     const status = this.updateIModel(results, sourceItem);
 
@@ -446,7 +450,7 @@ export class Synchronizer {
       return status;
     }
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.cf-code
     let aspectId: Id64String | undefined;
     if (sourceItem.id !== "") {
       const xsa = ExternalSourceAspect.findAllBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);

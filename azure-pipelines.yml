@@ -95,6 +95,10 @@ stages:
           npm run documentation
         displayName: 'npm install and build documentation'
 
+      - script: |
+          npm run extract
+        displayName: 'extract code snippets'
+
       - task: CopyFiles@2
         displayName: 'Copy generated docs to: $(Build.StagingDirectory)/docs/'
         inputs:

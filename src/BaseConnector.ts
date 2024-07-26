@@ -92,11 +92,14 @@ export abstract class BaseConnector {
    * In the case of #2, it is up to the connector to supply the jobSubject name.
    * See [Channels]($docs/learning/backend/Channel) for an explanation of the concept of channels.
    */
+
+  // __PUBLISH_EXTRACT_START__ BaseConnector-DeletionDetectionParams.cf-code
   public getDeletionDetectionParams(): DeletionDetectionParams {
     // default to channel based deletion detection
     const ddp = {fileBased: false, scopeToPartition : false};
     return ddp;
   }
+  // __PUBLISH_EXTRACT_END__
 
   /**
    * Returns boolean flag to toggle deletion. Defaults to true where elements not marked by onElementSeen
@@ -112,20 +115,24 @@ export abstract class BaseConnector {
     return `${this.getConnectorName()}:${sourcePath}`;
   }
 
+  // __PUBLISH_EXTRACT_START__ BaseConnector-getChannelKey.cf-code
   // override this method in the derived connector class if using not shared channel
   public getChannelKey(): string {
     return ChannelControl.sharedChannelName;
   }
+  // __PUBLISH_EXTRACT_END__
 
   // override this method to create a single change set group with each connector run
   public shouldCreateChangeSetGroup(): boolean {
     return false;
   }
 
+  // __PUBLISH_EXTRACT_START__ BaseConnector-getChangeSetGroupDescription.cf-code
   // override this method to provide a custom description for the change set group
   public getChangeSetGroupDescription(): string {
     return this.getConnectorName();
   }
+  // __PUBLISH_EXTRACT_END__
 
   /** Overridable function that must me implemented when the flag shouldUnmapSource is set to true. This method is used to unmap an existing source file in the iModel */
   public async unmapSource(source: string): Promise<void> {
