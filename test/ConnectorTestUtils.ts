@@ -45,7 +45,7 @@ export function setupLoggingWithAPIMRateTrap() {
 /* eslint-disable no-console */
 
 /** Loads the provided `.env` file into process.env */
-function loadEnv(envFile: string) {
+export function loadEnv(envFile: string) {
   if (!fs.existsSync(envFile))
     return;
 
@@ -151,6 +151,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   const scopeId = (ddp.scopeToPartition ? physicalModelId: repositoryModelId);
   assert.isTrue(scopeId !== undefined);
   assert.isTrue(Id64.isValidId64(scopeId!));
+
 
   // Verify some elements
   if (!isUpdate) {

@@ -17,5 +17,6 @@ node.exe
 manifest.itsyn.yml
 
 # documentation
-documentation/file.json
-documentation/index.ts
+documentation/
+
+.configStore/

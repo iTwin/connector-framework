@@ -81,6 +81,12 @@ interface BerryGroups {
   berryTreeMeta: SourceItem;
 }
 
+/**
+ * Creates and returns a set of berry groups for synchronization.
+ *
+ * @param sync - The synchronizer used for synchronization.
+ * @returns The berry groups for synchronization.
+ */
 export function berryGroups(sync: Synchronizer): BerryGroups {
   //                         o - subject
   //                         |

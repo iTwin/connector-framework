@@ -2,23 +2,19 @@
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
-import type { LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps } from "@itwin/core-common";
-import { IModel } from "@itwin/core-common";
-import type { AccessToken, Id64Arg, Id64String } from "@itwin/core-bentley";
-import { BentleyError, Guid, IModelHubStatus } from "@itwin/core-bentley";
-import { assert, BentleyStatus, Logger, LogLevel } from "@itwin/core-bentley";
-import type { IModelDb, RequestNewBriefcaseArg } from "@itwin/core-backend";
-import { BriefcaseDb, BriefcaseManager, ChannelControl, LinkElement, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink } from "@itwin/core-backend";
-import { NodeCliAuthorizationClient } from "@itwin/node-cli-authorization";
-import type { BaseConnector } from "./BaseConnector";
-import { LoggerCategories } from "./LoggerCategory";
-import type { AllArgsProps } from "./Args";
-import { HubArgs, JobArgs } from "./Args";
-import { Synchronizer } from "./Synchronizer";
-import type { ConnectorIssueReporter } from "./ConnectorIssueReporter";
+import {IModel, LocalBriefcaseProps, OpenBriefcaseProps, SubjectProps} from "@itwin/core-common";
+import {assert, BentleyError, BentleyStatus, Guid, Id64Arg, Id64String, IModelHubStatus, Logger, LogLevel} from "@itwin/core-bentley";
+import {BriefcaseDb, BriefcaseManager, ChannelControl, IModelDb, LinkElement, RequestNewBriefcaseArg, SnapshotDb, StandaloneDb, Subject, SubjectOwnsSubjects, SynchronizationConfigLink} from "@itwin/core-backend";
+import {BaseConnector} from "./BaseConnector";
+import {LoggerCategories} from "./LoggerCategory";
+import {AllArgsProps, HubArgs, JobArgs} from "./Args";
+import {Synchronizer} from "./Synchronizer";
+import {ConnectorIssueReporter} from "./ConnectorIssueReporter";
 import * as fs from "fs";
 import * as path from "path";
 import { SqliteIssueReporter } from "./SqliteIssueReporter";
+import {ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
+import {ChangeSetGroup} from "./ChangeSetGroup";
 
 type Path = string;
 
@@ -32,7 +28,8 @@ export class ConnectorRunner {
   private _db?: IModelDb;
   private _connector?: BaseConnector;
   private _issueReporter?: ConnectorIssueReporter;
-  private _reqContext?: AccessToken;
+  private _authMgr?: ConnectorAuthenticationManager;
+  private _changeSetGroup?: ChangeSetGroup;
 
   /**
    * @throws Error when jobArgs or/and hubArgs are malformated or contain invalid arguments
@@ -82,7 +79,7 @@ export class ConnectorRunner {
     if (!json.version || json.version !== supportedVersion)
       throw new Error(`Arg file has invalid version ${json.version}. Supported version is ${supportedVersion}.`);
 
-    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.example-code
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-constructor.cf-code
     if (!(json.jobArgs))
       throw new Error("jobArgs is not defined");
     const jobArgs = new JobArgs(json.jobArgs);
@@ -95,35 +92,6 @@ export class ConnectorRunner {
     // __PUBLISH_EXTRACT_END__
 
     return runner;
-  }
-
-  // NEEDSWORK - How to check if string version od Access Token is expired
-  private get _isAccessTokenExpired(): boolean {
-    //  return this._reqContext.isExpired(5);
-    return true;
-  }
-
-  public async getAuthReqContext(): Promise<AccessToken> {
-    if (!this._reqContext)
-      throw new Error("AuthorizedClientRequestContext has not been loaded.");
-    if (this._isAccessTokenExpired) {
-      this._reqContext = await this.getToken();
-      Logger.logInfo(LoggerCategories.Framework, "AccessToken Refreshed");
-    }
-    return this._reqContext;
-  }
-
-  public async getReqContext(): Promise<AccessToken> {
-    if (!this._reqContext)
-      throw new Error("ConnectorRunner.reqContext has not been loaded. Must sign in first.");
-
-    let reqContext: AccessToken;
-    if (this.db.isBriefcaseDb())
-      reqContext = await this.getAuthReqContext();
-    else
-      reqContext = this._reqContext;
-
-    return reqContext;
   }
 
   public get jobArgs(): JobArgs {
@@ -148,11 +116,11 @@ export class ConnectorRunner {
     return this.connector.getJobSubjectName(this.jobArgs.source);
   }
 
-  public get channelKey (): string {
+  public get channelKey(): string {
     return this.connector.getChannelKey();
   }
 
-  public get usesSharedChannel (): boolean {
+  public get usesSharedChannel(): boolean {
     return this.channelKey===ChannelControl.sharedChannelName;
   }
 
@@ -198,11 +166,13 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Loading connector...");
     await this.loadConnector(connector);
 
+    if (this.jobArgs.dbType === "briefcase" && this.hubArgs) {
+      Logger.logInfo(LoggerCategories.Framework, "Initializing connector's auth client...");
+      await this.initAuthClient(this.hubArgs);
+    }
+
     Logger.logInfo(LoggerCategories.Framework, "Loading issue reporter...");
     this.loadIssueReporter();
-
-    Logger.logInfo(LoggerCategories.Framework, "Authenticating...");
-    await this.loadReqContext();
 
     Logger.logInfo(LoggerCategories.Framework, "Retrieving iModel...");
     await this.loadDb();
@@ -221,7 +191,7 @@ export class ConnectorRunner {
         await this.connector.onOpenIModel();
         return config;
       },
-      "Write configuration and open source data."
+      "Write configuration and open source data.",
     );
 
     // ***
@@ -233,17 +203,17 @@ export class ConnectorRunner {
     Logger.logInfo(LoggerCategories.Framework, "Importing domain schema...");
     await this.doInRepositoryChannel(
       async () => {
-        return this.connector.importDomainSchema(await this.getReqContext());
+        return this.connector.importDomainSchema(await this.getToken());
       },
-      "Write domain schema."
+      "Write domain schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Importing dynamic schema...");
     await this.doInRepositoryChannel(
       async () => {
-        return this.connector.importDynamicSchema(await this.getReqContext());
+        return this.connector.importDynamicSchema(await this.getToken());
       },
-      "Write dynamic schema."
+      "Write dynamic schema.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job subject and definitions...");
@@ -254,9 +224,10 @@ export class ConnectorRunner {
         await this.connector.importDefinitions();
         return job;
       },
-      "Write job subject and definitions."
+      "Write job subject and definitions.",
     );
 
+    // __PUBLISH_EXTRACT_START__ ConnectorRunner-shouldUnmapSource.cf-code
     if(this.jobArgs.shouldUnmapSource) {
       Logger.logInfo(LoggerCategories.Framework, "Unmapping source data...");
       await this.doInRepositoryChannel(
@@ -264,10 +235,11 @@ export class ConnectorRunner {
           await this.connector.unmapSource(this.jobSubjectName);
           this.updateProjectExtent();
         },
-        "Unmapping source data"
+        "Unmapping source data",
       );
       return;
     }
+    // __PUBLISH_EXTRACT_END__
 
     Logger.logInfo(LoggerCategories.Framework, "Synchronizing...");
     await this.doInConnectorChannel(jobSubject.id,
@@ -275,7 +247,7 @@ export class ConnectorRunner {
         await this.connector.updateExistingData();
         this.updateDeletedElements();
       },
-      "Synchronize."
+      "Synchronize.",
     );
 
     Logger.logInfo(LoggerCategories.Framework, "Writing job finish time and extent...");
@@ -285,10 +257,21 @@ export class ConnectorRunner {
         this.connector.synchronizer.updateRepositoryLinks();
         this.updateSynchronizationConfigLink(synchConfig);
       },
-      "Write synchronization finish time and extent."
+      "Write synchronization finish time and extent.",
     );
 
+    await this.closeChangeSetGroup();
+
     Logger.logInfo(LoggerCategories.Framework, "Connector job complete!");
+  }
+
+  private async closeChangeSetGroup() {
+    if (this._changeSetGroup) {
+      Logger.logInfo(LoggerCategories.Framework, `Closing ChangeSetGroup ${this._changeSetGroup.id}`);
+      const token = await this.getToken();
+      await ChangeSetGroup.closeChangeSetGroup(token,this.hubArgs.iModelGuid, this._changeSetGroup.id);
+      this._changeSetGroup = undefined;
+    }
   }
 
   private async onFailure(err: any) {
@@ -389,7 +372,6 @@ export class ConnectorRunner {
         this.db.channels.makeChannelRoot({elementId: newSubjectId, channelKey: this.channelKey});
 
       subject = this.db.elements.getElement<Subject>(newSubjectId);
-      // await this.db.locks.releaseAllLocks();
     }
 
     this.connector.jobSubject = subject;
@@ -414,7 +396,7 @@ export class ConnectorRunner {
       synchConfigData = require(this.jobArgs.synchConfigFile);
     }
     const prevSynchConfigId = this.db.elements.queryElementIdByCode(
-      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig")
+      LinkElement.createCode(this.db, IModel.repositoryModelId, "SynchConfig"),
     );
     let idToReturn: string;
     if (prevSynchConfigId === undefined) {
@@ -434,11 +416,6 @@ export class ConnectorRunner {
       lastSuccessfulRun: Date.now().toString(),
     };
     this.db.elements.updateElement(synchConfigData);
-  }
-
-  private async loadReqContext() {
-    const token = await this.getToken();
-    this._reqContext = token;
   }
 
   private loadIssueReporter() {
@@ -464,38 +441,43 @@ export class ConnectorRunner {
     this.connector.issueReporter = this.issueReporter;
   }
 
-  private async getToken() {
-    let token: string;
+  private needsToken(): boolean {
     const kind = this._jobArgs.dbType;
-    if (kind === "snapshot" || kind === "standalone")
+    return ((kind === "snapshot" || kind === "standalone") ? false : true);
+  }
+
+  private async getToken() {
+    if (this.needsToken()){
+      if (this._authMgr === undefined)
+        throw new Error("Unable to get access token - authentication manager is undefined.");
+      else
+        return this._authMgr.getAccessToken();
+    } else {
+      return "notoken";
+    }
+  }
+
+  private async initAuthClient(hubArgs: HubArgs): Promise<string> {
+    if (!this._connector || !this.needsToken())
       return "notoken";
 
-    if (this.hubArgs.doInteractiveSignIn)
-      token = await this.getTokenInteractive();
-    else
-      token = await this.getTokenSilent();
-    return token;
-  }
+    let clientConfig;
+    let callbackUrl;
+    let callback;
 
-  private async getTokenSilent() {
-    let token: string;
-    if (this.hubArgs && this.hubArgs.tokenCallbackUrl) {
-      const response = await fetch(this.hubArgs.tokenCallbackUrl);
-      const tokenStr = await response.json();
-      token = tokenStr;
-    } else if (this.hubArgs && this.hubArgs.tokenCallback) {
-      token = await this.hubArgs.tokenCallback();
-    } else {
-      throw new Error("Define either HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to retrieve accessToken");
+    if (hubArgs.doInteractiveSignIn)
+      clientConfig = hubArgs.clientConfig;
+    else if (hubArgs.tokenCallbackUrl)
+      callbackUrl = hubArgs.tokenCallbackUrl!;
+    else if (hubArgs.tokenCallback)
+      callback = hubArgs.tokenCallback;
+    else {
+      throw new Error("Define hubArgs.clientConfig, HubArgs.acccessTokenCallbackUrl or HubArgs.accessTokenCallback to initialize the connector's auth client!");
     }
-    return token;
-  }
 
-  private async getTokenInteractive() {
-    const client = new NodeCliAuthorizationClient(this.hubArgs.clientConfig!);
-    Logger.logInfo(LoggerCategories.Framework, "token signin");
-    await client.signIn();
-    return client.getAccessToken();
+    this._authMgr = new ConnectorAuthenticationManager ({callback , callbackUrl , authClientConfig : clientConfig});
+    await this._authMgr.initialize();
+    return this._authMgr.getAccessToken();
   }
 
   private async loadDb() {
@@ -586,8 +568,31 @@ export class ConnectorRunner {
 
   private async loadSynchronizer() {
     const ddp = this.connector.getDeletionDetectionParams();
-    const synchronizer = new Synchronizer(this.db, ddp.fileBased , this._reqContext, ddp.scopeToPartition, this.connector.getChannelKey());
+    const synchronizer = new Synchronizer(this.db, ddp.fileBased , await this.getToken(), ddp.scopeToPartition, this.connector.getChannelKey(), this._authMgr);
     this.connector.synchronizer = synchronizer;
+  }
+
+  /**
+   * Fetches the group id of the changeset
+   * @param description of grouped changeset
+   * @returns the group id of the changeset
+   */
+  private async fetchChangeSetGroupId(description: string): Promise<string> {
+    const enableChangeSetGrouping: boolean = this._connector?.shouldCreateChangeSetGroup() ?? false;
+
+    if (!enableChangeSetGrouping)
+      return "";
+
+    if (this._changeSetGroup)
+      return this._changeSetGroup.id;
+
+    const token = await this.getToken();
+
+    this._changeSetGroup = await ChangeSetGroup.createChangeSetGroup(token, description, this.hubArgs.iModelGuid);
+    if (!this._changeSetGroup)
+      return "";
+
+    return this._changeSetGroup.id;
   }
 
   private async persistChanges(changeDesc: string) {
@@ -597,9 +602,10 @@ export class ConnectorRunner {
     if (!isStandalone && this.db.isBriefcaseDb()) {
       this._db = this.db;
       await this.db.pullChanges();
+      const chgSetGrpId = await this.fetchChangeSetGroupId (this.connector.getChangeSetGroupDescription ());
+      Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
-      await this.db.pushChanges({ description: comment });
-      await this.db.locks.releaseAllLocks(); // in case there were no changes
+      await this.db.pushChanges({ description: comment});
     } else {
       this.db.saveChanges(comment);
     }

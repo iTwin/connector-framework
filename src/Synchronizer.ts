@@ -6,15 +6,18 @@
  * @module Framework
  */
 
-import { ChannelControl, ElementUniqueAspect } from "@itwin/core-backend";
-import type { ECSqlStatement, IModelDb } from "@itwin/core-backend";
-import type { Element } from "@itwin/core-backend";
-import { DefinitionElement, deleteElementSubTrees, ElementOwnsChildElements, ExternalSource, ExternalSourceAspect, RepositoryLink, SynchronizationConfigSpecifiesRootSources } from "@itwin/core-backend";
-import type { AccessToken, GuidString, Id64String } from "@itwin/core-bentley";
-import { assert, DbResult, Guid, Id64, IModelStatus, Logger } from "@itwin/core-bentley";
-import type { ElementProps, ExternalSourceAspectProps, ExternalSourceProps, RepositoryLinkProps } from "@itwin/core-common";
-import { Code, IModel, IModelError, RelatedElement } from "@itwin/core-common";
-import { LoggerCategories } from "./LoggerCategory";
+import {ChannelControl, DefinitionElement, deleteElementSubTrees, ECSqlStatement, Element, ElementOwnsChildElements, ElementUniqueAspect, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink, SynchronizationConfigSpecifiesRootSources} from "@itwin/core-backend";
+import {AccessToken, assert, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger} from "@itwin/core-bentley";
+import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps} from "@itwin/core-common";
+import {LoggerCategories} from "./LoggerCategory";
+import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
+
+function getResultIdStatus(result: SynchronizationResults): boolean {
+  if (undefined !== result.elementProps && result.elementProps.id !== undefined && Id64.isValidId64(result.elementProps.id))
+    return true;
+  else
+    return (result.itemState === ItemState.New ? true: false);
+}
 
 /** The state of the given SourceItem against the iModelDb
  * @beta
@@ -189,15 +192,19 @@ function sourceItemHasScopeAndKind(item: SourceItem): item is ItemWithScopeAndKi
  * external source aspects scope to the physical partition for example.  The test connector in this repository
  * incorrectly set the external source aspects this way and it is likely other connectors followed this example.
 */
+
+// __PUBLISH_EXTRACT_START__ Syncronizer-DeletionDetectionParams.cf-code
 export interface DeletionDetectionParams {
   /** true for file based (recommended for new connectors)
-   * false for channel based i.e. under JobSubject */
+     * false for channel based i.e. under JobSubject */
   fileBased: boolean;
   /** false is recommended, but, true is required for legacy connectors that create
-   * external source aspects that scope to a physical partition instead of repository
-   *  links ingored for channel based deletion detection */
+     * external source aspects that scope to a physical partition instead of repository
+     *  links ingored for channel based deletion detection */
   scopeToPartition: boolean;
 }
+
+// __PUBLISH_EXTRACT_END__
 
 /** Helper class for interacting with the iModelDb during synchronization.
  * @beta
@@ -215,17 +222,19 @@ export class Synchronizer {
     private _supportsMultipleFilesPerChannel: boolean,
     protected _requestContext?: AccessToken,
     private _scopeToPartition?: boolean,
-    private _channelKey?: string
+    private _channelKey?: string,
+    private _authMgr?: ConnectorAuthenticationManager,
   ) {
-    if (imodel.isBriefcaseDb() && undefined === _requestContext)
-      throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
+    // This is a redundant test. It is tested upstream from here
+    // if (imodel.isBriefcaseDb() && undefined === _requestContext)
+    //   throw new IModelError(IModelStatus.BadArg, "RequestContext must be set when working with a BriefcaseDb");
 
-    this._ddp = {fileBased: _supportsMultipleFilesPerChannel, scopeToPartition : (_scopeToPartition === undefined? false:_scopeToPartition)};
+    this._ddp = {fileBased: this._supportsMultipleFilesPerChannel, scopeToPartition : (this._scopeToPartition ?? false)};
 
   }
 
   /** @internal */
-  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName}
+  public get channelKey(){return this._channelKey??ChannelControl.sharedChannelName;}
   public get linkCount() { return this._links.size; }
   public get unchangedSources() { return this._unchangedSources; }
 
@@ -236,7 +245,7 @@ export class Synchronizer {
     return this._jobSubjectId;
   }
 
-  // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.example-code
+  // __PUBLISH_EXTRACT_START__ Sychronizer-getOrCreateExternalSource.cf-code
   private getOrCreateExternalSource(repositoryLinkId: Id64String, modelId: Id64String): Id64String {
     const xse = this.getExternalSourceElementByLinkId(repositoryLinkId);
     if (xse !== undefined) {
@@ -251,10 +260,10 @@ export class Synchronizer {
       code: Code.createEmpty(),
     };
 
-    const xseId : Id64String = this.imodel.elements.insertElement(xseProps);
+    const xseId: Id64String = this.imodel.elements.insertElement(xseProps);
     // xseCount = this.getExternalSourceCount();
     return xseId;
-    
+
   }
   // __PUBLISH_EXTRACT_END__
 
@@ -266,7 +275,7 @@ export class Synchronizer {
    * @see [[SourceItem]] for an explanation of how an entity from an external source is tracked in relation to the RepositoryLink.
    */
 
-  // __PUBLISH_EXTRACT_START__ Synchronizer-recordDocument.example-code
+  // __PUBLISH_EXTRACT_START__ Synchronizer-recordDocument.cf-code
   public recordDocument(sourceDocument: SourceDocument): RecordDocumentResults {
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, sourceDocument.docid);
 
@@ -296,7 +305,7 @@ export class Synchronizer {
       source: "", // see below
     } as RecordDocumentResults;
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-detectChanges.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-detectChanges.cf-code
     const changeResults = this.detectChanges(sourceItem);
     if (Id64.isValidId64(repositoryLink.id) && changeResults.state === ItemState.New) {
       const error = `A RepositoryLink element with code=${repositoryLink.code} and id=${repositoryLink.id} already exists in the bim file.
@@ -309,7 +318,7 @@ export class Synchronizer {
     results.preChangeAspect = changeResults.existingExternalSourceAspect;
     // __PUBLISH_EXTRACT_END__
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-onElementsSeen.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-onElementsSeen.cf-code
     if (changeResults.state === ItemState.Unchanged) {
       assert(changeResults.id !== undefined);
       results.elementProps.id = changeResults.id;
@@ -324,7 +333,7 @@ export class Synchronizer {
     }
     // __PUBLISH_EXTRACT_END__
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.cf-code
     // Changed or New
     const status = this.updateIModel(results, sourceItem);
 
@@ -343,6 +352,10 @@ export class Synchronizer {
     return results;
     // __PUBLISH_EXTRACT_END__
   }
+
+  public authenticationManager?: ConnectorAuthenticationManager;
+  public set(authMgr: ConnectorAuthenticationManager) {this._authMgr = authMgr;}
+  public get() {return this._authMgr;}
 
   private setSourceItemDefaults(item: SourceItem) {
     if (item.scope === undefined)
@@ -437,7 +450,7 @@ export class Synchronizer {
       return status;
     }
 
-    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.example-code
+    // __PUBLISH_EXTRACT_START__ Synchronizer-updateIModel.cf-code
     let aspectId: Id64String | undefined;
     if (sourceItem.id !== "") {
       const xsa = ExternalSourceAspect.findAllBySource(this.imodel, sourceItem.scope, sourceItem.kind, sourceItem.id);
@@ -494,8 +507,8 @@ export class Synchronizer {
     return IModelStatus.Success;
   }
 
-  private getRepositoryLinkId (docId: string) : Id64String|undefined {
-    let repLinkId = undefined;
+  private getRepositoryLinkId(docId: string): Id64String|undefined {
+    let repLinkId;
     const code = RepositoryLink.createCode(this.imodel, IModel.repositoryModelId, docId);
     const key = IModel.repositoryModelId + code.value.toLowerCase();
     const existing = this._links.get(key);
@@ -503,15 +516,15 @@ export class Synchronizer {
       repLinkId = existing.elementProps.id;
     }
 
-    return repLinkId
-  } 
+    return repLinkId;
+  }
 
   /** Creates a relationship between the SynchConfigLink and the ExternalSource if one doesn't exist already.
    * @param config The element id of the SynchronizationConfigLink
    * @param docId The path to the source file used to look up the corresponding RepositoryLink Id
    * @beta
    */
-  public ensureRootSourceRelationshipExists (config: string, docId: string) {
+  public ensureRootSourceRelationshipExists(config: string, docId: string) {
     const repositoryLinkId = this.getRepositoryLinkId (docId);
 
     if (repositoryLinkId !== undefined) {
@@ -523,11 +536,9 @@ export class Synchronizer {
           return;
 
         this.imodel.relationships.insertInstance({ classFullName: SynchronizationConfigSpecifiesRootSources.classFullName, sourceId: config, targetId: xse.id});
-      } 
-      else 
+      } else
         Logger.logWarning(LoggerCategories.Framework, `Unable to find ExternalSourceElement related to RepositoryLink with Id = ${repositoryLinkId}`);
-    }
-    else 
+    } else
       Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
@@ -539,16 +550,16 @@ export class Synchronizer {
     return this.getExternalSourceElementByLinkId(repositoryLink.id);
   }
 
-public getExternalSourceCount (): number {
-  let xseCount = 0;
-  this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
-    if (DbResult.BE_SQLITE_ROW, stmt.step()) {
-      const row = stmt.getRow();
-      xseCount = row.count;
-    }
-  });
-  return xseCount;
-}
+  public getExternalSourceCount(): number {
+    let xseCount = 0;
+    this.imodel.withStatement("SELECT count(*) AS [count] FROM BisCore.ExternalSource", (stmt: ECSqlStatement) => {
+      if (DbResult.BE_SQLITE_ROW === stmt.step()) {
+        const row = stmt.getRow();
+        xseCount = row.count;
+      }
+    });
+    return xseCount;
+  }
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLinkId The ElementId of the repository link associated with the External Source Element
@@ -563,7 +574,7 @@ public getExternalSourceCount (): number {
         stmt.step();
         const row = stmt.getRow();
         sourceId = row.id;
-      }
+      },
     );
 
     if (sourceId) {
@@ -631,19 +642,16 @@ public getExternalSourceCount (): number {
     if (this.imodel.isSnapshotDb())
       return;
 
-    if (!this._ddp.fileBased || this._ddp.scopeToPartition)
-    {
+    if (!this._ddp.fileBased || this._ddp.scopeToPartition) {
       // ADO# 1334078
       // Note: channel based deletion detection is required for models
       // that are scoped to partion because xsas for aggregation elements in plantsight
       // are also scoped to partition and we don't want to delete them.
-    if (this._ddp.scopeToPartition)
+      if (this._ddp.scopeToPartition)
         Logger.logInfo(LoggerCategories.Framework, `Channel based deletion detection is required for models that are scoped to partition. Performing channel-based deletion detection!`);
 
-    this.detectDeletedElementsInChannel();
-    }
-    else      
-    {
+      this.detectDeletedElementsInChannel();
+    } else {
       this.detectDeletedElementsInFiles();
     }
   }
@@ -761,12 +769,21 @@ public getExternalSourceCount (): number {
     if (undefined === results.childElements || results.childElements.length < 1) {
       return IModelStatus.Success;
     }
+    let idsOk: boolean = true; // ok means no missing ids
+    let numNew = 0;
     if (results.elementProps.id === undefined || !Id64.isValidId64(results.elementProps.id)) {
       const error = `Parent element id is invalid.  Unable to update the children.`;
       Logger.logError(LoggerCategories.Framework, error);
       return IModelStatus.BadArg;
     }
     results.childElements.forEach((child) => {
+
+      if (idsOk && !getResultIdStatus (child))
+        idsOk = false; // if any one child is missing an id, then the group of children is considered missing
+
+      if (child.itemState === ItemState.New)
+        numNew++;
+
       const parent = new RelatedElement({ id: results.elementProps.id!, relClassName: ElementOwnsChildElements.classFullName });
       child.elementProps.parent = parent;
     });
@@ -781,7 +798,8 @@ public getExternalSourceCount (): number {
 
     // If the specified children have ElementIds, then match existing child elements by ElementId.
     // This is generally the case only when updating an existing parent element.
-    if (undefined !== results.childElements[0].elementProps && results.childElements[0].elementProps.id !== undefined && Id64.isValidId64(results.childElements[0].elementProps.id)) {
+
+    if (idsOk) {
       for (const childRes of results.childElements) {
         if (undefined === childRes.elementProps) {
           continue;
@@ -792,18 +810,45 @@ public getExternalSourceCount (): number {
           if (stat !== IModelStatus.Success) {
             return stat;
           }
+        } else if (childRes.itemState === ItemState.New) {
+          if (childRes.elementProps.id !== undefined) {
+            throw new IModelError(IModelStatus.InvalidId, "New child element should not have an id!");
+          }
+          const stat = this.insertResultsIntoIModel(childRes, parentAspectProps);
+          if (stat !== IModelStatus.Success)
+            return stat;
         }
       }
       return IModelStatus.Success;
     }
 
     // The specified children do not have ElementIds.
-    const count = Math.min(existingChildren.length, results.childElements.length);
-    let i = 0;
-    for (; i < count; i++) {
-      this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+    // JC: This is the no id case and the first thing it checks in updateResultsInIModel is if the id is undefined.
+    // So, if we get here, we have a problem.
+    Logger.logWarning(LoggerCategories.Framework, "At least one child element requiring update is missing an ElementId.  Attempting to update the children by arbitrarily mapping to existing children.");
+    // We need to match existingChildren with only child elements that are changed or unchanged.
+    const numReqUpdates = results.childElements.length - numNew;
+    let numUpdates = numReqUpdates;
+    if (numReqUpdates > existingChildren.length) {
+      Logger.logError(LoggerCategories.Framework, `More child elements than existing children.  ${numReqUpdates - existingChildren.length} child elements will be added as new.`);
+      numUpdates = existingChildren.length;
     }
-    for (; i < results.childElements.length; i++) {
+
+    let i = 0;
+
+    for (let updated = 0; updated < numUpdates; i++) {
+      // If we have new elements, then we should insert them.
+      // rather than update them.
+      if (results.childElements[i].itemState === ItemState.New)
+        this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
+      else {
+      // reuse ids of existing children
+        results.childElements[i].elementProps.id = existingChildren[updated];
+        this.updateResultsInIModel(results.childElements[i], parentAspectProps);
+        updated++;
+      }
+    }
+    for (;i < results.childElements.length; i++) {
       this.insertResultsIntoIModel(results.childElements[i], parentAspectProps);
     }
     return IModelStatus.Success;

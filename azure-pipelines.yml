@@ -59,12 +59,15 @@ stages:
         displayName: 'Install Node.js'
 
       - script: |
-          npm install --legacy-peer-deps
+          npm install
         displayName: 'install packages'
 
       # - script: |
       #     npm ci
       #   displayName: 'npm ci'
+      - script: |
+          npm run lint
+        displayName: 'npm run lint'
 
       - script: |
            npm run build
@@ -91,6 +94,10 @@ stages:
       - script: |
           npm run documentation
         displayName: 'npm install and build documentation'
+
+      - script: |
+          npm run extract
+        displayName: 'extract code snippets'
 
       - task: CopyFiles@2
         displayName: 'Copy generated docs to: $(Build.StagingDirectory)/docs/'
@@ -181,6 +188,21 @@ stages:
         artifactName: connector-framework
         name: ConnectorFramework
         dryrun: false
+    - job: ReleaseTag
+      displayName: Release Tag
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: self
+        persistCredentials: true
+        clean: true
+      - pwsh: |
+          $versionNum=(Get-Content ./package.json | ConvertFrom-Json).version
+          git config user.name 'imodeljs-admin'
+          git config user.email '38288322+imodeljs-admin@users.noreply.github.com'
+          git tag -a "release/$versionNum" -m "v$versionNum"
+          git push origin "release/$versionNum"
+        displayName: 'git tag'
 
 - stage: Validate_Docs
   dependsOn: Build
