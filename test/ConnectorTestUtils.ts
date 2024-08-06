@@ -112,10 +112,31 @@ function getDDParamsFromEnv(): DeletionDetectionParams {
   return ddp;
 }
 
-function checkClassInstanceCount (expected : number, imodel: IModelDb, className: string) {
- Logger.logInfo (LoggerCategories.Framework, `Checking for ${expected} instance of class ${className}.`);
- assert.equal(expected, getCount(imodel, className));
- return;
+function checkClassInstanceCount(expected: number, imodel: IModelDb, className: string) {
+  Logger.logInfo (LoggerCategories.Framework, `Checking for ${expected} instance of class ${className}.`);
+  assert.equal(expected, getCount(imodel, className));
+  return;
+}
+
+export function verifyEmptyModel(imodel: IModelDb) {
+  checkClassInstanceCount(0, imodel, "BisCore:RepositoryLink");
+  checkClassInstanceCount(0, imodel, "BisCore:PhysicalModel");
+  checkClassInstanceCount(0, imodel, "TestConnector:TestConnectorGroupModel");
+  checkClassInstanceCount(0, imodel, "BisCore:GeometryPart");
+  checkClassInstanceCount(0, imodel, "BisCore:SpatialCategory");
+  checkClassInstanceCount(0, imodel, "BisCore:RenderMaterial");
+  checkClassInstanceCount(0, imodel, "TestConnector:TestConnectorGroup");
+  checkClassInstanceCount(0, imodel, "TestConnector:TestConnectorPhysicalElement");
+  checkClassInstanceCount(0, imodel, "TestConnector:EquilateralTriangleTile");
+  checkClassInstanceCount(0, imodel, "TestConnector:IsoscelesTriangleTile");
+  checkClassInstanceCount(0, imodel, "TestConnector:LargeSquareTile");
+  checkClassInstanceCount(0, imodel, "TestConnector:RectangleTile");
+  checkClassInstanceCount(0, imodel, "TestConnector:RightTriangleTile");
+  checkClassInstanceCount(0, imodel, "TestConnector:SmallSquareTile");
+  // NEEDSWORK: do we remove synch config link on unmapping?
+  checkClassInstanceCount(1, imodel, SynchronizationConfigLink.classFullName);
+  checkClassInstanceCount(0, imodel, SynchronizationConfigSpecifiesRootSources.classFullName);
+  checkClassInstanceCount(0, imodel, ExternalSource.classFullName);
 }
 
 export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boolean = false, ddp?: DeletionDetectionParams) {
@@ -151,7 +172,6 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
   const scopeId = (ddp.scopeToPartition ? physicalModelId: repositoryModelId);
   assert.isTrue(scopeId !== undefined);
   assert.isTrue(Id64.isValidId64(scopeId!));
-
 
   // Verify some elements
   if (!isUpdate) {
