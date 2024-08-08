@@ -8,7 +8,7 @@
 
 import {ChannelControl, DefinitionElement, deleteElementSubTrees, ECSqlStatement, Element, ElementOwnsChildElements, ElementUniqueAspect, ExternalSource, ExternalSourceAspect, IModelDb, RepositoryLink, SynchronizationConfigSpecifiesRootSources} from "@itwin/core-backend";
 import {AccessToken, assert, DbResult, Guid, GuidString, Id64, Id64String, IModelStatus, Logger} from "@itwin/core-bentley";
-import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, QueryBinder, QueryRowFormat, RelatedElement, RepositoryLinkProps} from "@itwin/core-common";
+import {Code, ElementProps, ExternalSourceAspectProps, ExternalSourceProps, IModel, IModelError, RelatedElement, RepositoryLinkProps} from "@itwin/core-common";
 import {LoggerCategories} from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
