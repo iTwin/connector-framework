@@ -549,22 +549,22 @@ export class Synchronizer {
    * @returns void
    */
   public async unmapSynchronizationConfigLink(repLinkId: string): Promise<void> {
-    const reader = this.imodel.createQueryReader("select rel.SourceECInstanceId from BisCore.ExternalSourceIsInRepository xsnr join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xsnr.SourceECInstanceId AND xsnr.TargetECInstanceId=?", QueryBinder.from([repLinkId]), { rowFormat: QueryRowFormat.UseJsPropertyNames });
+    const reader = this.imodel.createQueryReader("select rel.SourceECInstanceId as SyncConfigLink, xsnr.TargetECInstanceId as RepLink from BisCore.ExternalSourceIsInRepository xsnr join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xsnr.SourceECInstanceId;");
     const allRows = await reader.toArray();
+    // test that we have only one repositoryLink related to this SynchronizationConfigLink before deleting it!
+    const lastRepLink = allRows.every((row) => row[1] === repLinkId);
     let config;
 
-    // if (relCount === 0) {
-    if (allRows.length === 0) {
-      Logger.logWarning(LoggerCategories.Framework, `Query didn't find any SynchronizationConfigLinks related to repositoryLink = ${repLinkId}`);
-    } else {
-      config = allRows[0].sourceId;
-      Logger.logWarning(LoggerCategories.Framework, `Query found SynchronizationConfigLink (id = ${config}) related to repositoryLink = ${repLinkId}`);
+    if (lastRepLink) {
+      if (allRows.length === 0) {
+        Logger.logWarning(LoggerCategories.Framework, `Query didn't find any SynchronizationConfigLinks related to repositoryLink = ${repLinkId}`);
+      } else {
+        config = allRows[0][0];
+        Logger.logInfo(LoggerCategories.Framework, `Attempting to delete SynchronizationConfigLink w id = ${config}`);
+        this.imodel.elements.deleteElement(config);
+      }
     }
-    Logger.logInfo(LoggerCategories.Framework, `Attempting to delete SynchronizationConfigLink w id = ${config}`);
-
-    this.imodel.elements.deleteElement(config);
   }
-  // }
 
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLink The repository link associated with the External Source Element
