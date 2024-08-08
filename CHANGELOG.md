@@ -1,5 +1,11 @@
 # Change Log - @itwin/connector-framework
 
+## 2.3.0
+
+- Add method to unmap SynchronizationConfigLink
+- Add new method to TestConnectors' unmapSource override
+- Add new test to file-based connector
+
 ## 2.3.0-dev.1
 
 - add support for ChangeSetGroups
