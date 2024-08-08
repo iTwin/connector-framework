@@ -542,6 +542,33 @@ export class Synchronizer {
       Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
+  /**
+   * @method unmapSynchronizationConfigLink
+   * @description Unmaps (deletes) the SynchronizationConfigLink element
+   * @param docId string containing the external source document id to be unmapped
+   * @returns void
+   */
+  public async unmapSynchronizationConfigLink(docId: string): Promise<void> {
+    const reader = this.imodel.createQueryReader("select xse.UserLabel, rel.ECInstanceId, rel.SourceECInstanceId, xse.ECInstanceId as target from BisCore.ExternalSource xse join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xse.ECInstanceId");
+    const allRows = await reader.toArray();
+    const matchingSource = allRows.filter((row) => row[0] === docId || row[0] === null);
+    let config;
+
+    const relCount = (matchingSource.length < allRows.length ? allRows.length - matchingSource.length : 0);
+
+    if (relCount === 0) {
+      if (matchingSource.length === 0) {
+        Logger.logWarning(LoggerCategories.Framework, `Query didn't find any SynchronizationConfigLinks related to source = ${docId}`);
+      } else {
+        config = matchingSource[0][2];
+        Logger.logWarning(LoggerCategories.Framework, `Query found SynchronizationConfigLink (id = ${config}) related to source = ${docId}`);
+      }
+      Logger.logInfo(LoggerCategories.Framework, `Attempting to delete SynchronizationConfigLink w id = ${config}`);
+
+      this.imodel.elements.deleteElement(config);
+    }
+  }
+
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLink The repository link associated with the External Source Element
    * @beta
