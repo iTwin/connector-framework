@@ -133,8 +133,7 @@ export function verifyEmptyModel(imodel: IModelDb) {
   checkClassInstanceCount(0, imodel, "TestConnector:RectangleTile");
   checkClassInstanceCount(0, imodel, "TestConnector:RightTriangleTile");
   checkClassInstanceCount(0, imodel, "TestConnector:SmallSquareTile");
-  // NEEDSWORK: do we remove synch config link on unmapping?
-  checkClassInstanceCount(1, imodel, SynchronizationConfigLink.classFullName);
+  checkClassInstanceCount(0, imodel, SynchronizationConfigLink.classFullName);
   checkClassInstanceCount(0, imodel, SynchronizationConfigSpecifiesRootSources.classFullName);
   checkClassInstanceCount(0, imodel, ExternalSource.classFullName);
 }
