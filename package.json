@@ -85,6 +85,7 @@
     "typescript": "~5.3.3"
   },
   "peerDependencies": {
+    "@itwin/imodels-client-authoring": "^5.8.0",    
     "@itwin/core-backend": "^4.8.1",
     "@itwin/core-bentley": "^4.8.1",
     "@itwin/core-common": "^4.8.1",
