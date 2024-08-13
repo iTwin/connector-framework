@@ -603,7 +603,9 @@ export class ConnectorRunner {
       this._db = this.db;
       await this.db.pullChanges();
       const chgSetGrpId = await this.fetchChangeSetGroupId (this.connector.getChangeSetGroupDescription ());
-      Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
+      // ef: only log if we have a changeset group id
+      if (chgSetGrpId!=="")
+        Logger.logInfo(LoggerCategories.Framework, `Pushing changes to iModelHub with changeset group id ${chgSetGrpId}`);
       this.db.saveChanges(comment);
       await this.db.pushChanges({ description: comment});
     } else {
