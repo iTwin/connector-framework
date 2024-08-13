@@ -1,6 +1,6 @@
 # Change Log - @itwin/connector-framework
 
-## 2.3.0
+## 2.3.1
 
 - Add method to unmap SynchronizationConfigLink
 - Add new method to TestConnectors' unmapSource override
