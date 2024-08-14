@@ -543,27 +543,45 @@ export class Synchronizer {
   }
 
   /**
-   * @method unmapSynchronizationConfigLink
-   * @description Unmaps (deletes) the SynchronizationConfigLink element
-   * @param repLinkId reposirtyLink representing the external source document to be unmapped
+   * @method deleteSynchronizationConfigLinkIfUnmappingLastExternalSource
+   * @description Unmaps (deletes) the SynchronizationConfigLink element if repLinkIdToUnmap is the last external source document mapped to it
+   * @param repLinkIdToUnmap Id of repositoryLink representing the external source document to be unmapped
    * @returns void
    */
-  public async unmapSynchronizationConfigLink(repLinkId: string): Promise<void> {
-    const reader = this.imodel.createQueryReader("select rel.SourceECInstanceId as SyncConfigLink, xsnr.TargetECInstanceId as RepLink from BisCore.ExternalSourceIsInRepository xsnr join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xsnr.SourceECInstanceId;");
-    const allRows = await reader.toArray();
-    // test that we have only one repositoryLink related to this SynchronizationConfigLink before deleting it!
-    const lastRepLink = allRows.every((row) => row[1] === repLinkId);
-    let config;
-
-    if (lastRepLink) {
-      if (allRows.length === 0) {
-        Logger.logWarning(LoggerCategories.Framework, `Query didn't find any SynchronizationConfigLinks related to repositoryLink = ${repLinkId}`);
+  public async deleteSynchronizationConfigLinkIfUnmappingLastExternalSource(repLinkIdToUnmap: string): Promise<void> {
+    const allRows = await this.getSynchConfigAndRelatedIds();
+    if (allRows.length === 0) {
+      Logger.logWarning(LoggerCategories.Framework, `Query didn't find any SynchronizationConfigLinks related to repositoryLink = ${repLinkIdToUnmap}`);
+    } else if (allRows.length > 1) {
+      if (!allRows.some((row) => row[1] === repLinkIdToUnmap)) {
+        Logger.logWarning(LoggerCategories.Framework, `None of the repository links related to SynchronizationConfigLink have the expected id = ${repLinkIdToUnmap}`);
       } else {
-        config = allRows[0][0];
+        Logger.logInfo(LoggerCategories.Framework, `SynchronizationConfigLink has multiple external sources!`);
+      }
+      allRows.forEach((row) => {
+        Logger.logInfo(LoggerCategories.Framework, `SynchronizationConfigLink w id = ${row[0]} is related to RepositoryLink w id = ${row[1]}`);
+      });
+    } else {
+      const config = allRows[0][0];
+      if (allRows[0][1] === repLinkIdToUnmap) {
         Logger.logInfo(LoggerCategories.Framework, `Attempting to delete SynchronizationConfigLink w id = ${config}`);
         this.imodel.elements.deleteElement(config);
-      }
+      } else
+        Logger.logWarning(LoggerCategories.Framework, `No SynchronizationConfigLink is deleted! RepositoryLink id = ${repLinkIdToUnmap} doesn't match the expected id = ${allRows[0][1]}`);
     }
+  }
+
+  /**
+   * @method getSynchConfigAndRelatedIds
+   * @description performs a query to get the SynchronizationConfigLink and RepositoryLink ids
+   * @param void
+   * @returns array containing the SynchronizationConfigLink and RepositoryLink ids
+   */
+  private async getSynchConfigAndRelatedIds(): Promise<any[]> {
+
+    const reader = this.imodel.createQueryReader("select rel.SourceECInstanceId as SyncConfigLink, xsnr.TargetECInstanceId as RepLink from BisCore.ExternalSourceIsInRepository xsnr join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xsnr.SourceECInstanceId;");
+    const allRows = await reader.toArray();
+    return allRows;
   }
 
   /** Returns the External Source Element associated with a repository link
