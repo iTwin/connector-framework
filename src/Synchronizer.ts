@@ -542,6 +542,65 @@ export class Synchronizer {
       Logger.logWarning(LoggerCategories.Framework, `Unable to find repository link related to source = ${docId}`);
   }
 
+  /**
+   * @method deleteSynchronizationConfigLinkIfUnmappingLastExternalSource
+   * @description Unmaps (deletes) the SynchronizationConfigLink element if repLinkIdToUnmap is the last external source document mapped to it
+   * @param repLinkIdToUnmap Id of repositoryLink representing the external source document to be unmapped
+   * @returns void
+   */
+  public async deleteSynchronizationConfigLinkIfUnmappingLastExternalSource(repLinkIdToUnmap: string): Promise<void> {
+    const allRows = await this.getSynchConfigAndRelatedIds();
+
+    // No sync config links? Unexpected, but nothing to do.
+    if (allRows.length === 0) {
+      Logger.logWarning(LoggerCategories.Framework, "No sync config links found to delete.");
+      return;
+    }
+
+    // No sync config links for the given repository link? Unexpected, but nothing to do.
+    const scLinksForRLink = allRows.filter((row) => row[1] === repLinkIdToUnmap);
+
+    if (scLinksForRLink.length === 0) {
+      Logger.logWarning(LoggerCategories.Framework, `No sync config links found for repo link ${repLinkIdToUnmap} to delete.`);
+      return;
+    }
+
+    const scLink = scLinksForRLink[0][0];
+    // Multiple sync config links for the same file? That's bad data. Unexpected, let's not get fancy until proven we need to.
+    if (!scLinksForRLink.every((row) => row[0] === scLink)) {
+      Logger.logError(LoggerCategories.Framework, `Multiple sync config links found for repo link ${repLinkIdToUnmap}. This indicates a corrupt state, so not deleting the sync config links.`);
+      return;
+    }
+
+    // Need new filtered array here!!!
+    // Now we know the sync config link id that needs to unmapped, we filter out the sync config links that are not the one we want to delete.
+    // We now want to check if THE sync config link (i.e. scLink) refers to one or more repository links.
+    const scLinkToUnmap = allRows.filter((row) => row[0] === scLink);
+
+    // Does the sync config link have other references? Nothing to do.
+    if (scLinkToUnmap.length > 1) {
+      Logger.logInfo(LoggerCategories.Framework, `Repository link ${repLinkIdToUnmap} is not the last reference for sync config link ${scLink} therefore not deleting the sync config link.`);
+      return;
+    }
+
+    // We're the last reference to the sync config link, so let's delete it.
+    Logger.logInfo(LoggerCategories.Framework, `Deleting sync config link ${scLink} because repo link ${repLinkIdToUnmap} was the last reference.`);
+    this.imodel.elements.deleteElement(scLink);
+  }
+
+  /**
+   * @method getSynchConfigAndRelatedIds
+   * @description performs a query to get the SynchronizationConfigLink and RepositoryLink ids
+   * @param void
+   * @returns array containing the SynchronizationConfigLink and RepositoryLink ids
+   */
+  private async getSynchConfigAndRelatedIds(): Promise<any[]> {
+
+    const reader = this.imodel.createQueryReader("select rel.SourceECInstanceId as SyncConfigLink, xsnr.TargetECInstanceId as RepLink from BisCore.ExternalSourceIsInRepository xsnr join BisCore:SynchronizationConfigSpecifiesRootSources rel on rel.TargetECInstanceId = xsnr.SourceECInstanceId;");
+    const allRows = await reader.toArray();
+    return allRows;
+  }
+
   /** Returns the External Source Element associated with a repository link
    * @param repositoryLink The repository link associated with the External Source Element
    * @beta

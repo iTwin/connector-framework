@@ -113,4 +113,21 @@ describe("iTwin Connector Fwk (#standalone) - file-based deletion detection", ()
     HubMock2.acquireLocksShouldFail = 2;
     await expect(runConnector()).to.be.eventually.rejected;
   });
+
+  // ensure we can unmap with a file-based connector
+  it("test connector file-based unmap", async () => {
+    await runConnector();
+
+    jobArgs.shouldUnmapSource = true;
+    const runner = new ConnectorRunner(jobArgs, hubArgs);
+    await runner.run(testConnector);
+
+    const db = await openBriefcase(hubArgs);
+    try {
+      utils.verifyEmptyModel (db);
+    } finally {
+      db.close();
+    }
+  });
+
 });
