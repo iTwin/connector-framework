@@ -11,6 +11,21 @@ import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
 
+interface SyncError {
+  system: string;
+  phase: string;
+  category: string;
+  descriptionKey: string;
+  description: string;
+  kbArticleLink: string;
+  canUserFix: boolean;
+}
+
+interface ErrorReport {
+  version: string;
+  errors: SyncError[];
+}
+
 /** Abstract implementation of the iTwin Connector.
  * @beta
  */
@@ -72,14 +87,22 @@ export abstract class BaseConnector {
    * Overriding with your own reportError function is done the same way, but you must include the "Override" keyword in the function signature
    * Should be called in other implemented functions if you wish for those to output error reports */
   public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
-    const object = {
-      system: systemName,
-      phase: systemPhase,
-      category,
-      descriptionKey,
+    const syncErr: SyncError = {
+      system: systemName ?? "Unknown",
+      phase: systemPhase ?? "Unknown",
+      category: category ?? "Unknown",
+      descriptionKey: descriptionKey ?? "Unknown",
       description,
-      kbLink: (kbArticleLink?.length !== 0 ? kbArticleLink : ""),
-      canUserFix,
+      kbArticleLink: kbArticleLink ?? "Unknown",
+      canUserFix: canUserFix ?? false,
+    };
+
+    const syncErrArray: SyncError[] = [];
+    syncErrArray.push(syncErr);
+
+    const object: ErrorReport = {
+      version: "1.0",
+      errors: syncErrArray,
     };
     Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
     fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
