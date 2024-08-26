@@ -15,7 +15,7 @@ import * as utils from "../ConnectorTestUtils";
 import * as path from "path";
 import { TestIModelManager } from "./TestIModelManager";
 import { ChangeSetGroup } from "../../src/ChangeSetGroup";
-import {TestChangeSetGroup} from "./TestChangeSetGroup"
+import {TestChangeSetGroup} from "./TestChangeSetGroup";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -77,7 +77,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 
-  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, skipVerification?: boolean) {
+  interface RunConnectorProps {
+    jobArgs: JobArgs;
+    hubArgs: HubArgs;
+    skipVerification?: boolean;
+    testSyncErr?: boolean;
+  }
+
+  async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, skipVerification?: boolean, testSyncErr?: boolean) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
     // __PUBLISH_EXTRACT_START__ ConnectorRunnerTest.run.cf-code
     const status = await runner.run(testConnector);
@@ -86,13 +93,42 @@ describe("iTwin Connector Fwk (#integration)", () => {
     if (status !== BentleyStatus.SUCCESS)
       throw new Error();
 
-    if (skipVerification)
-      return;
-
+    if (!skipVerification) {
     // test authclient accessor in connector
-    const tokenFrConnector =  await runner.connector.getAccessToken();
-    expect(tokenFrConnector !== undefined && tokenFrConnector.length > 0);
-    await verifyIModel(jobArgs, hubArgs);
+      const tokenFrConnector =  await runner.connector.getAccessToken();
+      expect(tokenFrConnector !== undefined && tokenFrConnector.length > 0);
+      await verifyIModel(jobArgs, hubArgs);
+    }
+
+    if (testSyncErr) {
+      const dir: string = jobArgs.stagingDir;
+      const description: string ="Connector was unable to acquire required locks: Lock failure since User:   :  owns a lock in briefcase id: 37";
+      const system: string = "connector";
+      const phase: string = "pull_merge_push";
+      const category: string = "imodel_access";
+      const canUserFix: boolean = false;
+      const descriptionKey: string = "LockError";
+      const kbArticleLink: string = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098388";
+
+      runner.connector.reportError(dir, description, system, phase, category, canUserFix, descriptionKey, kbArticleLink);
+
+      const syncErrPath = path.join(dir, "SyncError.json");
+      expect(IModelJsFs.existsSync(syncErrPath));
+      const syncErrStr = IModelJsFs.readFileSync(syncErrPath).toString();
+      const syncErr = JSON.parse(syncErrStr);
+      expect(syncErr.version).to.equal("1.0");
+      expect(syncErr.errors.length).to.equal(1);
+      const err = syncErr.errors[0];
+      expect(err.system).to.equal(system);
+      expect(err.phase).to.equal(phase);
+      expect(err.category).to.equal(category);
+      expect(err.descriptionKey).to.equal(descriptionKey);
+      expect(err.description).to.equal(description);
+      expect(err.kbArticleLink).to.equal(kbArticleLink);
+      expect(err.canUserFix).to.equal(canUserFix);
+
+    }
+    return;
   }
 
   async function verifyIModel(jobArgs: JobArgs, hubArgs: HubArgs) {
@@ -225,7 +261,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
     await iModelMgr.deleteIModel(token);
   });
 
-  it("should download and perform an unmap operation on an existing imodel", async () => {
+  it ("should download and perform an unmap operation on an existing imodel", async () => {
 
     if (token === undefined)
       throw new Error (`Can't create a test iModel without a token!`);
@@ -311,6 +347,44 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
     await verifyIModel(jobArgs, hubArgs);
     // cleanup
+    await iModelMgr.deleteIModel(token);
+  });
+
+  it ("should create a json object in syncerr.json w correct format", async () => {
+
+    if (token === undefined)
+      throw new Error (`Can't create a test iModel without a token!`);
+
+    const iModelMgr: TestIModelManager = new TestIModelManager (testProjectId, changeSetGroupIModelName);
+
+    const assetPath = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+    const jobArgs = new JobArgs({
+      source: assetPath,
+      issuesDbDir: KnownTestLocations.outputDir,
+      stagingDir: KnownTestLocations.outputDir,
+    });
+
+    const hubArgs = new HubArgs({
+      projectGuid: testProjectId,
+      iModelGuid: await iModelMgr.createIModel(token),
+    } as HubArgsProps);
+
+    if (callbackUrl) {
+      hubArgs.tokenCallbackUrl = callbackUrl;
+    } else {
+      hubArgs.clientConfig = testClientConfig;
+      hubArgs.tokenCallback = async (): Promise<AccessToken> => {
+        return token!;
+      };
+    }
+
+    testConnector = path.join("..", "lib", "test", "TestConnector", "TestConnector.js");
+
+    // First run to add data
+    await runConnector(jobArgs, hubArgs, false, true);
+
+    jobArgs.source = path.join(KnownTestLocations.assetsDir, "TestConnector.json");
+
     await iModelMgr.deleteIModel(token);
   });
 
