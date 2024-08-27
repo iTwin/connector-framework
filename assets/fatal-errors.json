@@ -1,0 +1,655 @@
+{
+  "$schema": "./fatal-errors-schema.json",
+  "systems": [
+    {
+      "name": "cloud_orchestrator",
+      "phases": [
+        "initialization",
+        "preprocessor",
+        "file_download",
+        "file_caching",
+        "affinity",
+        "planning",
+        "master",
+        "reference",
+        "postprocessing",
+        "external_to_run_execution",
+        "internal_server_error",
+        "connector_initialization"
+      ]
+    },
+    {
+      "name": "edge_orchestrator",
+      "phases": []
+    },
+    {
+      "name": "connector",
+      "phases": [
+        "acquire_briefcase",
+        "fetch_from_dms",
+        "initialization",
+        "schema",
+        "definition_elements",
+        "file_format",
+        "spatial_elements",
+        "sheet_elements",
+        "finalization",
+        "internal_server_error",
+        "pull_merge_push",
+        "workspace_check",
+        "affinity_check",
+        "unmap",
+        "user_permission"
+      ]
+    }
+  ],
+  "categories": [
+    "network",
+    "ims_token_access",
+    "imodel_access",
+    "file_access",
+    "data_conflict",
+    "configuration",
+    "other"
+  ],
+  "kbArticleLinks": {
+    "AccessToDataSourceDenied": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098347",
+    "AllFilesHaveFailed": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098417",
+    "AnotherUserPushing": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098412",
+    "ConnectorLockError": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098388",
+    "DatasourceAuthenticationTypeIsNotSupported": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098405",
+    "DocumentNotFound": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098413",
+    "DrawingFileWithWrongConfig": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098392",
+    "DuplicateData": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#DuplicateModels",
+    "DwgMissingGeometry": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098314#Dwg_0103",
+    "FailedToAccessDataSource": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098389",
+    "FailedToConnectToRemoteServerApplication": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098451",
+    "FailedToRetryTask": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098415",
+    "FileFormat": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098410",
+    "GeodeticCoordinateSystemNotSupported": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098404",
+    "IModelAccessForbidden": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098408",
+    "IModelNotFound": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098390",
+    "IncompleteDxfHeader": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#DuplicateModels",
+    "InconsistentURL": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098383",
+    "ITwinSpatialAlignment": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098345",
+    "MissingShapefileDbfShx": "https://bentleysystems.service-now.com/community?id=kb_article_view&sysparm_article=KB0098348#convertingShapeFiles",
+    "MissingWorkspace": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#MissingWorkspace",
+    "NonLinearUnits": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#NonLinearUnits",
+    "NotEnoughRightsInCONNECTEDContext": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#ProjectSharePermissionMissing",
+    "ProductInstallationPathNotFound": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#ProductInstallationPathNotFound",
+    "ProtectedFile": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098414",
+    "RootNotSpatial": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#RootNotSpatial",
+    "SchemaUpgradeFailure": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098400",
+    "SourceFileCorrupted": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#SourceFileCorrupted",
+    "SourceFileIsForbidden": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098397",
+    "SourceFileNotAccessible": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098399",
+    "SourceFileNotFound": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098398",
+    "UnmapInputFile": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098403",
+    "UserLacksPssPermissions": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#ProductSettingPermissionsMissing",
+    "UserNotAuthenticated": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401",
+    "WorksetOverrideNotFound": "https://bentleysystems.service-now.com/community?id=kb_article_view&sysparm_article=KB0098387",
+    "ZeroByte": "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#ZeroByte"
+  },
+  "errors": {
+    "briefcase_deleted": {
+      "description": "Briefcase ID %u does not exist on the server, so it cannot be restored. You must acquire a new briefcase.",
+      "categoryId": "configuration",
+      "canUserFix": false
+    },
+    "briefcase_deleted_only_remotely": {
+      "description": "Briefcase ID %u does not exist on the server, so the local briefcase cannot be re-used. You must acquire a new briefcase.",
+      "categoryId": "configuration",
+      "canUserFix": false
+    },
+    "OpenBriefcaseFailed": {
+      "description": "Failed to open Briefcase with id %u.  Please contact Bentley Support for more information. Error code: %d. Error message: %s",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "AllJobsFailed": {
+      "description": "All processing Jobs of the Run failed.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "SomeJobsFailed": {
+      "description": "Some Jobs of the Run were not successful.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "RunOrchestrationError": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "UserNotAuthenticated": {
+      "description": "User is not authenticated.",
+      "categoryId": "ims_token_access",
+      "kbLinkId": "UserNotAuthenticated",
+      "canUserFix": true
+    },
+    "UserAuthenticationFailed": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "ims_token_access",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "PreprocessingFailed": {
+      "description": "Preprocessing of the Run failed.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AccessToDataSourceDenied": {
+      "description": "Access to the data source was denied.",
+      "categoryId": "other",
+      "kbLinkId": "AccessToDataSourceDenied",
+      "canUserFix": true
+    },
+    "FailedToAccessDataSource": {
+      "description": "Failed to access the data source.",
+      "categoryId": "other",
+      "kbLinkId": "FailedToAccessDataSource",
+      "canUserFix": true
+    },
+    "RunSchedulingConflict": {
+      "description": "Failed to execute Run due to a scheduling conflict.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AffinityReportInvalid": {
+      "description": "Failed to read an affinity report.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AffinityReportNotFound": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "file_access",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "ConnectorPoolNotFound": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "PreprocessorPoolNotFound": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "IModelNotFound": {
+      "description": "iModel was not found.",
+      "categoryId": "imodel_access",
+      "kbLinkId": "IModelNotFound",
+      "canUserFix": true
+    },
+    "IModelAccessForbidden": {
+      "description": "iModel access was forbidden.",
+      "categoryId": "imodel_access",
+      "kbLinkId": "IModelAccessForbidden",
+      "canUserFix": true
+    },
+    "ExternalCommunicationError": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "network",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AzureBatchRegionNotSupported": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AzureStorageRegionNotSupported": {
+      "description": "Failed to orchestrate Run.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "FailedToAccessManifest": {
+      "description": "Failed to access the synchronization manifest.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "ManifestIsMalformed": {
+      "description": "Synchronization manifest is malformed.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "DocumentNotFound": {
+      "description": "File is deleted or not accessible.",
+      "categoryId": "file_access",
+      "kbLinkId": "DocumentNotFound",
+      "canUserFix": true
+    },
+    "BridgeBatchPoolNotFound": {
+      "description": "Processing of this file type is not currently available.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "CloudJobNotFound": {
+      "description": "Failed to orchestrate file processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "CloudJobFailed": {
+      "description": "Failed to orchestrate file processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "CloudTaskNotFound": {
+      "description": "Failed to orchestrate file processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "FailedToRetryTask": {
+      "description": "Failed to orchestrate file processing retry.",
+      "categoryId": "other",
+      "kbLinkId": "FailedToRetryTask",
+      "canUserFix": false
+    },
+    "TaskWasCancelled": {
+      "description": "File processing was canceled.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "BridgeWrapperFailed": {
+      "description": "Failed to orchestrate file processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "BridgingFailed": {
+      "description": "Failed to process the file.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "BridgingSucceededWithCriticalError": {
+      "description": "Critical error(s) occurred during file processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "NodeBecameUnusable": {
+      "description": "Azure batch node was in an unusable state.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "foreign_format_too_old": {
+      "description": "The input file format is unsupported because it is too old. Please upgrade the input file to a newer version.",
+      "categoryId": "other",
+      "canUserFix": true
+    },
+    "foreign_format_too_new": {
+      "description": "The input file format is unsupported because it is too recent. Please downgrade the input file to an older version.",
+      "categoryId": "other",
+      "canUserFix": true
+    },
+    "launchdarkly_init_failed": {
+      "description": "The connector is unable to reach launch darkly.",
+      "categoryId": "network",
+      "canUserFix": false
+    },
+    "legacyV8SchemaError": {
+      "description": "Failed to import legacy V8 schema.",
+      "categoryId": "data_conflict",
+      "canUserFix": false
+    },
+    "protectedFile": {
+      "description": "Source file is protected and user does not have appropriate rights.",
+      "categoryId": "file_access",
+      "kbLinkId": "ProtectedFile",
+      "canUserFix": true
+    },
+    "rootModelNotSpatial": {
+      "description": "An attachment to a 3D model has been detected. However, the root model is not a 3D model.",
+      "categoryId": "data_conflict",
+      "kbLinkId": "RootNotSpatial",
+      "canUserFix": true
+    },
+    "MissingWorkspace": {
+      "description": "%s could not find the required workset %s for the %s file.",
+      "categoryId": "configuration",
+      "kbLinkId": "MissingWorkspace",
+      "canUserFix": true
+    },
+    "CanNotOpenFile": {
+      "description": "%s: Cannot open the %s file; either the path is incorrect or the file is missing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": true
+    },
+    "UnsupportedFile": {
+      "description": "The input file format is unsupported. It is likely mapped to the wrong connector. If not, please try to reload the file from its original location.",
+      "categoryId": "file_access",
+      "kbLinkId": "FileFormat",
+      "canUserFix": true
+    },
+    "OutOfMemory": {
+      "description": "Failed to process the file due to low memory condition. Please try to use more extended Azure pool.",
+      "categoryId": "configuration",
+      "canUserFix": false
+    },
+    "GeoLocationFailed": {
+      "description": "The input file has an unsupported or incorrect geo-location.",
+      "categoryId": "data_conflict",
+      "canUserFix": true
+    },
+    "iModelHubError": {
+      "description": "Encountered an error while accessing iModelHub: %s",
+      "categoryId": "imodel_access",
+      "canUserFix": false
+    },
+    "Unhandled_exception": {
+      "description": "The connector encountered an exception in phase: %s",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "JobAborted": {
+      "description": "A connector job can no longer continue and has been aborted in phase %s [%s]",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "DrawingFileWithWrongConfig": {
+      "description": "Do not use a 2D file as root model with sheets and drawings settings disabled.",
+      "categoryId": "configuration",
+      "kbLinkId": "DrawingFileWithWrongConfig",
+      "canUserFix": true
+    },
+    "UnmapInputFile": {
+      "description": "The given input file does not have a master job subject and cannot be unmapped.",
+      "categoryId": "configuration",
+      "kbLinkId": "UnmapInputFile",
+      "canUserFix": true
+    },
+    "UnmapInputFileUnknownError": {
+      "description": "Unknown error unmapping a missing file.",
+      "categoryId": "other",
+      "kbLinkId": "UnmapInputFile",
+      "canUserFix": false
+    },
+    "FailedToGenerateSchema": {
+      "description": "%s: Could not generate DG EC3 schema.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "InconsistentURL": {
+      "description": "%s: Reference URLS need to start with %s, do you need to run ProjectWise ScanRefs?",
+      "categoryId": "other",
+      "kbLinkId": "InconsistentURL",
+      "canUserFix": true
+    },
+    "BimBridgeInitError": {
+      "description": "%s: Server Configuration error, the Connector must be initialized using 'sync pre' keyin.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "BridgeJobError": {
+      "description": "%s: Server Configuration error, the Connector Job can only be run once per session.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "BridgeJobAlreadyLoaded": {
+      "description": "%s: the Connector Job could not be loaded or was loaded twice.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AuthoringApplicationNotFound": {
+      "description": "%s: Authoring application of active file not found.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "FileIDPolicyMismatch": {
+      "description": "File ID policy mismatch between iModel and Feature Flags.",
+      "categoryId": "configuration",
+      "canUserFix": false
+    },
+    "ProductInstallationPathNotFound": {
+      "description": "Could not get path to %s product installation. Please check the product is installed correctly on the ProjetWise WSG machine.",
+      "categoryId": "configuration",
+      "kbLinkId": "ProductInstallationPathNotFound",
+      "canUserFix": true
+    },
+    "ConnectionTimeout": {
+      "description": "Connection timeout. Internet connection issue on server. Please contact your administrator and try again.",
+      "categoryId": "network",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AuthenticationTypeNotSupported": {
+      "description": "Datasource authentication type is not supported. IMS or federated login is required for the user to access ProjectWise datasource. Please enable IMS authentication for the ProjectWise datasource.",
+      "categoryId": "configuration",
+      "kbLinkId": "DatasourceAuthenticationTypeIsNotSupported",
+      "canUserFix": true
+    },
+    "UnexpectedError": {
+      "description": "Unexpected error happened. Please contact your administrator.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "NotEnoughRightsInCONNECTEDContext": {
+      "description": "User does not have 'Read' RBAC Permission. Please give relative permission to the user.",
+      "categoryId": "file_access",
+      "kbLinkId": "NotEnoughRightsInCONNECTEDContext",
+      "canUserFix": true
+    },
+    "iModelDmsSupportError": {
+      "description": "Encountered an error while downloading files from repository: %s",
+      "categoryId": "file_access",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "AzureBlobURLError": {
+      "description": "The specified Azure Blob URL may have expired or not authorized to download. Please check and pass correct Azure Blob Url.",
+      "categoryId": "file_access",
+      "kbLinkId": "",
+      "canUserFix": true
+    },
+    "FailedToFetchWorkspaceAndConfigFile": {
+      "description": "Failed to fetch workspace or generate workspace configuration file.",
+      "categoryId": "configuration",
+      "kbLinkId": "",
+      "canUserFix": true
+    },
+    "ExportTokenFailed": {
+      "description": "Failed to export token.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "AffinityReportDownloadFailed": {
+      "description": "Failed to download affinity report.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "SourceFileDownloadFailed": {
+      "description": "Failed to download files from cache.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "ConnectorInitializationFailed": {
+      "description": "Error initializing connector.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "NetworkIssue": {
+      "description": "There was a network issue, please try again later.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "BriefcaseCloseAndReopenFailed": {
+      "description": "Failed to close and reopen root file or briefcase during processing. Unable to continue processing.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "UserLacksPssPermissions": {
+      "description": "User does not have required Product Settings Service permissions.",
+      "categoryId": "other",
+      "kbLinkId": "UserLacksPssPermissions",
+      "canUserFix": true
+    },
+    "LockError": {
+      "description": "Connector was unable to acquire required locks: %s",
+      "categoryId": "imodel_access",
+      "canUserFix": false,
+      "kbLinkId": "ConnectorLockError"
+    },
+    "GeodeticGCSNotSupported": {
+      "description": "The Geodetic coordinate systems is not supported.",
+      "categoryId": "configuration",
+      "kbLinkId": "GeodeticCoordinateSystemNotSupported",
+      "canUserFix": true
+    },
+    "MissingShapefileDbfShx": {
+      "description": "Mandatory Shapefile .dbf or .shx files are missing.",
+      "categoryId": "other",
+      "kbLinkId": "MissingShapefileDbfShx",
+      "canUserFix": true
+    },
+    "CannotGetRepositoryLink": {
+      "description": "Encountered an internal inconsistency with model identification. Please contact support.",
+      "categoryId": "other",
+      "canUserFix": false
+    },
+    "WorksetOverrideNotFound": {
+      "description": "Workset override file not found.",
+      "categoryId": "FileAccess",
+      "canUserFix": true,
+      "kbLinkId": "WorksetOverrideNotFound"
+    },
+    "SchemaUpgradeFailure": {
+      "description": "Connector failed to upgrade internal schemas.",
+      "categoryId": "other",
+      "canUserFix": false,
+      "kbLinkId": "SchemaUpgradeFailure"
+    },
+    "CannotOpenADxPIDSource": {
+      "description": "Cannot open source %s. The file may be missing, corrupt, locked, or you may not have Visio installed.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": true
+    },
+    "CannotOpenSPPIDSource": {
+      "description": "Cannot open source %s. The file may be missing, corrupt, or unsupported.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": true
+    },
+    "IncorrectConfigVariable": {
+      "description": "%s Workspace error; configuration variable %s either not defined or has incorrect value",
+      "categoryId": "configuration",
+      "canUserFix": true
+    },
+    "NonLinearUnits": {
+      "description": "The root model is not using linear units.",
+      "categoryId": "configuration",
+      "canUserFix": true,
+      "kbLinkId": "NonLinearUnits"
+    },
+    "DuplicateDataFound": {
+      "description": "The file contains data that is spatial overlapping having similar identifiers compared to the existing content in the iModel. To prevent data problem the conversion was aborted. Details: %s",
+      "categoryId": "data_conflict",
+      "canUserFix": true,
+      "kbLinkId": "DuplicateData"
+    },
+    "AnotherUserPushing": {
+      "description": "Another user is attempting to push data to the same iModel. Please try again in a few minutes.",
+      "categoryId": "imodel_access",
+      "canUserFix": true,
+      "kbLinkId": "AnotherUserPushing"
+    },
+    "ZeroByte": {
+      "description": "File %s has a size of 0 bytes. Please check your datasource.",
+      "categoryId": "data_conflict",
+      "canUserFix": true,
+      "kbLinkId": ""
+    },
+    "SourceFileNotAccessible": {
+      "description": "The source file is not accessible.",
+      "categoryId": "file_access",
+      "canUserFix": true,
+      "kbLinkId": "SourceFileNotAccessible"
+    },
+    "SourceFileIsForbidden": {
+      "description": "Source file pre-authenticated URL is expired.",
+      "categoryId": "file_access",
+      "canUserFix": true,
+      "kbLinkId": "SourceFileIsForbidden"
+    },
+    "SourceFileNotFound": {
+      "description": "Source file was not found at location.",
+      "categoryId": "file_access",
+      "canUserFix": true,
+      "kbLinkId": "SourceFileNotFound"
+    },
+    "SourceFileCorrupted": {
+      "description": "The input file, %s, is likely corrupted. It cannot be opened by the connector. Try auditing & recovering the file in the product that has created it.",
+      "categoryId": "file_access",
+      "kbLinkId": "SourceFileCorrupted",
+      "canUserFix": true
+    },
+    "IncompleteDxfHeader": {
+      "description": "The input DXF file, %s, is invalid. It has an incomplete or missing HEADER section, and potentially other problems as well. Try fixing the file in AutoCAD.",
+      "categoryId": "file_access",
+      "kbLinkId": "IncompleteDxfHeader",
+      "canUserFix": true
+    },
+    "InvalidChangesetGroupId": {
+      "description": "The Connector was provided an invalid changeset group ID by the orchestrator.",
+      "categoryId": "configuration",
+      "canUserFix": false
+    },
+    "FailedToConnectToRemoteServerApplication": {
+      "description": "Failed to connect to the remote server application to retrieve files.",
+      "categoryId": "file_access",
+      "kbLinkId": "FailedToConnectToRemoteServerApplication",
+      "canUserFix": true
+    },
+    "FailedToReaquireJobSubject": {
+      "description": "Failed to re-acquire job subject during processing. Unable to continue processing.",
+      "categoryId": "other",
+      "kbLinkId": "",
+      "canUserFix": false
+    },
+    "ECEFAlreadyExistsInIModel": {
+      "description": "The iModel already contains an ECEF coordinate system. The file with the projected GCS must be imported first.",
+      "categoryId": "configuration",
+      "kbLinkId": "ITwinSpatialAlignment",
+      "canUserFix": true
+    },
+    "AllFilesHaveFailed": {
+      "description": "Synchronization job was in the queue for too long and was canceled.",
+      "categoryId": "other",
+      "kbLinkId": "AllFilesHaveFailed",
+      "canUserFix": false
+    },
+    "DwgMissingGeometry": {
+      "description": "Entity '%s' is not displayed, entity handle=0x%llx. This may or may not indicate a problem depending on whether the entity is displayed in the source CAD application.",
+      "categoryId": "other",
+      "kbLinkId": "DwgMissingGeometry",
+      "canUserFix": false
+    }
+  }
+}

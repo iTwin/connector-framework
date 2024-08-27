@@ -10,21 +10,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
+import { ErrorReport, FatalErrors, SyncError } from "./SyncErrors";
 
-interface SyncError {
-  system: string;
-  phase: string;
-  category: string;
-  descriptionKey: string;
-  description: string;
-  kbArticleLink: string;
-  canUserFix: boolean;
-}
-
-interface ErrorReport {
-  version: string;
-  errors: SyncError[];
-}
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -87,14 +74,22 @@ export abstract class BaseConnector {
    * Overriding with your own reportError function is done the same way, but you must include the "Override" keyword in the function signature
    * Should be called in other implemented functions if you wish for those to output error reports */
   public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
+
+    const fatalErrs = new FatalErrors();
+    fatalErrs.read();
+
+    let foundError: SyncError | undefined;
+    if (descriptionKey)
+      foundError = fatalErrs.getError(descriptionKey);
+
     const syncErr: SyncError = {
-      system: systemName ?? "Unknown",
-      phase: systemPhase ?? "Unknown",
-      category: category ?? "Unknown",
+      system: systemName ?? foundError?.system ?? "Unknown",
+      phase: systemPhase ?? foundError?.phase ?? "Unknown",
+      category: category ?? foundError?.category ?? "Unknown",
       descriptionKey: descriptionKey ?? "Unknown",
       description,
-      kbArticleLink: kbArticleLink ?? "Unknown",
-      canUserFix: canUserFix ?? false,
+      kbArticleLink: kbArticleLink ?? foundError?.kbArticleLink ?? "Unknown",
+      canUserFix: canUserFix ?? foundError?.canUserFix ?? false,
     };
 
     const syncErrArray: SyncError[] = [];

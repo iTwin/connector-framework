@@ -77,13 +77,6 @@ describe("iTwin Connector Fwk (#integration)", () => {
     IModelJsFs.purgeDirSync(KnownTestLocations.outputDir);
   });
 
-  interface RunConnectorProps {
-    jobArgs: JobArgs;
-    hubArgs: HubArgs;
-    skipVerification?: boolean;
-    testSyncErr?: boolean;
-  }
-
   async function runConnector(jobArgs: JobArgs, hubArgs: HubArgs, skipVerification?: boolean, testSyncErr?: boolean) {
     const runner = new ConnectorRunner(jobArgs, hubArgs);
     // __PUBLISH_EXTRACT_START__ ConnectorRunnerTest.run.cf-code
@@ -107,7 +100,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       const phase: string = "pull_merge_push";
       const category: string = "imodel_access";
       const canUserFix: boolean = false;
-      const descriptionKey: string = "LockError";
+      const descriptionKey: string = "DuplicateDataFound";
       const kbArticleLink: string = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098388";
 
       runner.connector.reportError(dir, description, system, phase, category, canUserFix, descriptionKey, kbArticleLink);
