@@ -6,6 +6,11 @@ import * as fs from "fs";
 import { Logger } from "@itwin/core-bentley";
 import path = require("path");
 
+export interface FatalErrorSystem {
+  name: string;
+  phases: string[];
+}
+
 /**
  * @description: The SyncError interface represents the structure of a single error in the Syncerr.json file
  */
@@ -31,7 +36,7 @@ export interface ErrorReport {
  * @description: The FatalErrorJSON interface represents the structure of the fatal-errors.json file
  */
 export interface FatalErrorJSON {
-  systems?: Object[];
+  systems?: FatalErrorSystem[];
   categories?: Object[];
   kbArticleLinks?: Object[];
   errors: FatalError[];
@@ -112,7 +117,7 @@ export class FatalErrors {
    * @param errorKey index into the errors array
    * @returns a sync error object populated with the fatal error matching the given errorKey or undefined if the errorKey does not exist
    */
-  public getError(errorKey: string): SyncError|undefined {
+  public getError(errorKey: string, systemName?: string, phase?: string): SyncError|undefined {
 
     if (this._jsonObject === undefined) {
       Logger.logError("itwin-connector.Framework", `FatalErrors file has NOT been read!`);
@@ -121,9 +126,13 @@ export class FatalErrors {
 
     const foundError: FatalError = this._jsonObject.errors[errorKey as any];
 
+    if (this.validateSystemAndPhase(systemName!, phase!) === false) {
+      Logger.logWarning("itwin-connector.Framework", `System, ${systemName} or phase, ${phase} does not exist!`);
+    }
+
     const syncErr: SyncError = {
-      system: "Unknown",
-      phase: "Unknown",
+      system: systemName ?? "Unknown",
+      phase: phase ?? "Unknown",
       category: this.getCategory(foundError.categoryId) ?? "Unknown",
       descriptionKey: errorKey,
       description: foundError.description,
@@ -139,7 +148,7 @@ export class FatalErrors {
    * @param kbLinkId - a string containing a key to the kbArticleLinks array
    * @returns a string containing the link(url) to the kb article if key exists in the kbArticleLinks array, otherwise undefined
    */
-  public getkbArticleLink(kbLinkId: string): string|undefined {
+  private getkbArticleLink(kbLinkId: string): string|undefined {
 
     if (this._jsonObject === undefined) {
       Logger.logError("itwin-connector.Framework", `FatalErrors file has NOT been read!`);
@@ -161,7 +170,7 @@ export class FatalErrors {
    * @param categoryId
    * @returns boolean indicating if the category exists or not
    */
-  public categoryExists(categoryId: string): boolean {
+  private categoryExists(categoryId: string): boolean {
     if (this._jsonObject === undefined) {
       Logger.logError("itwin-connector.Framework", `FatalErrors file has NOT been read!`);
       return false;
@@ -180,7 +189,7 @@ export class FatalErrors {
    * @param categoryId
    * @returns the validated category id if it exists or "other" (if 'other' exists) , otherwise undefined
    */
-  public getCategory(categoryId: string): string|undefined {
+  private getCategory(categoryId: string): string|undefined {
     if (this.categoryExists (categoryId))
       return categoryId;
     else if (this.categoryExists ("other"))
@@ -189,4 +198,47 @@ export class FatalErrors {
       return undefined;
   }
 
+  /**
+   *
+   * @param systemName name of the system such as "cloud_orchestrator" "edge_orchestrator" or "connector"
+   * @returns a FatalErrorSystem object or undefined if the systemName does not exist 
+   */
+  public getSystem(systemName: string): FatalErrorSystem|undefined {
+
+    if (this._jsonObject === undefined) {
+      Logger.logError("itwin-connector.Framework", `FatalErrors file has NOT been read!`);
+      return undefined;
+    }
+
+    if (this._jsonObject.systems === undefined) {
+      Logger.logError("itwin-connector.Framework", `FatalErrors file has NO systems!`);
+      return undefined;
+    }
+
+    const system: FatalErrorSystem = this._jsonObject.systems[systemName as any];
+
+    return system;
+  }
+
+  private getPhases(systemName: string): string[]|undefined {
+    const system = this.getSystem(systemName);
+    if (system)
+      return system.phases;
+    else
+      return undefined;
+  }
+
+  /**
+   *
+   * @param systemName name of system such as "cloud_orchestrator" "edge_orchestrator" or "connector"
+   * @param phase id of the phase
+   * @returns true if the system exists AND the phase exists in the system, otherwise false
+   */
+  private validateSystemAndPhase(systemName: string, phase: string): boolean {
+    const phases = this.getPhases(systemName);
+    if (phases)
+      return phases.indexOf(phase) >= 0;
+    else
+      return false;
+  }
 }

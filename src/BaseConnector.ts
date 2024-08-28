@@ -80,7 +80,7 @@ export abstract class BaseConnector {
 
     let foundError: SyncError | undefined;
     if (descriptionKey)
-      foundError = fatalErrs.getError(descriptionKey);
+      foundError = fatalErrs.getError(descriptionKey, systemName, systemPhase);
 
     const syncErr: SyncError = {
       system: systemName ?? foundError?.system ?? "Unknown",
