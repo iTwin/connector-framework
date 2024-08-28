@@ -129,4 +129,25 @@ describe("iTwin Connector Fwk #standalone", () => {
     assert.equal(1, utils.getCount(imodel, SynchronizationConfigLink.classFullName));
     expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
   });
+
+  it("Should create properly formated syncerr.json files", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const connector = await require(`..\\${testConnector}`).default.create();
+    // try several calls to reportError
+    const dummyStr: string = "dummy";
+    const dummyBool: boolean = false;
+    // w kblink urls
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "acquire_briefcase", dummyStr, dummyBool, "UserNotAuthenticated");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "schema", dummyStr, dummyBool, "protectedFile");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "file_format", dummyStr, dummyBool, "rootModelNotSpatial");
+    // w kblink empty strings e.g. ""
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "internal_server_error", dummyStr, dummyBool, "ConnectorPoolNotFound");
+    // w no kblink property
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "unmap", dummyStr, dummyBool, "legacyV8SchemaError");
+    // for completeness, try all the system types other than connector
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "edge_orchestrator", undefined, dummyStr, dummyBool, "OutOfMemory");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "preprocessor", dummyStr, dummyBool, "UnsupportedFile");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "connector_initialization", dummyStr, dummyBool, "CanNotOpenFile");
+  });
+
 });
