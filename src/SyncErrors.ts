@@ -6,9 +6,18 @@ import * as fs from "fs";
 import { Logger } from "@itwin/core-bentley";
 import path = require("path");
 
-export interface FatalErrorSystem {
+interface IFatalErrorSystem {
   name: string;
   phases: string[];
+}
+
+class FatalErrorSystem implements IFatalErrorSystem {
+  constructor(properties: IFatalErrorSystem) {
+    this.name = properties.name;
+    this.phases = properties.phases;
+  }
+  public name: string;
+  public phases: string[];
 }
 
 /**
@@ -201,9 +210,9 @@ export class FatalErrors {
   /**
    *
    * @param systemName name of the system such as "cloud_orchestrator" "edge_orchestrator" or "connector"
-   * @returns a FatalErrorSystem object or undefined if the systemName does not exist 
+   * @returns a FatalErrorSystem object or undefined if the systemName does not exist
    */
-  public getSystem(systemName: string): FatalErrorSystem|undefined {
+  private getSystem(systemName: string): FatalErrorSystem|undefined {
 
     if (this._jsonObject === undefined) {
       Logger.logError("itwin-connector.Framework", `FatalErrors file has NOT been read!`);
@@ -215,7 +224,7 @@ export class FatalErrors {
       return undefined;
     }
 
-    const system: FatalErrorSystem = this._jsonObject.systems[systemName as any];
+    const system: FatalErrorSystem|undefined = this._jsonObject.systems.find((currSystem) => currSystem.name === systemName);
 
     return system;
   }
