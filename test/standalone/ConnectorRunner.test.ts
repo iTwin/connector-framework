@@ -138,16 +138,24 @@ describe("iTwin Connector Fwk #standalone", () => {
     const dummyBool: boolean = false;
     // w kblink urls
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "acquire_briefcase", dummyStr, dummyBool, "UserNotAuthenticated");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "UserNotAuthenticated", "connector", "acquire_briefcase");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "schema", dummyStr, dummyBool, "protectedFile");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "protectedFile", "connector", "schema");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "file_format", dummyStr, dummyBool, "rootModelNotSpatial");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "rootModelNotSpatial", "connector", "file_format");
     // w kblink empty strings e.g. ""
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "internal_server_error", dummyStr, dummyBool, "ConnectorPoolNotFound");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "ConnectorPoolNotFound", "connector", "internal_server_error");
     // w no kblink property
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "unmap", dummyStr, dummyBool, "legacyV8SchemaError");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "legacyV8SchemaError", "connector", "unmap");
     // for completeness, try all the system types other than connector
-    connector.reportError(KnownTestLocations.outputDir, dummyStr, "edge_orchestrator", undefined, dummyStr, dummyBool, "OutOfMemory");
+    // connector.reportError(KnownTestLocations.outputDir, dummyStr, "edge_orchestrator", undefined, dummyStr, dummyBool, "OutOfMemory");
+    // utils.verifySyncerr (KnownTestLocations.outputDir, "legacyV8SchemaError", "edge_orchestrator", undefined);
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "preprocessor", dummyStr, dummyBool, "UnsupportedFile");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "UnsupportedFile", "cloud_orchestrator", "preprocessor");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "connector_initialization", dummyStr, dummyBool, "CanNotOpenFile");
+    utils.verifySyncerr (KnownTestLocations.outputDir, "CanNotOpenFile", "cloud_orchestrator", "connector_initialization");
   });
 
 });

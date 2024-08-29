@@ -3,7 +3,7 @@
 * See LICENSE.md in the project root for license terms and full copyright notice.
 *--------------------------------------------------------------------------------------------*/
 
-import { assert } from "chai";
+import { assert, expect } from "chai";
 import * as path from "path";
 import type { Id64String} from "@itwin/core-bentley";
 import { DbResult, Id64, Logger, LogLevel } from "@itwin/core-bentley";
@@ -198,5 +198,27 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
     assert.equal(tile.placement.origin.x, 1.0);
     assert.equal(tile.placement.origin.y, 2.0);
   }
+
 }
 
+export function verifySyncerr(dir: string, descriptionKey: string, system: string, phase: string, description?: string, category?: string, canUserFix?: boolean, kbArticleLink?: string) {
+  const syncErrPath = path.join(dir, "SyncError.json");
+  expect(IModelJsFs.existsSync(syncErrPath));
+  const syncErrStr = IModelJsFs.readFileSync(syncErrPath).toString();
+  const syncErr = JSON.parse(syncErrStr);
+  assert.equal(syncErr.version, "1.0");
+  assert.equal(syncErr.errors.length,1);
+  const err = syncErr.errors[0];
+  assert.equal(err.system, system);
+  assert.equal(err.phase, phase);
+
+  assert.equal(err.descriptionKey, descriptionKey);
+  if (category)
+    assert.equal(err.category, category);
+  if (description)
+    assert.equal(err.description, description);
+  if (kbArticleLink)
+    assert.equal(err.kbArticleLink, kbArticleLink);
+  if (canUserFix)
+    assert.equal(err.canUserFix,canUserFix);
+}
