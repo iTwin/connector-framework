@@ -201,7 +201,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
 
 }
 
-export function verifySyncerr(dir: string, descriptionKey: string, system: string, phase: string, description?: string, category?: string, canUserFix?: boolean, kbArticleLink?: string) {
+export function verifySyncerr(dir: string, descriptionKey: string, system: string, phase?: string, kbArticleLink?: string, description?: string, category?: string, canUserFix?: boolean) {
   const syncErrPath = path.join(dir, "SyncError.json");
   expect(IModelJsFs.existsSync(syncErrPath));
   const syncErrStr = IModelJsFs.readFileSync(syncErrPath).toString();
