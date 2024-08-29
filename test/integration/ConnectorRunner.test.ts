@@ -104,22 +104,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       const kbArticleLink: string = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098388";
 
       runner.connector.reportError(dir, description, system, phase, category, canUserFix, descriptionKey, kbArticleLink);
-
-      const syncErrPath = path.join(dir, "SyncError.json");
-      expect(IModelJsFs.existsSync(syncErrPath));
-      const syncErrStr = IModelJsFs.readFileSync(syncErrPath).toString();
-      const syncErr = JSON.parse(syncErrStr);
-      expect(syncErr.version).to.equal("1.0");
-      expect(syncErr.errors.length).to.equal(1);
-      const err = syncErr.errors[0];
-      expect(err.system).to.equal(system);
-      expect(err.phase).to.equal(phase);
-      expect(err.category).to.equal(category);
-      expect(err.descriptionKey).to.equal(descriptionKey);
-      expect(err.description).to.equal(description);
-      expect(err.kbArticleLink).to.equal(kbArticleLink);
-      expect(err.canUserFix).to.equal(canUserFix);
-
+      utils.verifySyncerr (dir, descriptionKey, system, phase, kbArticleLink, description, category, canUserFix);
     }
     return;
   }
