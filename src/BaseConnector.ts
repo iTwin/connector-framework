@@ -10,8 +10,10 @@ import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
-import { ErrorReport, FatalErrors, SyncError } from "./SyncErrors";
-
+import { ErrorReport, getSyncError, SyncError } from "./SyncErrors";
+import { SyncErrors } from "./iModelConnectorErrors";
+import ConnectorPhases = SyncErrors.ConnectorPhases;
+import SESystem = SyncErrors.System;
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -75,19 +77,16 @@ export abstract class BaseConnector {
    * Should be called in other implemented functions if you wish for those to output error reports */
   public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
 
-    const fatalErrs = new FatalErrors();
-    fatalErrs.read();
-
     let foundError: SyncError | undefined;
     if (descriptionKey)
-      foundError = fatalErrs.getError(descriptionKey, systemName, systemPhase);
+      foundError = getSyncError(descriptionKey, systemName, systemPhase);
 
     const syncErr: SyncError = {
       system: systemName ?? foundError?.system ?? "Unknown",
       phase: systemPhase ?? foundError?.phase ?? "Unknown",
       category: category ?? foundError?.category ?? "Unknown",
       descriptionKey: descriptionKey ?? "Unknown",
-      description,
+      description: description ?? foundError?.description ?? "Unknown",
       kbArticleLink: kbArticleLink ?? foundError?.kbArticleLink ?? "Unknown",
       canUserFix: canUserFix ?? foundError?.canUserFix ?? false,
     };
@@ -101,6 +100,24 @@ export abstract class BaseConnector {
     };
     Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
     fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
+  }
+
+  /** Override this method to report structured errors in the Syncerr.json file. It is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and those that want the flexibility of reporting custom errors.
+  * @description This function is used to report structured errors in the Syncerr.json file. it is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and thos that want the flexibility of reporting custom errors.
+  * @param error - a SyncError object that contains the error information to be reported. If the descriptionKey is provided it will be used to look up the error in iModelConnectorErrors.ts. If not, the description, system, phase, category, canUserFix, and kbArticleLink properties will be used instead.
+  * @param phase - option paramemter that is strictly a connector phase enumerated in iModelConnectorErrors.ts. If not provided, the system and phase properties of the error parameter will be used instead.
+  */
+  public reportStructuredError(error: SyncError, phase?: ConnectorPhases): void {
+    if (!error.descriptionKey)
+      this.reportError ("", error.description, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+    else {
+      const serr = getSyncError (error.descriptionKey, SESystem.Connector.toString(), phase?? phase!.toString() ?? error.phase);
+
+      if (serr)
+        this.reportError ("", serr.description, serr.system, serr.phase, serr.category, serr.canUserFix, serr.descriptionKey, serr.kbArticleLink);
+      else
+        this.reportError ("", error.description, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+    }
   }
 
   /**
