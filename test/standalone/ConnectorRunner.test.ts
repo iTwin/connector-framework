@@ -138,24 +138,24 @@ describe("iTwin Connector Fwk #standalone", () => {
     const dummyBool: boolean = false;
     // w kblink urls
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "acquire_briefcase", dummyStr, dummyBool, "UserNotAuthenticated");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "UserNotAuthenticated", "connector", "acquire_briefcase","https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "acquire_briefcase", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401", "dummy", "dummy", false, "UserNotAuthenticated");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "schema", dummyStr, dummyBool, "protectedFile");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "protectedFile", "connector", "schema", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098414");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "schema", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098414", "dummy", "dummy", false, "protectedFile");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "file_format", dummyStr, dummyBool, "rootModelNotSpatial");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "rootModelNotSpatial", "connector", "file_format", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#RootNotSpatial");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "file_format", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#RootNotSpatial", "dummy", "dummy", false, "rootModelNotSpatial");
     // w kblink empty strings e.g. ""
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "internal_server_error", dummyStr, dummyBool, "ConnectorPoolNotFound");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "ConnectorPoolNotFound", "connector", "internal_server_error");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "internal_server_error", "", "dummy", "dummy", false, "ConnectorPoolNotFound");
     // w no kblink property
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "unmap", dummyStr, dummyBool, "legacyV8SchemaError");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "legacyV8SchemaError", "connector", "unmap");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "unmap", "", "dummy", "dummy", false, "legacyV8SchemaError");
     // for completeness, try all the system types other than connector
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "edge_orchestrator", undefined, dummyStr, dummyBool, "OutOfMemory");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "OutOfMemory", "edge_orchestrator", "Unknown");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "edge_orchestrator", "Unknown", "", "dummy", "dummy", false, "OutOfMemory");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "preprocessor", dummyStr, dummyBool, "UnsupportedFile");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "UnsupportedFile", "cloud_orchestrator", "preprocessor");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "cloud_orchestrator", "preprocessor", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098410", "dummy", "dummy", false, "UnsupportedFile");
     connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "connector_initialization", dummyStr, dummyBool, "CanNotOpenFile");
-    utils.verifySyncerr (KnownTestLocations.outputDir, "CanNotOpenFile", "cloud_orchestrator", "connector_initialization");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "cloud_orchestrator", "connector_initialization", "", "dummy", "dummy", false, "CanNotOpenFile");
   });
 
 });

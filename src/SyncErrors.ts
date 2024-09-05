@@ -6,23 +6,17 @@ import { SyncErrors } from "./iModelConnectorErrors";
 import SEErrors = SyncErrors.Errors;
 import SEError = SyncErrors.Error;
 
-
-export interface SystemPhase {
-  system?: string;
-  phase?: string;
-}
-
 /**
  * @description: The SyncError interface represents the structure of a single error in the Syncerr.json file
  */
 export interface SyncError {
-  system: string;
-  phase: string;
-  category: string;
-  descriptionKey: string;
-  description: string;
-  kbArticleLink: string;
-  canUserFix: boolean;
+  system?: string;
+  phase?: string;
+  category?: string;
+  descriptionKey?: string;
+  description?: string;
+  kbArticleLink?: string;
+  canUserFix?: boolean;
 }
 
 /**

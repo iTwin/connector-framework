@@ -109,14 +109,14 @@ export abstract class BaseConnector {
   */
   public reportStructuredError(error: SyncError, phase?: ConnectorPhases): void {
     if (!error.descriptionKey)
-      this.reportError ("", error.description, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+      this.reportError ("", error.description!, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
     else {
       const serr = getSyncError (error.descriptionKey, SESystem.Connector.toString(), phase?? phase!.toString() ?? error.phase);
 
       if (serr)
-        this.reportError ("", serr.description, serr.system, serr.phase, serr.category, serr.canUserFix, serr.descriptionKey, serr.kbArticleLink);
+        this.reportError ("", serr.description!, serr.system, serr.phase, serr.category, serr.canUserFix, serr.descriptionKey, serr.kbArticleLink);
       else
-        this.reportError ("", error.description, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+        this.reportError ("", error.description!, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
     }
   }
 

@@ -18,6 +18,7 @@ import type { JobArgs } from "../src/Args";
 import * as fs from "fs";
 import type { DeletionDetectionParams } from "../src/Synchronizer";
 import { LoggerCategories } from "../src/LoggerCategory";
+import { SyncError } from "../src/SyncErrors";
 
 export function setupLogging() {
   Logger.initializeToConsole();
@@ -201,7 +202,7 @@ export function verifyIModel(imodel: IModelDb, jobArgs: JobArgs, isUpdate: boole
 
 }
 
-export function verifySyncerr(dir: string, descriptionKey: string, system: string, phase?: string, kbArticleLink?: string, description?: string, category?: string, canUserFix?: boolean) {
+export function verifySyncerr(dir: string, expectedErr: SyncError) {
   const syncErrPath = path.join(dir, "SyncError.json");
   expect(IModelJsFs.existsSync(syncErrPath));
   const syncErrStr = IModelJsFs.readFileSync(syncErrPath).toString();
@@ -209,16 +210,26 @@ export function verifySyncerr(dir: string, descriptionKey: string, system: strin
   assert.equal(syncErr.version, "1.0");
   assert.equal(syncErr.errors.length,1);
   const err = syncErr.errors[0];
-  assert.equal(err.system, system);
-  assert.equal(err.phase, phase);
 
-  assert.equal(err.descriptionKey, descriptionKey);
-  if (category)
-    assert.equal(err.category, category);
-  if (description)
-    assert.equal(err.description, description);
-  if (kbArticleLink)
-    assert.equal(err.kbArticleLink, kbArticleLink);
-  if (canUserFix)
-    assert.equal(err.canUserFix,canUserFix);
+  assert.equal(err.system, expectedErr.system);
+  assert.equal(err.phase, expectedErr.phase);
+  assert.equal(err.descriptionKey, expectedErr.descriptionKey);
+  assert.equal(err.category, expectedErr.category);
+  assert.equal(err.description, expectedErr.description);
+  assert.equal(err.kbArticleLink, expectedErr.kbArticleLink);
+  assert.equal(err.canUserFix, expectedErr.canUserFix);
+}
+
+export function verifySyncerrProps(dir: string, system: string, phase?: string, kbArticleLink?: string, description?: string, category?: string, canUserFix?: boolean, descriptionKey?: string) {
+  const syncErr: SyncError = {
+    system,
+    phase,
+    category,
+    descriptionKey,
+    description,
+    kbArticleLink,
+    canUserFix,
+  };
+
+  verifySyncerr(dir, syncErr);
 }

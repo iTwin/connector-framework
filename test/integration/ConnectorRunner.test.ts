@@ -104,7 +104,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
       const kbArticleLink: string = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098388";
 
       runner.connector.reportError(dir, description, system, phase, category, canUserFix, descriptionKey, kbArticleLink);
-      utils.verifySyncerr (dir, descriptionKey, system, phase, kbArticleLink, description, category, canUserFix);
+      utils.verifySyncerrProps (dir, system, phase, kbArticleLink, description, category, canUserFix, descriptionKey);
     }
     return;
   }
