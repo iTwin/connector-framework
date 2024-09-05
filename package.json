@@ -33,7 +33,7 @@
     "test:change-set-group": "npm run build && nyc mocha --grep change-set-group",
     "test:interspersed": "npm run build && nyc mocha --grep interspersed",
     "test:connector": "node lib/test/TestConnector/Main.js test/assets/TestArgs.json",
-    "documentation": "cross-env NODE_PROJECT_ROOT_DIRECTORY=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/connector-framework/file.json --tsIndexFile=./connector-framework.ts --onlyJson",
+    "documentation": "cross-env NODE_PROJECT_ROOT_DIRECTORY=$npm_config_local_prefix betools docs --source=./src --out=./documentation --json=./documentation/reference/connector-framework/file.json --tsIndexFile=./connector-framework.ts --onlyJson",
     "extract": "betools extract --fileExt=ts --extractFrom=./ --recursive --out=./documentation/extract"
   },
   "keywords": [
