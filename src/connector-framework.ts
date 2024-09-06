@@ -57,3 +57,13 @@ export * from "./Synchronizer";
  * A class with methods for creating, getting and closing ChangeSetGroups which is used by the ConnectorRunner.
  * Should not need to be used directly by Connector developers.
  */
+
+/**
+ * @docs-group-description iModelConnectorErrors
+ * An automtically generated file containing enums and keys for looking up structured errors.
+ */
+
+/**
+ * @docs-group-description SyncErrors
+ * A class used to serialize structured errors to a JSON file, syncerrs.json to be used outside of the connector (e.g. from a orchestrator for example).
+ */
