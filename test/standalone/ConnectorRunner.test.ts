@@ -12,6 +12,10 @@ import * as utils from "../ConnectorTestUtils";
 import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
+import { SyncError } from "../../src/SyncErrors";
+import { SyncErrors } from "../../src/iModelConnectorErrors";
+import SEConnectorPhases = SyncErrors.ConnectorPhases;
+import SESystem = SyncErrors.System;
 
 describe("iTwin Connector Fwk #standalone", () => {
   // Hypothesis: The JIT compiler from ts-node executes the connector runner in the test directory,
@@ -133,6 +137,7 @@ describe("iTwin Connector Fwk #standalone", () => {
   it("Should create properly formated syncerr.json files", async () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const connector = await require(`..\\${testConnector}`).default.create();
+
     // try several calls to reportError
     const dummyStr: string = "dummy";
     const dummyBool: boolean = false;
@@ -158,4 +163,40 @@ describe("iTwin Connector Fwk #standalone", () => {
     utils.verifySyncerrProps(KnownTestLocations.outputDir, "cloud_orchestrator", "connector_initialization", "", "dummy", "dummy", false, "CanNotOpenFile");
   });
 
+  it("Should create properly formated syncerr.json using new method", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const connector = await require(`..\\${testConnector}`).default.create();
+    connector.structuredErrorDir = KnownTestLocations.outputDir;
+    // use key - note we only need to set the key member all other members will be looked up
+    const structuredError: SyncError = {
+      descriptionKey: "UserNotAuthenticated",
+    };
+
+    connector.reportStructuredError(structuredError, SEConnectorPhases.AcquireBriefcase);
+
+    // add the phase and system members to match enum that was passed to reportStructuredError above
+    structuredError.system = SESystem.Connector.toString();
+    structuredError.phase = SEConnectorPhases.AcquireBriefcase.toString();
+
+    // now add the members to compare the structured error with what's read from syncerrs.json
+    structuredError.description = "User is not authenticated.";
+    structuredError.category = "ims_token_access";
+    structuredError.kbArticleLink = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401";
+    structuredError.canUserFix = true;
+
+    utils.verifySyncerr(KnownTestLocations.outputDir, structuredError);
+    // use custom error - no key
+    const customError: SyncError = {
+      system: "connector",
+      phase: "acquire_briefcase",
+      description: "User is not authenticated.",
+      category: "ims_token_access",
+      kbArticleLink: "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401",
+      canUserFix: true,
+    };
+
+    connector.reportStructuredError(customError);
+    utils.verifySyncerr(KnownTestLocations.outputDir, customError);
+
+  });
 });

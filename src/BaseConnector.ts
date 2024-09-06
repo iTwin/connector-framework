@@ -25,6 +25,7 @@ export abstract class BaseConnector {
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
   private _authMgr?: ConnectorAuthenticationManager;
+  private _structuredErrorDir?: string;
 
   public async getAccessToken(): Promise<string|undefined> {
     if (this._synchronizer?.authenticationManager)
@@ -68,6 +69,18 @@ export abstract class BaseConnector {
   /** Import schema(s) that are specific to this particular source, in addition to the previously imported domain schema(s). Called in the [Repository channel]($docs/learning/backend/Channel). */
   public abstract importDomainSchema(requestContext?: AccessToken): Promise<any>;
 
+  protected serializeSyncErrorReport(syncErr: SyncError, dir?: string): void {
+    const syncErrArray: SyncError[] = [];
+    syncErrArray.push(syncErr);
+
+    const object: ErrorReport = {
+      version: "1.0",
+      errors: syncErrArray,
+    };
+    Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
+    fs.writeFileSync(path.join(dir ?? this.structuredErrorDir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
+  }
+
   /** Convert the source data to BIS and insert into the iModel.  Use the Synchronizer to determine whether an item is new, changed, or unchanged. Called in the [connector's private channel]($docs/learning/backend/Channel). */
   public abstract updateExistingData(): Promise<any>;
 
@@ -91,33 +104,47 @@ export abstract class BaseConnector {
       canUserFix: canUserFix ?? foundError?.canUserFix ?? false,
     };
 
-    const syncErrArray: SyncError[] = [];
-    syncErrArray.push(syncErr);
-
-    const object: ErrorReport = {
-      version: "1.0",
-      errors: syncErrArray,
-    };
-    Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
-    fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
+    this.serializeSyncErrorReport (syncErr, dir);
   }
 
   /** Override this method to report structured errors in the Syncerr.json file. It is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and those that want the flexibility of reporting custom errors.
   * @description This function is used to report structured errors in the Syncerr.json file. it is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and thos that want the flexibility of reporting custom errors.
-  * @param error - a SyncError object that contains the error information to be reported. If the descriptionKey is provided it will be used to look up the error in iModelConnectorErrors.ts. If not, the description, system, phase, category, canUserFix, and kbArticleLink properties will be used instead.
+  * @param error - a SyncError object that contains the error information to be reported. If the descriptionKey is provided it will be used to look up the error in iModelConnectorErrors.ts. If not, the description, system, phase, category, canUserFix, and kbArticleLink member properties will be used instead.
   * @param phase - option paramemter that is strictly a connector phase enumerated in iModelConnectorErrors.ts. If not provided, the system and phase properties of the error parameter will be used instead.
   */
   public reportStructuredError(error: SyncError, phase?: ConnectorPhases): void {
+    const dir = this.structuredErrorDir;
+    if (phase) {
+      error.phase = phase.toString();
+      error.system = SESystem.Connector.toString();
+    }
+
     if (!error.descriptionKey)
-      this.reportError ("", error.description!, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+      this.serializeSyncErrorReport (error, dir);
     else {
+      // attempt lookup of the error in the iModelConnectorErrors.ts
       const serr = getSyncError (error.descriptionKey, SESystem.Connector.toString(), phase?? phase!.toString() ?? error.phase);
 
       if (serr)
-        this.reportError ("", serr.description!, serr.system, serr.phase, serr.category, serr.canUserFix, serr.descriptionKey, serr.kbArticleLink);
+        this.serializeSyncErrorReport (serr, dir);
       else
-        this.reportError ("", error.description!, error.system, error.phase, error.category, error.canUserFix, error.descriptionKey, error.kbArticleLink);
+        this.serializeSyncErrorReport (error, dir);
     }
+  }
+
+  public get structuredErrorDir(): string {
+    if (!this._structuredErrorDir) {
+      // get the path to the db file
+      const dbPath = this.synchronizer.imodel.pathName;
+      // get the directory of the db file
+      const dbDir = path.dirname(dbPath);
+      this._structuredErrorDir = dbDir;
+    }
+
+    return this._structuredErrorDir;
+  }
+  public set structuredErrorDir(value: string) {
+    this._structuredErrorDir = value;
   }
 
   /**
