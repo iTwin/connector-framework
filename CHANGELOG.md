@@ -1,5 +1,12 @@
 # Change Log - @itwin/connector-framework
 
+## 2.3.2
+
+- correct format of syncerr.json serialized by BaseConnector.reportError
+- also attempt to look up other syncerr properties in iModelConnectorErrors.ts using descriptionKey if passed to reportError
+- Add new method, reportStructuredError which takes a syncerror object as a parameter
+- added several tests for both methods.
+
 ## 2.3.1
 
 - Add method to unmap SynchronizationConfigLink
