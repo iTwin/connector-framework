@@ -4,7 +4,6 @@
 *--------------------------------------------------------------------------------------------*/
 import { AccessToken, BentleyStatus, Id64String} from "@itwin/core-bentley";
 import { BriefcaseDb, BriefcaseManager, IModelHost, IModelJsFs } from "@itwin/core-backend";
-import { TestBrowserAuthorizationClientConfiguration, TestUtility} from "@itwin/oidc-signin-tool";
 import { assert, expect } from "chai";
 import { ConnectorRunner } from "../../src/ConnectorRunner";
 import { HubArgs, HubArgsProps, JobArgs } from "../../src/Args";
@@ -16,6 +15,8 @@ import * as path from "path";
 import { TestIModelManager } from "./TestIModelManager";
 import { ChangeSetGroup } from "../../src/ChangeSetGroup";
 import {TestChangeSetGroup} from "./TestChangeSetGroup";
+import { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+import { ConnectorAuthenticationManager } from "../../src/ConnectorAuthenticationManager";
 
 describe("iTwin Connector Fwk (#integration)", () => {
 
@@ -25,7 +26,14 @@ describe("iTwin Connector Fwk (#integration)", () => {
   const unmapImodelName = process.env.test_unmap_imodel_name? process.env.test_unmap_imodel_name: `${newImodelName}Unmap`;
   const changeSetGroupIModelName = process.env.test_change_set_group_name? process.env.test_change_set_group_name: `${newImodelName}ChangeSetGroup`;
 
-  let testClientConfig: TestBrowserAuthorizationClientConfiguration;
+  // const testClientConfig: NodeCliAuthorizationConfiguration = {
+  //   clientId: process.env.desktop_client_id!,
+  //   redirectUri: process.env.desktop_redirect_uri!,
+  //   scope: process.env.desktop_scopes!,
+  //   issuerUrl: `https://${process.env.imjs_url_prefix || ""}ims.bentley.com`,
+  // };
+
+  let testClientConfig: NodeCliAuthorizationConfiguration;
   let token: AccessToken| undefined;
   let callbackUrl: string|undefined;
 
@@ -44,22 +52,19 @@ describe("iTwin Connector Fwk (#integration)", () => {
       clientId: process.env.test_client_id!,
       redirectUri: process.env.test_redirect_uri!,
       scope: process.env.test_scopes!,
-      authority: `https://${process.env.imjs_url_prefix ?? ""}ims.bentley.com`,
+      issuerUrl: `https://${process.env.imjs_url_prefix ?? ""}ims.bentley.com`,
     };
 
     callbackUrl = process.env.test_callbackUrl!;
 
-    const userCred = {
-      email: process.env.test_user_name!,
-      password: process.env.test_user_password!,
-    };
-    const client = TestUtility.getAuthorizationClient(userCred, testClientConfig);
-    token = await client.getAccessToken();
+    const authManager = new ConnectorAuthenticationManager({authClientConfig: testClientConfig});
+    await authManager.initialize();
+    token = await authManager.getAccessToken();
 
     if (!token) {
       throw new Error("Token not defined");
     }
-    IModelHost.authorizationClient = client;
+    IModelHost.authorizationClient = authManager.authClient;
     testProjectId = process.env.test_project_id!;
   });
 
@@ -125,8 +130,7 @@ describe("iTwin Connector Fwk (#integration)", () => {
 
   async function verifyChangeSetGroups(hubArgs: HubArgs) {
 
-    const vcsgToken = await IModelHost.authorizationClient!.getAccessToken();
-    let csgArr = await TestChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
+    let csgArr = await TestChangeSetGroup.getChangeSetGroups (token!, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr){
@@ -136,34 +140,34 @@ describe("iTwin Connector Fwk (#integration)", () => {
     }
 
     // try some other methods
-    const newCSG = await ChangeSetGroup.createChangeSetGroup (vcsgToken, "second", hubArgs.iModelGuid);
+    const newCSG = await ChangeSetGroup.createChangeSetGroup (token!, "second", hubArgs.iModelGuid);
     assert.isDefined(newCSG);
 
     let id = newCSG?.id;
 
-    const fromGet = await ChangeSetGroup.getChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
+    const fromGet = await ChangeSetGroup.getChangeSetGroup (token!, hubArgs.iModelGuid, id!);
 
     assert.isDefined(fromGet);
     assert.equal(fromGet?.state, "inProgress");
 
     id = fromGet?.id;
 
-    let closed = await ChangeSetGroup.closeChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
+    let closed = await ChangeSetGroup.closeChangeSetGroup (token!, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    closed = await ChangeSetGroup.getChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
+    closed = await ChangeSetGroup.getChangeSetGroup (token!, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
     assert.equal(closed?.state, "completed");
 
-    const thirdCSG = await ChangeSetGroup.createChangeSetGroup (vcsgToken, "third", hubArgs.iModelGuid);
+    const thirdCSG = await ChangeSetGroup.createChangeSetGroup (token!, "third", hubArgs.iModelGuid);
     assert.isDefined(thirdCSG);
     assert.equal(thirdCSG?.state, "inProgress");
 
     id = thirdCSG?.id;
-    closed = await ChangeSetGroup.closeChangeSetGroup (vcsgToken, hubArgs.iModelGuid, id!);
+    closed = await ChangeSetGroup.closeChangeSetGroup (token!, hubArgs.iModelGuid, id!);
     assert.isDefined(closed);
 
-    csgArr = await TestChangeSetGroup.getChangeSetGroups (vcsgToken, hubArgs.iModelGuid);
+    csgArr = await TestChangeSetGroup.getChangeSetGroups (token!, hubArgs.iModelGuid);
     assert.isDefined(csgArr);
 
     if (csgArr)

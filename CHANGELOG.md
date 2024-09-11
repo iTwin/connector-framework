@@ -6,6 +6,7 @@
 - also attempt to look up other syncerr properties in iModelConnectorErrors.ts using descriptionKey if passed to reportError
 - Add new method, reportStructuredError which takes a syncerror object as a parameter
 - added several tests for both methods.
+- discontinued dependency on @itwin/oidc-signin-tool to work around vulnerability and replaced with NodeCliAuthorization
 
 ## 2.3.1
 

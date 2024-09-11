@@ -58,7 +58,7 @@ export function loadEnv(envFile: string) {
     throw envResult.error;
   }
 
-  dotenvExpand(envResult);
+  dotenvExpand.expand(envResult);
 }
 
 export async function startBackend(): Promise<void> {
