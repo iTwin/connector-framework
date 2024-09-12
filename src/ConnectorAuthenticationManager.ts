@@ -157,9 +157,6 @@ class CachedToken {
 
 export class ConnectorAuthenticationManager {
   private _authClient?: AuthorizationClient;
-  public get authClient(): AuthorizationClient | undefined {
-    return this._authClient;
-  }
   constructor(private _cAMParams: ConnectorAuthenticationManagerParams) {
 
   }
@@ -207,6 +204,4 @@ export class ConnectorAuthenticationManager {
     const newToken = await this._authClient.getAccessToken();
     return newToken;
   }
-
 }
-

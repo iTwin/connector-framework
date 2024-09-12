@@ -2,7 +2,8 @@ import { assert } from "chai";
 import { ConnectorAuthenticationManager, DummyCallbackUrlParams } from "../../src/ConnectorAuthenticationManager";
 import {loadEnv} from "../../test/ConnectorTestUtils";
 import * as path from "path";
-import {  NodeCliAuthorizationClient, NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+import { NodeCliAuthorizationConfiguration } from "@itwin/node-cli-authorization";
+import { TestBrowserAuthorizationClient } from "@itwin/oidc-signin-tool";
 import { AccessToken } from "@itwin/core-bentley";
 describe("AuthClient - using Node Cli Client", async () => {
   let authManager: ConnectorAuthenticationManager;
@@ -39,7 +40,11 @@ describe("AuthClient - using callback", async () => {
       authority: `https://${process.env.imjs_url_prefix}ims.bentley.com`,
     };
 
-    const client = new NodeCliAuthorizationClient(testClientConfig);
+    const userCred = {
+      email: process.env.test_user_name!,
+      password: process.env.test_user_password!,
+    };
+    const client = new TestBrowserAuthorizationClient(testClientConfig, userCred);
     token = await client.getAccessToken();
 
     if (!token) {
