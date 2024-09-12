@@ -10,6 +10,10 @@ import * as fs from "fs";
 import * as path from "path";
 import { LoggerCategories } from "./LoggerCategory";
 import { ConnectorAuthenticationManager } from "./ConnectorAuthenticationManager";
+import { ErrorReport, getSyncError, SyncError } from "./SyncErrors";
+import { SyncErrors } from "./iModelConnectorErrors";
+import ConnectorPhases = SyncErrors.ConnectorPhases;
+import SESystem = SyncErrors.System;
 
 /** Abstract implementation of the iTwin Connector.
  * @beta
@@ -21,6 +25,7 @@ export abstract class BaseConnector {
   private _issueReporter?: ConnectorIssueReporter;
   private _connectorArgs?: { [otherArg: string]: any };
   private _authMgr?: ConnectorAuthenticationManager;
+  private _structuredErrorDir?: string;
 
   public async getAccessToken(): Promise<string|undefined> {
     if (this._synchronizer?.authenticationManager)
@@ -64,6 +69,18 @@ export abstract class BaseConnector {
   /** Import schema(s) that are specific to this particular source, in addition to the previously imported domain schema(s). Called in the [Repository channel]($docs/learning/backend/Channel). */
   public abstract importDomainSchema(requestContext?: AccessToken): Promise<any>;
 
+  protected serializeSyncErrorReport(syncErr: SyncError, dir?: string): void {
+    const syncErrArray: SyncError[] = [];
+    syncErrArray.push(syncErr);
+
+    const object: ErrorReport = {
+      version: "1.0",
+      errors: syncErrArray,
+    };
+    Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
+    fs.writeFileSync(path.join(dir ?? this.structuredErrorDir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
+  }
+
   /** Convert the source data to BIS and insert into the iModel.  Use the Synchronizer to determine whether an item is new, changed, or unchanged. Called in the [connector's private channel]($docs/learning/backend/Channel). */
   public abstract updateExistingData(): Promise<any>;
 
@@ -72,17 +89,62 @@ export abstract class BaseConnector {
    * Overriding with your own reportError function is done the same way, but you must include the "Override" keyword in the function signature
    * Should be called in other implemented functions if you wish for those to output error reports */
   public reportError(dir: string, description: string, systemName?: string, systemPhase?: string, category?: string, canUserFix?: boolean, descriptionKey?: string, kbArticleLink?: string): void {
-    const object = {
-      system: systemName,
-      phase: systemPhase,
-      category,
-      descriptionKey,
-      description,
-      kbLink: (kbArticleLink?.length !== 0 ? kbArticleLink : ""),
-      canUserFix,
+
+    let foundError: SyncError | undefined;
+    if (descriptionKey)
+      foundError = getSyncError(descriptionKey, systemName, systemPhase);
+
+    const syncErr: SyncError = {
+      system: systemName ?? foundError?.system ?? "Unknown",
+      phase: systemPhase ?? foundError?.phase ?? "Unknown",
+      category: category ?? foundError?.category ?? "Unknown",
+      descriptionKey: descriptionKey ?? "Unknown",
+      description: description ?? foundError?.description ?? "Unknown",
+      kbArticleLink: kbArticleLink ?? foundError?.kbArticleLink ?? "Unknown",
+      canUserFix: canUserFix ?? foundError?.canUserFix ?? false,
     };
-    Logger.logError("itwin-connector.Framework", `Attempting to write file to ${dir}`);
-    fs.writeFileSync(path.join(dir, "SyncError.json"), JSON.stringify(object), {flag: "w"});
+
+    this.serializeSyncErrorReport (syncErr, dir);
+  }
+
+  /** Override this method to report structured errors in the Syncerr.json file. It is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and those that want the flexibility of reporting custom errors.
+  * @description This function is used to report structured errors in the Syncerr.json file. it is intended to serve both connectors that want to strictly report predefined errors in iModelConnectorErrors.ts and thos that want the flexibility of reporting custom errors.
+  * @param error - a SyncError object that contains the error information to be reported. If the descriptionKey is provided it will be used to look up the error in iModelConnectorErrors.ts. If not, the description, system, phase, category, canUserFix, and kbArticleLink member properties will be used instead.
+  * @param phase - option paramemter that is strictly a connector phase enumerated in iModelConnectorErrors.ts. If not provided, the system and phase properties of the error parameter will be used instead.
+  */
+  public reportStructuredError(error: SyncError, phase?: ConnectorPhases): void {
+    const dir = this.structuredErrorDir;
+    if (phase) {
+      error.phase = phase.toString();
+      error.system = SESystem.Connector.toString();
+    }
+
+    if (!error.descriptionKey)
+      this.serializeSyncErrorReport (error, dir);
+    else {
+      // attempt lookup of the error in the iModelConnectorErrors.ts
+      const serr = getSyncError (error.descriptionKey, SESystem.Connector.toString(), phase?? phase!.toString() ?? error.phase);
+
+      if (serr)
+        this.serializeSyncErrorReport (serr, dir);
+      else
+        this.serializeSyncErrorReport (error, dir);
+    }
+  }
+
+  public get structuredErrorDir(): string {
+    if (!this._structuredErrorDir) {
+      // get the path to the db file
+      const dbPath = this.synchronizer.imodel.pathName;
+      // get the directory of the db file
+      const dbDir = path.dirname(dbPath);
+      this._structuredErrorDir = dbDir;
+    }
+
+    return this._structuredErrorDir;
+  }
+  public set structuredErrorDir(value: string) {
+    this._structuredErrorDir = value;
   }
 
   /**

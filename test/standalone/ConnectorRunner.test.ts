@@ -12,6 +12,10 @@ import * as utils from "../ConnectorTestUtils";
 import { assert, expect } from "chai";
 import * as path from "path";
 import * as fs from "fs";
+import { SyncError } from "../../src/SyncErrors";
+import { SyncErrors } from "../../src/iModelConnectorErrors";
+import SEConnectorPhases = SyncErrors.ConnectorPhases;
+import SESystem = SyncErrors.System;
 
 describe("iTwin Connector Fwk #standalone", () => {
   // Hypothesis: The JIT compiler from ts-node executes the connector runner in the test directory,
@@ -128,5 +132,71 @@ describe("iTwin Connector Fwk #standalone", () => {
     // utils.verifyIModel(imodel, connectorJobDef);
     assert.equal(1, utils.getCount(imodel, SynchronizationConfigLink.classFullName));
     expect(fs.statSync(path.join(KnownTestLocations.outputDir, fileName)).isFile());
+  });
+
+  it("Should create properly formated syncerr.json files", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const connector = await require(`..\\${testConnector}`).default.create();
+
+    // try several calls to reportError
+    const dummyStr: string = "dummy";
+    const dummyBool: boolean = false;
+    // w kblink urls
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "acquire_briefcase", dummyStr, dummyBool, "UserNotAuthenticated");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "acquire_briefcase", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401", "dummy", "dummy", false, "UserNotAuthenticated");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "schema", dummyStr, dummyBool, "protectedFile");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "schema", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098414", "dummy", "dummy", false, "protectedFile");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "file_format", dummyStr, dummyBool, "rootModelNotSpatial");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "file_format", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098395#RootNotSpatial", "dummy", "dummy", false, "rootModelNotSpatial");
+    // w kblink empty strings e.g. ""
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "internal_server_error", dummyStr, dummyBool, "ConnectorPoolNotFound");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "internal_server_error", "", "dummy", "dummy", false, "ConnectorPoolNotFound");
+    // w no kblink property
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "connector", "unmap", dummyStr, dummyBool, "legacyV8SchemaError");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "connector", "unmap", "", "dummy", "dummy", false, "legacyV8SchemaError");
+    // for completeness, try all the system types other than connector
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "edge_orchestrator", undefined, dummyStr, dummyBool, "OutOfMemory");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "edge_orchestrator", "Unknown", "", "dummy", "dummy", false, "OutOfMemory");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "preprocessor", dummyStr, dummyBool, "UnsupportedFile");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "cloud_orchestrator", "preprocessor", "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098410", "dummy", "dummy", false, "UnsupportedFile");
+    connector.reportError(KnownTestLocations.outputDir, dummyStr, "cloud_orchestrator", "connector_initialization", dummyStr, dummyBool, "CanNotOpenFile");
+    utils.verifySyncerrProps(KnownTestLocations.outputDir, "cloud_orchestrator", "connector_initialization", "", "dummy", "dummy", false, "CanNotOpenFile");
+  });
+
+  it("Should create properly formated syncerr.json using new method", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const connector = await require(`..\\${testConnector}`).default.create();
+    connector.structuredErrorDir = KnownTestLocations.outputDir;
+    // use key - note we only need to set the key member all other members will be looked up
+    const structuredError: SyncError = {
+      descriptionKey: "UserNotAuthenticated",
+    };
+
+    connector.reportStructuredError(structuredError, SEConnectorPhases.AcquireBriefcase);
+
+    // add the phase and system members to match enum that was passed to reportStructuredError above
+    structuredError.system = SESystem.Connector.toString();
+    structuredError.phase = SEConnectorPhases.AcquireBriefcase.toString();
+
+    // now add the members to compare the structured error with what's read from syncerrs.json
+    structuredError.description = "User is not authenticated.";
+    structuredError.category = "ims_token_access";
+    structuredError.kbArticleLink = "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401";
+    structuredError.canUserFix = true;
+
+    utils.verifySyncerr(KnownTestLocations.outputDir, structuredError);
+    // use custom error - no key
+    const customError: SyncError = {
+      system: "connector",
+      phase: "acquire_briefcase",
+      description: "User is not authenticated.",
+      category: "ims_token_access",
+      kbArticleLink: "https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0098401",
+      canUserFix: true,
+    };
+
+    connector.reportStructuredError(customError);
+    utils.verifySyncerr(KnownTestLocations.outputDir, customError);
+
   });
 });
