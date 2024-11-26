@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /*---------------------------------------------------------------------------------------------
 * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
 * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -12,7 +13,6 @@ import * as fs from "fs";
 import { IModelHost, IModelHostConfiguration } from "@itwin/core-backend"
 import { IModelsClient } from "@itwin/imodels-client-authoring";
 import { BackendIModelsAccess } from "@itwin/imodels-access-backend";
-import { get } from "request-promise-native";
 import { BentleyStatus } from "@itwin/core-bentley";
 
 async function runConnector() {
@@ -25,13 +25,14 @@ async function runConnector() {
     connectorPath = process.argv[2];
   }
   else {
-      console.log(`The arguments for file paths for the jsonConfiguration or the Connector are missing, check that the index for both are accurate.`);
-      console.log(`process.argv[2] = ${process.argv[2]}(should be the path to your connector), process.argv[3] = ${process.argv[3]}(should be the path to your json configuration)`);
-      process.exitCode = 1;
-      return;
+    console.log(`The arguments for file paths for the jsonConfiguration or the Connector are missing, check that the index for both are accurate.`);
+    console.log(`process.argv[2] = ${process.argv[2]}(should be the path to your connector), process.argv[3] = ${process.argv[3]}(should be the path to your json configuration)`);
+    process.exitCode = 1;
+    return;
   }
 
-  const configuration = require(jsonFilePath); //json should conform to schema found here: https://dev.azure.com/bentleycs/beconnect/_git/iModelBridgeService?path=/assets/connectorconfig.json
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const configuration = require(jsonFilePath); // json should conform to schema found here: https://dev.azure.com/bentleycs/beconnect/_git/iModelBridgeService?path=/assets/connectorconfig.json
   const config = new IModelHostConfiguration();
   console.log(`parsed staging dir from configuration: ${configuration["connector/run"].stagingDirectory}`);
   config.cacheDir = configuration["connector/run"].stagingDirectory;
@@ -56,15 +57,23 @@ async function runConnector() {
   console.log(`token path: ${process.env["imbridge--server-token"]}`);
   const tokenPath = process.env["imbridge--server-token"];
   const tokenEndpoint = process.env.TOKEN_URI;
-  if(tokenEndpoint){
-    const requestOptions = {method: "GET", json: true, uri: tokenEndpoint,
-      headers: {Authorization: process.env.AUTH_GUID},
-    };
+  const authGuid = process.env.AUTH_GUID;
+  if(tokenEndpoint && authGuid !== undefined) {
+
     console.log("getting token from token endpoint..");
-    const response = await get(requestOptions);
-    token = `Bearer ${response.access_token}`
-  }
-  else if(tokenPath) {
+
+    const response = await fetch(tokenEndpoint, {
+      method: "GET",
+      headers: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        Authorization: authGuid,
+      },
+    });
+
+    const responseJSON = await response.json();
+    const tokenStr = responseJSON.access_token;
+    token = `Bearer ${tokenStr}`;
+  } else if(tokenPath) {
     console.log("getting token from path..");
     token = fs.readFileSync(tokenPath, "utf8");
   }
@@ -72,7 +81,8 @@ async function runConnector() {
   hubArgs.tokenCallback = async (): Promise<string> => {
     return token;
   };
-  IModelHost.authorizationClient = {getAccessToken: async (): Promise<string> => { return token }};
+  // eslint-disable-next-line max-statements-per-line
+  IModelHost.authorizationClient = {getAccessToken: async (): Promise<string> => { return token; }};
   console.log(`Attempting to create connector runner, jobArgs source: ${jobArgs.source}, jobArgs stagingDir: ${jobArgs.stagingDir}, hubArgs projectGuid: ${hubArgs.projectGuid} hubArgs imodelguid: ${hubArgs.iModelGuid} `);
   const runner = new ConnectorRunner(jobArgs, hubArgs);
   console.log(`\nrunner created, about to call connectorRunner.run with path ${connectorPath}`);
@@ -83,8 +93,8 @@ async function runConnector() {
 }
 
 runConnector()
-.then(() => {})
-.catch(async err => {
-  console.log(`error caught in runConnector(), error: ${err}`);
-  process.exitCode = 1;
-});
+  .then(() => {})
+  .catch(async (err) => {
+    console.log(`error caught in runConnector(), error: ${err}`);
+    process.exitCode = 1;
+  });
