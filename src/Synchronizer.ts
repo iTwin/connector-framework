@@ -362,8 +362,12 @@ export class Synchronizer {
       item.scope = this.jobSubjectId;
     if (item.kind === undefined)
       item.kind = "";
-    if (item.source === undefined && this.linkCount === 1)
-      item.source = this._links.values().next().value.source;
+    if (item.source === undefined && this.linkCount === 1) {
+      const nxtVal = this._links.values().next().value;
+      if (nxtVal !== undefined)
+        item.source = nxtVal.source;
+    }
+
     assert(sourceItemHasScopeAndKind(item));
   }
 

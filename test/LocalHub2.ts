@@ -586,7 +586,8 @@ export class LocalHub2 {
         } else {
           // if requester is the only one holding a shared lock, "upgrade" the lock from shared to exclusive
           if (lockStatus.sharedBy.size > 1 || !lockStatus.sharedBy.has(briefcase.briefcaseId)) {
-            const id = lockStatus.sharedBy.values().next().value;
+            const nxtVal = lockStatus.sharedBy.values().next();
+            const id = nxtVal.value?? 0;
             throw new LockConflict(id, this.getBriefcase(id).alias, "shared lock is held");
           }
           this.removeSharedLock(props.id, briefcase.briefcaseId);
