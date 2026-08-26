@@ -1,5 +1,9 @@
 # Change Log - @itwin/connector-framework
 
+## 2.4.1
+
+- Pin `@openid/appauth` to `~1.3.2` so connectors do not resolve the ESM-only `1.4.0` release, which breaks CommonJS connectors at runtime with `ERR_REQUIRE_ESM`.
+
 ## 2.3.2
 
 - correct format of syncerr.json serialized by BaseConnector.reportError
