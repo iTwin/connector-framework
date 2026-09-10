@@ -5,7 +5,7 @@ trigger:
   paths:
     exclude:
       - README.md
-      - LICENSE
+      - LICENSE.md
       - .vscode/*
 
 pr:
@@ -16,7 +16,7 @@ pr:
   paths:
     exclude:
       - README.md
-      - LICENSE
+      - LICENSE.md
 
 resources:
   repositories:
@@ -182,12 +182,13 @@ stages:
   condition: and(succeeded(), eq(dependencies.Build.outputs['Build.linux.info.shouldPublish'], 'true'))
   dependsOn: Build
   jobs:
-    - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
-      parameters:
-        path: '*.tgz'
-        artifactName: connector-framework
-        name: ConnectorFramework
-        dryrun: false
+    # TEMP: removed to test whether the npmjs environment blocks trigger evaluation
+    # - template: templates/npmjs-publish-deployment.yaml@build-pipeline-scripts
+    #   parameters:
+    #     path: '*.tgz'
+    #     artifactName: connector-framework
+    #     name: ConnectorFramework
+    #     dryrun: false
     - job: ReleaseTag
       displayName: Release Tag
       pool:
@@ -224,7 +225,7 @@ stages:
      steps:
      - task: tagBuildOrRelease@0
        displayName: Tag Docs
+       condition: and(contains(variables['Build.SourceVersionMessage'], '[publish docs]'), not(contains(variables['Build.SourceVersionMessage'], '(dev)')))
        inputs:
         type: "Build"
         tags: "hasDocs"
-        condition: and(contains(variables['Build.SourceVersionMessage'], '[publish docs]'), not(contains(variables['Build.SourceVersionMessage'], '(dev)')))
